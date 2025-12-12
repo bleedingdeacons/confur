@@ -164,7 +164,7 @@ if (!function_exists('getToday')) {
 
 if (!function_exists('getDateFrom')) {
 
-	function getDateFrom( $string, $format = DATE_FORMAT ) {
+	function getDateFrom( $string, $format = 'd/m/Y' ) {
 
 		return DateTimeImmutable::createFromFormat( $format, $string );
 
