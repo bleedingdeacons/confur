@@ -1,81 +1,84 @@
 <?php
 
-function get_meeting_contacts($post_id) {
+if (!function_exists('get_meeting_contacts')) {
+	function get_meeting_contacts( $post_id ) {
 
-	$contacts = array();
+		$contacts = array();
 
 // 	pretty_print($post_id);
 
-	$meeting_meta = get_post_custom($post_id);
+		$meeting_meta = get_post_custom( $post_id );
 
 // 	pretty_print($meeting_meta);
 
-	for ($count = 1; $count <= 3; $count++) {
+		for ( $count = 1; $count <= 3; $count ++ ) {
 
-		$key = "contact_{$count}_name";
+			$key = "contact_{$count}_name";
 
-		$name = $meeting_meta["contact_{$count}_name"][0];
+			$name = $meeting_meta["contact_{$count}_name"][0];
 
-		if (!empty($name)) {
+			if ( ! empty( $name ) ) {
 
-			$phone = $meeting_meta["contact_{$count}_phone"][0];
+				$phone = $meeting_meta["contact_{$count}_phone"][0];
 
-			$email = $meeting_meta["contact_{$count}_email"][0];
+				$email = $meeting_meta["contact_{$count}_email"][0];
 
-			$contact = ['name' => $name,'phone' => $phone, 'email' => $email];
+				$contact = [ 'name' => $name, 'phone' => $phone, 'email' => $email ];
 
-			$contacts[] = $contact;
+				$contacts[] = $contact;
+
+			}
 
 		}
 
-	}
-
 // 	pretty_print($contacts);
 
-	return $contacts;
+		return $contacts;
+	}
 }
 
+if (!function_exists('get_meetings2')) {
+	function get_meetings2() {
 
-function get_meetings2() {
+		$posts = get_posts( [
+			'post_type'   => 'tsml_meeting',
+			'numberposts' => - 1,
+			'post_status' => 'publish',
+		] );
 
-	$posts = get_posts([
-		'post_type' => 'tsml_meeting',
-		'numberposts' => -1,
-		'post_status' => 'publish',
-	]);
+		foreach ( $posts as $post ) {
 
-	foreach ($posts as $post) {
+			$meeting_meta = get_post_custom( $post->ID );
 
-		$meeting_meta = get_post_custom($post->ID);
-
-		$meeting = [
-			'id' => $post->ID,
-			'name' => $post->post_title,
-			'slug' => $post->post_name,
-			'location' => get_the_title($post->post_parent),
-			'url' => get_permalink($post->ID),
-			'day' => $meeting_meta['day'][0],
-			'time' => $meeting_meta['time'][0],
-			'end_time' => $meeting_meta['end_time'][0],
-			//'time_formatted' => isset($meeting_meta['time']) ? tsml_format_time($meeting_meta['time']) : null,
-			'online' => is_online(empty($meeting_meta['types']) ? [] : unserialize($meeting_meta['types'][0]))
-		];
+			$meeting = [
+				'id'       => $post->ID,
+				'name'     => $post->post_title,
+				'slug'     => $post->post_name,
+				'location' => get_the_title( $post->post_parent ),
+				'url'      => get_permalink( $post->ID ),
+				'day'      => $meeting_meta['day'][0],
+				'time'     => $meeting_meta['time'][0],
+				'end_time' => $meeting_meta['end_time'][0],
+				//'time_formatted' => isset($meeting_meta['time']) ? tsml_format_time($meeting_meta['time']) : null,
+				'online'   => is_online( empty( $meeting_meta['types'] ) ? [] : unserialize( $meeting_meta['types'][0] ) )
+			];
 
 // 		pretty_print($meeting);
 
-		$meetings[] = $meeting;
+			$meetings[] = $meeting;
 
+		}
+
+		return array_reverse( $meetings );
 	}
-
-	return array_reverse($meetings);
 }
 
+if (!function_exists('send_custom_email')) {
+	function send_custom_email( $recipient_email, $from, $subject, $params = [] ) {
 
-function send_custom_email($recipient_email, $from, $subject, $params = []) {
+		error_log( 'send_custom_email' );
 
-	error_log('send_custom_email');
-
-	$email_template = '
+		$email_template = '
         <html>
         <head>
             <style>
@@ -90,96 +93,119 @@ function send_custom_email($recipient_email, $from, $subject, $params = []) {
         </html>
     ';
 
-	foreach ($params as $key => $value) {
-		$email_template = str_replace("{{{$key}}}", $value, $email_template);
+		foreach ( $params as $key => $value ) {
+			$email_template = str_replace( "{{{$key}}}", $value, $email_template );
+		}
+
+		//error_log(serialize($email_template));
+
+		$headers = [
+			'Content-Type: text/html; charset=UTF-8',
+			'From: ' . $from
+		];
+
+		$is_sent = wp_mail( $recipient_email, $subject, $email_template, $headers );
+
+		return $is_sent;
 	}
-
-	//error_log(serialize($email_template));
-
-	$headers = [
-		'Content-Type: text/html; charset=UTF-8',
-		'From: ' . $from
-	];
-
-	$is_sent = wp_mail($recipient_email, $subject, $email_template, $headers);
-
-	return $is_sent;
 }
 
-function generate_pdf_link($atts, $content) {
+if (!function_exists('generate_pdf_link')) {
+	function generate_pdf_link( $atts, $content ) {
 
-	return '<a href="' . esc_attr($atts['url']) . '" download="' . esc_attr($atts['name']) . '" type="application/pdf" target="_blank" rel="noreferrer noopener">' . $content . '</a>';
+		return '<a href="' . esc_attr( $atts['url'] ) . '" download="' . esc_attr( $atts['name'] ) . '" type="application/pdf" target="_blank" rel="noreferrer noopener">' . $content . '</a>';
 
-}
-
-function pretty_print($array_data) { print("<pre>".print_r($array_data,true)."</pre>"); };
-
-function create_email_to_address($address, $subject = null) {
-
-	if (!empty($subject)) {
-		$address = $address . '?subject=' . $subject;
 	}
-
-	return 'mailto:' . $address;
-}
-
-function create_email_anchor($address, $subject = null, $content) {
-
-	$target = create_email_to_address($address, $subject);
-
-	return '<a href="' . esc_attr($target) . '">' . $content . '</a>';
-
-}
-
-function create_phone_to_address($number) {
-
-	return 'tel:' . $number;
 }
 
 
-function getToday()
-{
-
-	return new DateTime("now");
-
+if (!function_exists('pretty_print')) {
+	function pretty_print( $array_data ) {
+		print( "<pre>" . print_r( $array_data, true ) . "</pre>" );
+	}
 }
 
-function getDateFrom($string, $format = DATE_FORMAT) {
+if (!function_exists('create_email_to_address')) {
+	function create_email_to_address( $address, $subject = null ) {
 
-	return DateTimeImmutable::createFromFormat($format, $string);
+		if ( ! empty( $subject ) ) {
+			$address = $address . '?subject=' . $subject;
+		}
 
+		return 'mailto:' . $address;
+	}
 }
 
-function getBool($value) {
+if (!function_exists('create_email_anchor')) {
+	function create_email_anchor( $address, $subject = null, $content ) {
 
-	return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+		$target = create_email_to_address( $address, $subject );
 
+		return '<a href="' . esc_attr( $target ) . '">' . $content . '</a>';
+
+	}
 }
 
-function open_blank($atts = array(), $content = null) {
+if (!function_exists('create_phone_to_address')) {
 
-	$a = shortcode_atts( array(
-		'href'  =>  '#',
-		'class' => ''
-	), $atts);
+	function create_phone_to_address( $number ) {
 
-	return create_link(esc_attr($a['href'], ''), esc_attr($a['class'], ''), $content);
+		return 'tel:' . $number;
+	}
 }
 
-function create_link($href, $class, $content = null) {
+if (!function_exists('getToday')) {
+	function getToday() {
 
-	return '<a target="_blank" rel="noreferrer noopener" class="' .$class . '" href="' . $href . '">' . $content . '</a>';
+		return new DateTime( "now" );
+
+	}
 }
 
+if (!function_exists('getDateFrom')) {
 
-function link_email($atts = array(), $content = null) {
+	function getDateFrom( $string, $format = DATE_FORMAT ) {
 
-	$a = shortcode_atts( array(
-		'address'  =>  '',
-		'subject' => null
-	), $atts );
+		return DateTimeImmutable::createFromFormat( $format, $string );
 
-	$address = create_email_to_address($a['address'],$a['subject']);
+	}
+}
+
+if (!function_exists('getBool')) {
+	function getBool( $value ) {
+
+		return filter_var( $value, FILTER_VALIDATE_BOOLEAN );
+	}
+}
+
+if (!function_exists('open_blank')) {
+	function open_blank( $atts = array(), $content = null ) {
+
+		$a = shortcode_atts( array(
+			'href'  => '#',
+			'class' => ''
+		), $atts );
+
+		return create_link( esc_attr( $a['href'], '' ), esc_attr( $a['class'], '' ), $content );
+	}
+}
+
+if (!function_exists('create_link')) {
+	function create_link( $href, $class, $content = null ) {
+
+		return '<a target="_blank" rel="noreferrer noopener" class="' . $class . '" href="' . $href . '">' . $content . '</a>';
+	}
+}
+
+if ( ! function_exists( 'link_email' ) ) {
+	function link_email( $atts = array(), $content = null ) {
+
+		$a = shortcode_atts( array(
+			'address' => '',
+			'subject' => null
+		), $atts );
+
+		$address = create_email_to_address( $a['address'], $a['subject'] );
 
 // 	$link = "<a href=\"{$address}\">{$content}</a>";
 
@@ -187,21 +213,26 @@ function link_email($atts = array(), $content = null) {
 
 // 	return $link;
 
-	//return '<a href=mailto:"' . esc_attr($a['address'] . '?subject="' . $a['subject']) . '">' . $content . '</a>';
+		//return '<a href=mailto:"' . esc_attr($a['address'] . '?subject="' . $a['subject']) . '">' . $content . '</a>';
 
-	return create_email_link($a['address'], $a['subject'], $content);
+		return create_email_link( $a['address'], $a['subject'], $content );
 
+	}
 }
 
+if ( ! function_exists( 'create_meeting_link' ) ) {
+	function create_meeting_link( $slug ) {
 
-function create_meeting_link($slug) {
+		return '/meetings/?meeting=' . $slug;
 
-	return '/meetings/?meeting=' . $slug;
-
+	}
 }
 
-function is_online($types) {
+if ( ! function_exists( 'is_online' ) ) {
 
-	return (in_array('ONL', $types, false));
+	function is_online( $types ) {
 
+		return ( in_array( 'ONL', $types, false ) );
+
+	}
 }
