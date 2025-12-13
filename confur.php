@@ -27,6 +27,23 @@ require_once plugin_dir_path(__FILE__) . 'answers.php';
 // Include reporting functionality
 require_once plugin_dir_path(__FILE__) . 'reporting.php';
 
+// Enqueue scripts and styles
+add_action('wp_enqueue_scripts', 'confur_enqueue_scripts');
+
+function confur_enqueue_scripts() {
+	// Only enqueue on 'answer' post type
+	if (is_singular('answer')) {
+		// Enqueue the client-side JavaScript
+		wp_enqueue_script(
+			'confur-client-js',
+			plugin_dir_url(__FILE__) . 'confur-client.js',
+			array(), // Dependencies (none in this case)
+			'1.0', // Version
+			true // Load in footer
+		);
+	}
+}
+
 // Register shortcodes
 add_action('init', 'confur_register_shortcodes');
 
