@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+
     (async () => {
 
         const url = window.location.pathname;
@@ -49,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Collect all textarea pairs and group them by their "c<number>" prefix
         const textareas = Array.from(document.querySelectorAll('textarea[id^="c"]')).reduce((groups, visible) => {
-            const groupMatch = visible.id.match(/^c(d+)_/);
+            const groupMatch = visible.id.match(/^c(\d+)_/);
             if (groupMatch) {
                 const groupId = groupMatch[1];
                 const hidden = document.getElementById(`e_${visible.id}`);

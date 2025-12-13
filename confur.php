@@ -36,7 +36,7 @@ function confur_enqueue_scripts() {
 		// Enqueue the client-side JavaScript
 		wp_enqueue_script(
 			'confur-client-js',
-			plugin_dir_url(__FILE__) . 'confur-client.js',
+			plugin_dir_url(__FILE__) . 'js/confur-client.js',
 			array(), // Dependencies (none in this case)
 			'1.0', // Version
 			true // Load in footer
