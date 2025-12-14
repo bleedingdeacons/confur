@@ -7,6 +7,7 @@ use Confur\Services\AssetService;
 use Confur\Services\ShortcodeService;
 use Confur\Handlers\AnswerHandler;
 use Confur\API\AnswerAPI;
+use Confur\Admin\AnswerAdminPage;
 
 /**
  * Main plugin class
@@ -17,6 +18,7 @@ class Plugin
 	private ShortcodeService $shortcodeService;
 	private AnswerHandler $answerHandler;
 	private AnswerAPI $answerAPI;
+	private AnswerAdminPage $answerAdminPage;
 
 	/**
 	 * Initialize the plugin
@@ -31,6 +33,7 @@ class Plugin
 		$this->shortcodeService = new ShortcodeService();
 		$this->answerHandler = new AnswerHandler();
 		$this->answerAPI = new AnswerAPI();
+		$this->answerAdminPage = new AnswerAdminPage();
 
 		// Register hooks
 		$this->registerHooks();
@@ -54,6 +57,9 @@ class Plugin
 
 		// REST API hooks
 		add_action('rest_api_init', [$this->answerAPI, 'registerRoutes']);
+
+		// Admin page hooks
+		$this->answerAdminPage->init();
 
 		// SEO - Exclude answer post type from search engines
 		add_action('init', [$this, 'modifyAnswerPostType'], 99);
