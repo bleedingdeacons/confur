@@ -8,6 +8,7 @@ use Confur\Services\ShortcodeService;
 use Confur\Handlers\AnswerHandler;
 use Confur\API\AnswerAPI;
 use Confur\Admin\AnswerAdminPage;
+use Confur\Admin\ReportingAdminPage;
 
 /**
  * Main plugin class
@@ -19,6 +20,7 @@ class Plugin
 	private AnswerHandler $answerHandler;
 	private AnswerAPI $answerAPI;
 	private AnswerAdminPage $answerAdminPage;
+	private ReportingAdminPage $reportingAdminPage;
 
 	/**
 	 * Initialize the plugin
@@ -34,6 +36,7 @@ class Plugin
 		$this->answerHandler = new AnswerHandler();
 		$this->answerAPI = new AnswerAPI();
 		$this->answerAdminPage = new AnswerAdminPage();
+		$this->reportingAdminPage = new ReportingAdminPage();
 
 		// Register hooks
 		$this->registerHooks();
@@ -60,6 +63,7 @@ class Plugin
 
 		// Admin page hooks
 		$this->answerAdminPage->init();
+		$this->reportingAdminPage->init();
 
 		// SEO - Exclude answer post type from search engines
 		add_action('init', [$this, 'modifyAnswerPostType'], 99);
