@@ -26,21 +26,31 @@ class AnswerShortcode
 	 * @param array $atts Shortcode attributes
 	 * @return string Rendered HTML
 	 */
+	/**
+	 * Generate answer field
+	 *
+	 * @param array $atts Shortcode attributes
+	 * @return string Rendered HTML
+	 */
 	public function generateAnswerField(array $atts = []): string
 	{
 		$committee = isset($atts['committee']) ? sanitize_text_field($atts['committee']) : '';
 		$question = isset($atts['question']) ? sanitize_text_field($atts['question']) : '';
+		$hidden = isset($atts['hidden']) && filter_var($atts['hidden'], FILTER_VALIDATE_BOOLEAN);
 
 		$name = 'c' . esc_attr($committee) . '_a' . esc_attr($question);
 
 		$existingValue = $this->answerRepository->getValue($name);
 		$safeValue = !empty($existingValue) ? esc_textarea($existingValue) : '';
 
+		$labelText = $hidden
+			? sprintf('Answer %s', esc_html($question))
+			: sprintf('Answer %s.%s', esc_html($committee), esc_html($question));
+
 		$label = sprintf(
-			'<label class="answer" for="%s">Answer %s.%s</label>',
+			'<label class="answer" for="%s">%s</label>',
 			esc_attr($name),
-			esc_html($committee),
-			esc_html($question)
+			$labelText
 		);
 
 		$textarea = sprintf(
@@ -70,15 +80,19 @@ class AnswerShortcode
 	{
 		$question = trim($atts['number']);
 		$committee = trim($atts['committee']);
+		$hidden = isset($atts['hidden']) && filter_var($atts['hidden'], FILTER_VALIDATE_BOOLEAN);
 
 		$name = 'c' . $committee . '_q' . $question;
 		$content = do_shortcode($content);
 
+		$headerText = $hidden
+			? sprintf('Question %s', $question)
+			: sprintf('Question %s.%s', $committee, $question);
+
 		return sprintf(
-			'<h3 id="%s">Question %s.%s</h3>%s',
+			'<h3 id="%s">%s</h3>%s',
 			$name,
-			$committee,
-			$question,
+			$headerText,
 			$content
 		);
 	}
@@ -92,15 +106,18 @@ class AnswerShortcode
 	 */
 	public function generateCommittee(array $atts = [], ?string $content = null): string
 	{
-		$number = trim($atts['number']);
+		$number = sanitize_text_field(trim($atts['number']));
 		$id = 'c' . $number;
+
+		// Check if name attribute exists, otherwise use default "Committee {number}"
+		$title = isset($atts['name']) ? sanitize_text_field(trim($atts['name'])) : 'Committee ' . $number;
 
 		$content = do_shortcode($content);
 
 		return sprintf(
-			'<div id="g_%s"><h2>Committee %s</h2>%s</div>',
+			'<div id="g_%s"><h2>%s</h2>%s</div>',
 			$id,
-			$number,
+			$title,
 			$content
 		);
 	}
@@ -144,7 +161,7 @@ class AnswerShortcode
 		$meetingTitle = get_the_title($meetingId);
 
 		return sprintf(
-			'<h2>Results from the %s Group</h2>',
+			'<h2>%s Answers</h2>',
 			esc_html($meetingTitle)
 		);
 	}
@@ -193,15 +210,21 @@ class AnswerShortcode
 	 */
 	public function generateProgressTable(): string
 	{
-		$html = '<div id="progress"><h3>Progress</h3>';
+		$html = '<div id="progress">';
 		$html .= '<table><tbody>';
 
 		for ($count = 1; $count <= 6; $count++) {
 			$html .= sprintf(
-				'<tr><td><a href="#g_c%1$d" class="status-link"><strong>Committee No. %1$d</a></strong></td><td id="s_c%1$d">Not Started</td></tr>',
+				'<tr><td><a href="#g_c%1$d" class="status-link"><strong>Committee %1$d</a></strong></td><td class="value" id="s_c%1$d">Not Started</td></tr>',
 				$count
 			);
 		}
+
+		// Work around for extra questions not grouped by 'Committee'
+		$count = 7;
+		$html .= sprintf(
+			'<tr><td><a href="#g_c%1$d" class="status-link"><strong>All Committees</a></strong></td><td class="value" id="s_c%1$d">Not Started</td></tr>',
+			 $count);
 
 		$html .= '</tbody></table></div>';
 
@@ -281,7 +304,7 @@ class AnswerShortcode
 			}
 		}
 
-		$extendBy = intval($atts['extend_by']);
+		$extendBy = (int) $atts['extend_by'];
 		if ($extendBy > 0) {
 			$endDateObj->modify("+{$extendBy} days");
 		}
