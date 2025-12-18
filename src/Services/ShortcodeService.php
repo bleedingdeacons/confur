@@ -6,7 +6,6 @@ use Confur\Shortcodes\StepShortcode;
 use Confur\Shortcodes\TraditionShortcode;
 use Confur\Shortcodes\AnswerShortcode;
 use Confur\Shortcodes\GeneralShortcodes;
-use Confur\Shortcodes\ReportingShortcode;
 
 /**
  * Registers all plugin shortcodes
@@ -25,7 +24,6 @@ class ShortcodeService
 		$this->traditionShortcode = new TraditionShortcode();
 		$this->answerShortcode = new AnswerShortcode();
 		$this->generalShortcodes = new GeneralShortcodes();
-		$this->reportingShortcode = new ReportingShortcode();
 	}
 
 	/**

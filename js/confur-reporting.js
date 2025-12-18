@@ -16,7 +16,7 @@ function copyCommitteeToClipboard(committeeId, committeeNumber) {
     }
 
     navigator.clipboard.writeText(clipboardText).then(function() {
-        alert('Copied Committee ' + committeeNumber + ' to clipboard!');
+        alert('Copied Whole Committee to Clipboard');
     }, function(err) {
         console.error('Error copying text: ', err);
     });
@@ -31,7 +31,7 @@ function copyAllAnswersToClipboard(committeeNumber, questionNumber) {
         var currentCommitteeNumber = answerGroups[i].getAttribute('data-committee');
         var currentQuestionNumber = answerGroups[i].getAttribute('data-question');
 
-        if (currentCommitteeNumber == committeeNumber && currentQuestionNumber == questionNumber) {
+        if (currentCommitteeNumber === committeeNumber && currentQuestionNumber === questionNumber) {
             var meeting = answerGroups[i].getAttribute('data-meeting');
             var answer = answerGroups[i].getAttribute('data-answer');
 
@@ -42,7 +42,7 @@ function copyAllAnswersToClipboard(committeeNumber, questionNumber) {
     }
 
     navigator.clipboard.writeText(clipboardText).then(function() {
-        alert('Copied all answers for Committee ' + committeeNumber + ' - Question ' + questionNumber + ' to clipboard!');
+        alert('Copied All Answers for Committee ' + committeeNumber + ' - Question ' + questionNumber + ' to clipboard!');
     }, function(err) {
         console.error('Error copying text: ', err);
     });

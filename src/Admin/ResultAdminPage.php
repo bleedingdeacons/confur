@@ -134,7 +134,7 @@ class ResultAdminPage
 
         // Return report without registration section
         return sprintf(
-                '<h1>Reporting</h1>%s<h2 id="answer_table">Answers</h2>%s<h2 id="coverage">Coverage</h2>%s',
+                '<h1 id="answer_table">Answers</h1>%s<h2 id="answer_table"></h2>%s<h2 id="coverage">Coverage</h2>%s',
                 $linksTable,
                 $allAnswerTable,
                 $coverage
@@ -151,7 +151,7 @@ class ResultAdminPage
     {
         $html = $this->getAnswerTableStyles();
 
-        $html .= '<table id="all_answers" border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%;">';
+        $html .= '<table id="all_answers" style="border-collapse: collapse; width: 100%;">';
         $groupedAnswers = [];
         $addedAnchors = [];
 
@@ -191,7 +191,12 @@ class ResultAdminPage
     {
         $committeeId = "committee_{$committeeNumber}";
 
-        $html = "<tr><td colspan='2' class='committee-header'>Committee {$committeeNumber} ";
+        if ($committeeNumber <= 6) {
+            $html = "<tr><td colspan='2' class='committee-header'>Committee {$committeeNumber} ";
+        }
+        else
+            $html = "<tr><td colspan='2' class='committee-header'>All Committees";
+
         $html .= "<button class='copy-btn' onclick=\"copyCommitteeToClipboard('{$committeeId}', {$committeeNumber})\">📋 Copy Committee</button>";
 
         foreach ($questionsByCommittee as $questionNumber => $rows) {
@@ -362,7 +367,7 @@ class ResultAdminPage
             return $a['committee'] <=> $b['committee'] ?: $a['answer'] <=> $b['answer'];
         });
 
-        $html = "<table border='1' cellpadding='10' style='border-collapse: collapse;'>";
+        $html = "<table style='border-collapse: collapse;'>";
         $html .= "<tr><th>Committee</th><th>Answer</th><th>Response Count</th><th>Average Word Count</th><th>Lowest Word Count</th><th>Highest Word Count</th></tr>";
 
         foreach ($results as $result) {
@@ -403,17 +408,19 @@ class ResultAdminPage
         $committee4 = $this->createAnswerLinks(4, 4);
         $committee5 = $this->createAnswerLinks(5, 3);
         $committee6 = $this->createAnswerLinks(6, 2);
+        $committee7 = $this->createAnswerLinks(7, 1);
 
         $class = 'class="answerLinks"';
 
         $html .= sprintf(
-                "<tr><td %s>%s</td><td %s>%s</td><td %s>%s</td><td %s>%s</td><td %s>%s</td><td %s>%s</td></tr>",
+                "<tr><td %s>%s</td><td %s>%s</td><td %s>%s</td><td %s>%s</td><td %s>%s</td><td %s>%s</td><td %s>%s</td></tr>",
                 $class, $committee1,
                 $class, $committee2,
                 $class, $committee3,
                 $class, $committee4,
                 $class, $committee5,
-                $class, $committee6
+                $class, $committee6,
+                $class, $committee7
         );
 
         $html .= "</tbody></table>";
@@ -428,9 +435,14 @@ class ResultAdminPage
      * @param int $answerCount Number of answers
      * @return string Rendered HTML
      */
-    private function createAnswerLinks(int $committeeNumber, int $answerCount): string
-    {
-        $html = "<strong>Committee {$committeeNumber}</strong><ul>";
+    private function createAnswerLinks(int $committeeNumber, int $answerCount): string {
+
+        if ( $committeeNumber <= 6 ) {
+            $html = "<strong>Committee {$committeeNumber}</strong><ul>";
+
+        } else {
+            $html = "<strong>All Committees</strong><ul>";
+        }
 
         for ($count = 1; $count <= $answerCount; $count++) {
             $link = $this->createAnswerLink($committeeNumber, $count, 'Answer ' . $count);
