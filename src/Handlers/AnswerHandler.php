@@ -5,6 +5,7 @@ namespace Confur\Handlers;
 use Confur\Config\Constants;
 use Confur\Services\EmailService;
 use Confur\Repositories\AnswerRepository;
+use Confur\Utils\AcfHelper;
 
 /**
  * Handles answer submission and processing
@@ -163,6 +164,7 @@ class AnswerHandler
 				if ($existing !== $sanitizedValue) {
 					error_log("AnswerHandler::updateAnswerFields - Updating field $key current value: '{$existing}' new value: '{$sanitizedValue}'");
 					if (!update_field($key, $sanitizedValue, $postId)) {
+//					if (!AcfHelper::update_acf_field2($postId, $key, $sanitizedValue)) {
 						error_log("AnswerHandler::updateAnswerFields - Failed to update field $key for Post ID: $postId");
 					}
 				}
