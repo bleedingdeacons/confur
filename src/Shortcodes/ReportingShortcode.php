@@ -33,18 +33,16 @@ class ReportingShortcode
 		$answers = $this->answerRepository->getGroupAnswers();
 
 		$allAnswerTable = $this->generateAnswerTable($answers);
-		$unregisteredTable = $this->generateUnregisteredTable($meetings, $answers, $registered);
-		$registeredTable = $this->generateRegisteredTable($registered, $meetings);
+		$registrationTable = $this->generateRegistrationTable($meetings, $registered);
 		$coverage = $this->generateCoverageTable($answers);
 		$linksTable = $this->generateLinksTable();
 
 		return sprintf(
-			'<h1>Reporting</h1>%s<h2 id="answer_table">Answers</h2>%s<h2 id="coverage">Coverage</h2>%s<h2 id="registration">Registration</h2><h3 id="registered">Registered</h3>%s<h3 id="unregistered">Unregistered</h3>%s',
+			'<h1>Reporting</h1>%s<h2 id="answer_table">Answers</h2>%s<h2 id="coverage">Coverage</h2>%s<h2 id="registration">Registration</h2>%s',
 			$linksTable,
 			$allAnswerTable,
 			$coverage,
-			$registeredTable,
-			$unregisteredTable
+			$registrationTable
 		);
 	}
 
@@ -122,7 +120,7 @@ class ReportingShortcode
 	{
 		$html = '<table id="answer_links"><tbody>';
 
-		$group = '<strong>Navigation</strong><ul><li><a href="#registered">Registered</a></li><li><a href="#unregistered">Unregistered</a></li><li><a href="#coverage">Coverage</a></li></ul>';
+		$group = '<strong>Navigation</strong><ul><li><a href="#registration">Registration</a></li><li><a href="#coverage">Coverage</a></li></ul>';
 
 		$committee1 = $this->createAnswerLinks(1, 4);
 		$committee2 = $this->createAnswerLinks(2, 4);
@@ -189,63 +187,97 @@ class ReportingShortcode
 	}
 
 	/**
-	 * Generate registered table
+	 * Generate registration table (merged registered and unregistered)
 	 *
-	 * @param array $registered Registered groups
 	 * @param array $meetings All meetings
+	 * @param array $registered Registered groups
 	 * @return string Rendered HTML
 	 */
-	private function generateRegisteredTable(array $registered, array $meetings): string
+	private function generateRegistrationTable(array $meetings, array $registered): string
 	{
-		$totalMeetings = count($meetings);
+		$registeredMeetings = array_column($registered, 'meeting');
+		$registeredMeetingsUnique = array_unique($registeredMeetings);
 		$registeredCount = $this->getUniqueCount($registered, 'meeting');
+		$totalMeetings = count($meetings);
+		$unregisteredCount = $totalMeetings - count($registeredMeetingsUnique);
 		$percentageRegistered = $this->calculatePercentage($registeredCount, $totalMeetings);
+		$percentageUnregistered = $this->calculatePercentage($unregisteredCount, $totalMeetings);
 
 		$htmlSummary = sprintf(
-			'<p>Total Meetings: <strong>%d</strong> out of <strong>%d</strong> (Approx %d%%)</p>',
+			'<p><strong>Registered:</strong> %d out of %d (Approx %d%%) | <strong>Unregistered:</strong> %d out of %d (Approx %d%%)</p>',
 			$registeredCount,
 			$totalMeetings,
-			$percentageRegistered
+			$percentageRegistered,
+			$unregisteredCount,
+			$totalMeetings,
+			$percentageUnregistered
 		);
 
-		$html = '<table border="1" cellspacing="0" cellpadding="5">';
-		$html .= '<tr><th>Name</th><th>Status</th><th>Updated</th><th>Email</th><th>Contact 1</th><th>Contact 2</th></tr>';
-
+		// Get status counts for registered meetings
 		$statusCounts = [];
-
 		foreach ($registered as $item) {
-			$meetingName = get_the_title($item['meeting']);
-			$meetingUrl = get_permalink($item['answers']);
-			$updated = trim($item['updated']);
 			$status = isset($item['state']) && !empty($item['state']) ? $item['state'] : 'Not Started';
+			$statusCounts[$status] = isset($statusCounts[$status]) ? $statusCounts[$status] + 1 : 1;
+		}
 
-			if (empty($updated)) {
-				$updated = "Not Started";
-			}
+		$statusHtml = $this->generateStatusCountsTable($statusCounts);
 
-			$contacts = $this->meetingRepository->getMeetingContacts($item['meeting']);
+		$html = '<table border="1" cellspacing="0" cellpadding="5">';
+		$html .= '<tr><th>Name</th><th>Status</th><th>Updated</th><th>Email</th><th>Contact 1</th><th>Contact 2</th><th>Day</th><th>Time</th></tr>';
+
+		// Create lookup for registered meetings
+		$registeredLookup = [];
+		foreach ($registered as $item) {
+			$registeredLookup[$item['meeting']] = $item;
+		}
+
+		// Add all meetings to table (registered first, then unregistered)
+		foreach ($meetings as $meeting) {
+			$meetingId = $meeting['id'];
+			$contacts = $this->meetingRepository->getMeetingContacts($meetingId);
 
 			$contact1 = isset($contacts[0]) ? '<td>' . $this->contactTelephoneLink($contacts[0]) . '</td>' : '<td>-</td>';
 			$contact2 = isset($contacts[1]) ? '<td>' . $this->contactTelephoneLink($contacts[1]) . '</td>' : '<td>-</td>';
 
-			$emailLink = !empty($item['email'])
-				? HtmlHelper::createLink(
-					HtmlHelper::createEmailToAddress($item['email'], "Questions for Conference"),
-					'',
-					$item['email']
-				)
-				: '-';
+			if (isset($registeredLookup[$meetingId])) {
+				// Registered meeting
+				$item = $registeredLookup[$meetingId];
+				$meetingName = get_the_title($item['meeting']);
+				$meetingUrl = get_permalink($item['answers']);
+				$updated = trim($item['updated']);
+				$status = isset($item['state']) && !empty($item['state']) ? $item['state'] : 'Not Started';
 
-			$meetingLink = HtmlHelper::createLink($meetingUrl, '', $meetingName);
+				if (empty($updated)) {
+					$updated = "Not Started";
+				}
 
-			$html .= "<tr><td>{$meetingLink}</td><td>{$status}</td><td>{$updated}</td><td>{$emailLink}</td>$contact1 $contact2</tr>";
+				$emailLink = !empty($item['email'])
+					? HtmlHelper::createLink(
+						HtmlHelper::createEmailToAddress($item['email'], "Questions for Conference"),
+						'',
+						$item['email']
+					)
+					: '-';
 
-			$statusCounts[$status] = isset($statusCounts[$status]) ? $statusCounts[$status] + 1 : 1;
+				$meetingLink = HtmlHelper::createLink($meetingUrl, '', $meetingName);
+
+				$html .= "<tr style='background-color: #e8f5e9;'><td>{$meetingLink}</td><td>{$status}</td><td>{$updated}</td><td>{$emailLink}</td>$contact1 $contact2<td>{$meeting['day']}</td><td>{$meeting['time']}</td></tr>";
+			} else {
+				// Unregistered meeting
+				$meetingLink = HtmlHelper::createLink($meeting['url'], '', $meeting['name']);
+
+				$html .= sprintf(
+					"<tr style='background-color: #ffebee;'><td>%s</td><td colspan='3'>Unregistered</td>%s %s<td>%s</td><td>%s</td></tr>",
+					$meetingLink,
+					$contact1,
+					$contact2,
+					$meeting['day'],
+					$meeting['time']
+				);
+			}
 		}
 
 		$html .= "</table>";
-
-		$statusHtml = $this->generateStatusCountsTable($statusCounts);
 
 		return $htmlSummary . $statusHtml . $html;
 	}
@@ -273,59 +305,6 @@ class ReportingShortcode
 		$html .= "</tr></tbody></table>";
 
 		return $html;
-	}
-
-	/**
-	 * Generate unregistered table
-	 *
-	 * @param array $meetings All meetings
-	 * @param array $answers All answers
-	 * @param array $registered Registered groups
-	 * @return string Rendered HTML
-	 */
-	private function generateUnregisteredTable(array $meetings, array $answers, array $registered): string
-	{
-		$registeredMeetings = array_unique(array_column($registered, "meeting"));
-
-		$unregistered = array_filter($meetings, function ($item) use ($registeredMeetings) {
-			return !in_array($item["id"], $registeredMeetings);
-		});
-
-		$totalMeetings = count($meetings);
-		$unregisteredCount = count($unregistered);
-		$percentageUnregistered = $this->calculatePercentage($unregisteredCount, $totalMeetings);
-
-		$htmlSummary = sprintf(
-			'<p>Total Meetings: <strong>%d</strong> out of <strong>%d</strong> (Approx %d%%)</p>',
-			$unregisteredCount,
-			$totalMeetings,
-			$percentageUnregistered
-		);
-
-		$html = '<table border="1" cellspacing="0" cellpadding="5">';
-		$html .= '<tr><th>Name</th><th>Contact 1</th><th>Contact 2</th><th>Day</th><th>Time</th></tr>';
-
-		foreach ($unregistered as $meeting) {
-			$contacts = $this->meetingRepository->getMeetingContacts($meeting['id']);
-
-			$contact1 = isset($contacts[0]) ? '<td>' . $this->contactTelephoneLink($contacts[0]) . '</td>' : '<td>-</td>';
-			$contact2 = isset($contacts[1]) ? '<td>' . $this->contactTelephoneLink($contacts[1]) . '</td>' : '<td>-</td>';
-
-			$meetingLink = HtmlHelper::createLink($meeting['url'], '', $meeting['name']);
-
-			$html .= sprintf(
-				"<tr><td>%s</td>%s %s<td>%s</td><td>%s</td></tr>",
-				$meetingLink,
-				$contact1,
-				$contact2,
-				$meeting['day'],
-				$meeting['time']
-			);
-		}
-
-		$html .= "</table>";
-
-		return $htmlSummary . $html;
 	}
 
 	/**

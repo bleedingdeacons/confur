@@ -55,7 +55,5 @@ class ShortcodeService
 		add_shortcode('control', [$this->answerShortcode, 'generateControl']);
 		add_shortcode('days_remaining', [$this->answerShortcode, 'generateDaysRemaining']);
 
-		// Reporting shortcodes
-		add_shortcode('answer_report', [$this->reportingShortcode, 'render']);
 	}
 }

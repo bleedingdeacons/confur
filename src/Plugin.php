@@ -7,8 +7,8 @@ use Confur\Services\AssetService;
 use Confur\Services\ShortcodeService;
 use Confur\Handlers\AnswerHandler;
 use Confur\API\AnswerAPI;
-use Confur\Admin\AnswerAdminPage;
-use Confur\Admin\ReportingAdminPage;
+use Confur\Admin\StatusAdminPage;
+use Confur\Admin\ResultAdminPage;
 
 /**
  * Main plugin class
@@ -19,8 +19,8 @@ class Plugin
 	private ShortcodeService $shortcodeService;
 	private AnswerHandler $answerHandler;
 	private AnswerAPI $answerAPI;
-	private AnswerAdminPage $answerAdminPage;
-	private ReportingAdminPage $reportingAdminPage;
+	private StatusAdminPage $answerAdminPage;
+	private ResultAdminPage $reportingAdminPage;
 
 	/**
 	 * Initialize the plugin
@@ -35,8 +35,8 @@ class Plugin
 		$this->shortcodeService = new ShortcodeService();
 		$this->answerHandler = new AnswerHandler();
 		$this->answerAPI = new AnswerAPI();
-		$this->answerAdminPage = new AnswerAdminPage();
-		$this->reportingAdminPage = new ReportingAdminPage();
+		$this->answerAdminPage = new StatusAdminPage();
+		$this->reportingAdminPage = new ResultAdminPage();
 
 		// Register hooks
 		$this->registerHooks();
@@ -70,6 +70,33 @@ class Plugin
 
 		// Divi compatibility - disable custom shortcodes when Visual Builder is active
 		add_action('init', [$this, 'maybeDisableShortcodesForDivi'], 20);
+
+		// Hide edit answer admin menu
+		add_action('admin_menu', function() {
+			remove_submenu_page('edit.php?post_type=answer', 'post-new.php?post_type=answer');
+		}, 999);
+
+		// Hide the admin menu items if not me.
+		add_action('admin_menu', function() {
+
+			$allowed_user = 'dave';
+
+			$current_user = wp_get_current_user();
+
+			// If NOT the allowed user, remove submenu items
+			if ( ! empty( $current_user ) ) {
+				if ( $allowed_user !== $current_user->user_login ) {
+
+					// Hide "All Items" submenu
+					remove_submenu_page('edit.php?post_type=answer', 'edit.php?post_type=answer');
+
+					// Hide "Add New" submenu
+					remove_submenu_page('edit.php?post_type=answer', 'post-new.php?post_type=answer');
+
+					// Add any other submenus you want to hide (categories, tags, etc.)
+				}
+			}
+		}, 999);
 	}
 
 	/**
@@ -83,7 +110,9 @@ class Plugin
 			//$wp_post_types['answer']->public = false;
 			$wp_post_types['answer']->publicly_queryable = true;
 			$wp_post_types['answer']->exclude_from_search = true;
+
 		}
+
 	}
 
 	/**
