@@ -1,0 +1,62 @@
+{
+  "name": "bleeding-deacons/confur",
+  "description": "Automated collation of answers to questions for conference",
+  "type": "wordpress-plugin",
+  "license": "MIT",
+  "version": "2.1",
+  "authors": [
+    {
+      "name": "The Bleeding Deacons"
+    }
+  ],
+  "require": {
+    "php": ">=7.4"
+  },
+  "require-dev": {
+    "php": ">=7.4"
+  },
+  "autoload": {
+    "psr-4": {
+      "Confur\\": "src/"
+    }
+  },
+  "scripts": {
+    "build": [
+      "php build.php --clean"
+    ],
+    "build:production": [
+      "php build.php --type=production --clean"
+    ],
+    "build:dev": [
+      "php build.php --type=dev --clean"
+    ],
+    "compress": [
+      "php build.php --type=production"
+    ],
+    "compress:dev": [
+      "php build.php --type=dev"
+    ],
+    "clean": [
+      "php build.php --clean-only"
+    ],
+    "version": [
+      "php -r \"echo 'Current plugin version: ' . (file_exists('Confur.php') && preg_match('/Version:\\s*([0-9.]+)/', file_get_contents('Confur.php'), \$m) ? \$m[1] : 'unknown') . PHP_EOL;\""
+    ],
+    "help": [
+      "php build.php --help"
+    ],
+    "post-autoload-dump": [
+      "@version"
+    ]
+  },
+  "scripts-descriptions": {
+    "build": "Clean build directory and create production-ready plugin archive",
+    "build:production": "Clean and create production archive (explicit)",
+    "build:dev": "Clean and create development archive with test files",
+    "compress": "Create production archive without cleaning",
+    "compress:dev": "Create development archive without cleaning",
+    "clean": "Remove the build directory and all archives",
+    "version": "Display the current plugin version from main file",
+    "help": "Display detailed build script help and usage"
+  }
+}

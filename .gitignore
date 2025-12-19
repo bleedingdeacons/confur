@@ -56,3 +56,11 @@ wp-config.php
 .idea/php.xml
 .idea/php.xml
 .idea/php.xml
+
+# Build artifacts
+build/
+*.zip
+
+# Composer
+/vendor/
+composer.lock
