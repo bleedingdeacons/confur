@@ -16,7 +16,6 @@ class ShortcodeService
 	private TraditionShortcode $traditionShortcode;
 	private AnswerShortcode $answerShortcode;
 	private GeneralShortcodes $generalShortcodes;
-	private ReportingShortcode $reportingShortcode;
 
 	public function __construct()
 	{
