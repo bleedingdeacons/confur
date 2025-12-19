@@ -29,6 +29,55 @@ document.addEventListener('DOMContentLoaded', () => {
         let state = "Draft";
         let updated ="N/A";
 
+        // Create progress indicator element
+        const progressIndicator = document.createElement('div');
+        progressIndicator.id = 'progress-indicator';
+        progressIndicator.style.cssText = `
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        `;
+        progressIndicator.innerHTML = `
+            <div style="background: white; padding: 30px; border-radius: 8px; text-align: center; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                <div style="border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 15px;"></div>
+                <div id="progress-text" style="font-size: 16px; color: #333;">Loading...</div>
+            </div>
+        `;
+        document.body.appendChild(progressIndicator);
+
+        // Add CSS animation for spinner
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Helper functions to show/hide progress
+        const showProgress = (message = 'Loading...') => {
+            const progressText = document.getElementById('progress-text');
+            if (progressText) {
+                progressText.textContent = message;
+            }
+            progressIndicator.style.display = 'flex';
+        };
+
+        const hideProgress = () => {
+            progressIndicator.style.display = 'none';
+        };
+
+        // Show progress while fetching initial status
+        showProgress('Loading...');
+
         try {
             const request = '/wp-json/answer/v1/status/' + pageName;
             const response = await fetch(request);
@@ -45,6 +94,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.warn('Fetch error, defaulting to Draft:', error);
+        } finally {
+            hideProgress();
         }
 
 
@@ -194,6 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const handleSubmit = (event) => {
+            showProgress('Saving...');
             const button = event.target;
             const formData = new FormData(form);
             formData.append(button.name, button.value);
@@ -221,12 +273,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Clear localStorage
                     localStorage.removeItem(localStorageName);
 
+                    // Hide progress indicator
+                    hideProgress();
+
                     // Update save time indicators
                     //document.getElementById('topSaveTime').innerHTML = responseData.data.updated;
                     //document.getElementById('bottomSaveTime').innerHTML = savedAt;
 
                 })
                 .catch(error => {
+                    hideProgress();
                     console.error('Error submitting form:', error);
                     alert('Failed to Save Answers. Please try again! Contact Support support@aa-bristol.org');
                 });

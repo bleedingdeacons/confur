@@ -6,7 +6,6 @@ use Confur\Shortcodes\StepShortcode;
 use Confur\Shortcodes\TraditionShortcode;
 use Confur\Shortcodes\AnswerShortcode;
 use Confur\Shortcodes\GeneralShortcodes;
-use Confur\Shortcodes\ReportingShortcode;
 
 /**
  * Registers all plugin shortcodes
@@ -17,7 +16,6 @@ class ShortcodeService
 	private TraditionShortcode $traditionShortcode;
 	private AnswerShortcode $answerShortcode;
 	private GeneralShortcodes $generalShortcodes;
-	private ReportingShortcode $reportingShortcode;
 
 	public function __construct()
 	{
@@ -25,7 +23,6 @@ class ShortcodeService
 		$this->traditionShortcode = new TraditionShortcode();
 		$this->answerShortcode = new AnswerShortcode();
 		$this->generalShortcodes = new GeneralShortcodes();
-		$this->reportingShortcode = new ReportingShortcode();
 	}
 
 	/**
@@ -55,7 +52,5 @@ class ShortcodeService
 		add_shortcode('control', [$this->answerShortcode, 'generateControl']);
 		add_shortcode('days_remaining', [$this->answerShortcode, 'generateDaysRemaining']);
 
-		// Reporting shortcodes
-		add_shortcode('answer_report', [$this->reportingShortcode, 'render']);
 	}
 }

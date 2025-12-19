@@ -52,3 +52,15 @@ wp-config.php
 .idea/modules.xml
 .idea/php.xml
 .idea/vcs.xml
+.idea/confur.iml
+.idea/php.xml
+.idea/php.xml
+.idea/php.xml
+
+# Build artifacts
+build/
+*.zip
+
+# Composer
+/vendor/
+composer.lock
