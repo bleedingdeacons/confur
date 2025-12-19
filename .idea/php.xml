@@ -15,6 +15,7 @@
       <path value="$PROJECT_DIR$/../../../wp-admin" />
       <path value="$PROJECT_DIR$/../advanced-custom-fields" />
       <path value="$PROJECT_DIR$/../../../wp-includes" />
+      <path value="$PROJECT_DIR$/vendor/composer" />
     </include_path>
   </component>
   <component name="PhpProjectSharedConfiguration" php_language_level="8.5">
