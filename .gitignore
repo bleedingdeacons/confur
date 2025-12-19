@@ -64,3 +64,6 @@ build/
 # Composer
 /vendor/
 composer.lock
+.idea/confur.iml
+.idea/laravel-idea.xml
+/.idea

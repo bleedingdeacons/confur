@@ -40,7 +40,7 @@
       "php build.php --clean-only"
     ],
     "version": [
-      "php -r \"echo 'Current plugin version: ' . (file_exists('Confur.php') && preg_match('/Version:\\s*([0-9.]+)/', file_get_contents('Confur.php'), \$m) ? \$m[1] : 'unknown') . PHP_EOL;\""
+      "@php -r \"$f='Confur.php'; if(file_exists($f)){ $c=file_get_contents($f); if(preg_match('/Version:\\s*([0-9.]+)/',$c,$m)){ echo 'Current plugin version: '.$m[1].PHP_EOL; exit(0); }} echo 'Version not found'.PHP_EOL; exit(1);\""
     ],
     "help": [
       "php build.php --help"
