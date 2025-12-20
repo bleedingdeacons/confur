@@ -3,6 +3,7 @@
 namespace Confur;
 
 use Confur\Config\Constants;
+use Confur\Services\AdminAssetService;
 use Confur\Services\AssetService;
 use Confur\Services\ShortcodeService;
 use Confur\Handlers\AnswerHandler;
@@ -16,6 +17,7 @@ use Confur\Admin\ResultAdminPage;
 class Plugin
 {
 	private AssetService $assetService;
+	private AdminAssetService $adminAssetService;
 	private ShortcodeService $shortcodeService;
 	private AnswerHandler $answerHandler;
 	private AnswerAPI $answerAPI;
@@ -32,6 +34,7 @@ class Plugin
 
 		// Initialize services
 		$this->assetService = new AssetService();
+		$this->adminAssetService = new AdminAssetService();
 		$this->shortcodeService = new ShortcodeService();
 		$this->answerHandler = new AnswerHandler();
 		$this->answerAPI = new AnswerAPI();
@@ -49,6 +52,8 @@ class Plugin
 	{
 		// Asset hooks
 		add_action('wp_enqueue_scripts', [$this->assetService, 'enqueueScripts']);
+		// Hook admin assets
+		add_action('admin_enqueue_scripts', [$this->adminAssetService, 'enqueueScripts']);
 
 		// Shortcode hooks
 		add_action('init', [$this->shortcodeService, 'registerShortcodes']);

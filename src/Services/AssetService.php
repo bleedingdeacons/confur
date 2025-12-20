@@ -3,7 +3,7 @@
 namespace Confur\Services;
 
 /**
- * Handles asset enqueueing (scripts and styles)
+ * Handles frontend asset enqueueing (scripts and styles)
  */
 class AssetService
 {
@@ -24,17 +24,6 @@ class AssetService
 
 			// Inject admin URLs
 			$this->injectAdminUrls();
-		}
-
-		// Enqueue reporting script in admin or on /report page
-		if (is_admin() || (is_page() && get_post_field('post_name') === 'report')) {
-			wp_enqueue_script(
-				'confur-reporting-js',
-				CONFUR_PLUGIN_URL . 'js/confur-reporting.js',
-				[],
-				CONFUR_VERSION,
-				true
-			);
 		}
 	}
 
