@@ -119,6 +119,10 @@ class StatusAdminPage
 				background: #f8d7da;
 				color: #721c24;
 			}
+			.status-cancelled {
+				background: #e2e3e5;
+				color: #383d41;
+			}
 			.answer-name a {
 				color: #2271b1;
 				text-decoration: none;
@@ -207,6 +211,10 @@ class StatusAdminPage
                     <div class="stat-box">
                         <div class="number"><?php echo esc_html($stats['draft']); ?></div>
                         <div class="label">Draft</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number"><?php echo esc_html($stats['cancelled']); ?></div>
+                        <div class="label">Cancelled</div>
                     </div>
                 </div>
             </div>
@@ -458,6 +466,13 @@ class StatusAdminPage
                         'class' => 'draft'
                 ];
 
+            case Constants::STATUS_CANCELLED:
+            case 'cancelled':
+                return [
+                        'label' => 'Cancelled',
+                        'class' => 'cancelled'
+                ];
+
             default:
                 return [
                         'label' => 'Not Started',
@@ -480,7 +495,8 @@ class StatusAdminPage
                 'unregistered' => 0,
                 'completed' => 0,
                 'draft' => 0,
-                'not_started' => 0
+                'not_started' => 0,
+                'cancelled' => 0
         ];
 
         foreach ($allMeetings as $meeting) {
@@ -496,6 +512,9 @@ class StatusAdminPage
                         break;
                     case 'not-started':
                         $stats['not_started']++;
+                        break;
+                    case 'cancelled':
+                        $stats['cancelled']++;
                         break;
                 }
             } else {
