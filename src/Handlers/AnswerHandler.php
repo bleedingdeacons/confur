@@ -52,10 +52,10 @@ class AnswerHandler
 			$subject = get_permalink($postId);
 		}
 		$this->emailService->sendBackupEmail(
-			'backup@aa-bristol.org',
+			Constants::BACKUP_EMAIL_LINK,
 			Constants::SUPPORT_EMAIL,
 			$subject,
-			serialize($_POST)
+			json_encode($_POST)
 		);
 
 		error_log("AnswerHandler::handleSubmission - Processing answers for Post ID: $postId");
@@ -64,27 +64,35 @@ class AnswerHandler
 		$this->updateAnswerFields($postId, $_POST);
 
 		// Update status
+
 		$validStatuses = [Constants::STATUS_DRAFT, Constants::STATUS_COMPLETED];
 		$status = isset($_POST['submit_answers']) && in_array($_POST['submit_answers'], $validStatuses)
 			? sanitize_text_field($_POST['submit_answers'])
 			: Constants::STATUS_DRAFT;
-
-		error_log('Status: ' . $status);
 
 		$updated = current_time('l, Y-m-d h:i:s A');
 
 		update_field(Constants::UPDATED_FIELD, esc_html($updated), $postId);
 		update_field(Constants::STATUS_FIELD, esc_html($status), $postId);
 
+		error_log("AnswerHandler::handleSubmission - Answers for Post ID: $postId Status: $status");
+
 		$meetingId = get_field(Constants::MEETING_FIELD, $postId);
 		$meetingName = get_the_title($meetingId);
 		$email = get_field(Constants::EMAIL_FIELD, $postId);
+
+		if ($status === Constants::STATUS_COMPLETED) {
+			update_field(Constants::COMPLETION_FIELD, esc_html($updated), $postId);
+		} else {
+			update_field(Constants::COMPLETION_FIELD, "", $postId);
+		}
 
 		acf_save_post();
 		wp_publish_post($postId);
 
 		if ($status === Constants::STATUS_COMPLETED) {
 			$this->emailService->sendCompletionThanks($email, $meetingName);
+
 		}
 
 		wp_send_json_success([
