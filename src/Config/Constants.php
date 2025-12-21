@@ -9,10 +9,6 @@ class Constants
 {
 	// Email constants
 	public const REGISTRATION_RECIPIENT_EMAIL = 'email';
-	public const REGISTRATION_REPLY_EMAIL = 'conference@aa-bristol.org';
-	public const SUPPORT_EMAIL = 'support@aa-bristol.org';
-	public const BACKUP_EMAIL_LINK = 'backup@aa-bristol.org';
-
 	// Answer constants
 	public const REGISTER_QUESTION_FORM = 'registration--q4c';
 	public const COMPLETION_FIELD = 'completed';

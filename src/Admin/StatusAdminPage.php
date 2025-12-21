@@ -227,7 +227,7 @@ class StatusAdminPage
                 <table class="confur-answers-table">
                     <thead>
                     <tr>
-                        <th>Meeting Name</th>
+                        <th>Meeting Answers</th>
                         <th>Status</th>
                         <th>Email</th>
                         <th>Contact 1</th>

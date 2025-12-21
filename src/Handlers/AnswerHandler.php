@@ -3,6 +3,7 @@
 namespace Confur\Handlers;
 
 use Confur\Config\Constants;
+use Confur\Config\EmailSettings;
 use Confur\Services\EmailService;
 use Confur\Repositories\AnswerRepository;
 use Confur\Utils\AcfHelper;
@@ -51,9 +52,10 @@ class AnswerHandler
 		if (isset($_SERVER['REQUEST_URI'])) {
 			$subject = get_permalink($postId);
 		}
+
 		$this->emailService->sendBackupEmail(
-			Constants::BACKUP_EMAIL_LINK,
-			Constants::SUPPORT_EMAIL,
+			EmailSettings::getBackupEmail(),
+			EmailSettings::getSupportEmail(),
 			$subject,
 			json_encode($_POST)
 		);
@@ -129,7 +131,7 @@ class AnswerHandler
 
 			$this->emailService->sendCustomEmail(
 				$email,
-				Constants::SUPPORT_EMAIL,
+				EmailSettings::getSupportEmail(),
 				'Error: Missing Meeting Group',
 				$params
 			);

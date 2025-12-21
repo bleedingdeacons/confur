@@ -10,6 +10,7 @@ use Confur\Handlers\AnswerHandler;
 use Confur\API\AnswerAPI;
 use Confur\Admin\StatusAdminPage;
 use Confur\Admin\ResultAdminPage;
+use Confur\Admin\EmailSettingsAdminPage;
 
 /**
  * Main plugin class
@@ -23,6 +24,7 @@ class Plugin
 	private AnswerAPI $answerAPI;
 	private StatusAdminPage $answerAdminPage;
 	private ResultAdminPage $reportingAdminPage;
+	private EmailSettingsAdminPage $emailSettingsAdminPage;
 
 	/**
 	 * Initialize the plugin
@@ -40,6 +42,7 @@ class Plugin
 		$this->answerAPI = new AnswerAPI();
 		$this->answerAdminPage = new StatusAdminPage();
 		$this->reportingAdminPage = new ResultAdminPage();
+		$this->emailSettingsAdminPage = new EmailSettingsAdminPage();
 
 		// Register hooks
 		$this->registerHooks();
@@ -69,6 +72,7 @@ class Plugin
 		// Admin page hooks
 		$this->answerAdminPage->init();
 		$this->reportingAdminPage->init();
+		$this->emailSettingsAdminPage->init();
 
 		// SEO - Exclude answer post type from search engines
 		add_action('init', [$this, 'modifyAnswerPostType'], 99);
