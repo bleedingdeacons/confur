@@ -3,12 +3,15 @@
 namespace Confur;
 
 use Confur\Config\Constants;
+use Confur\Config\EmailSettings;
+use Confur\Services\AdminAssetService;
 use Confur\Services\AssetService;
 use Confur\Services\ShortcodeService;
 use Confur\Handlers\AnswerHandler;
 use Confur\API\AnswerAPI;
 use Confur\Admin\StatusAdminPage;
 use Confur\Admin\ResultAdminPage;
+use Confur\Admin\EmailSettingsAdminPage;
 
 /**
  * Main plugin class
@@ -16,11 +19,13 @@ use Confur\Admin\ResultAdminPage;
 class Plugin
 {
 	private AssetService $assetService;
+	private AdminAssetService $adminAssetService;
 	private ShortcodeService $shortcodeService;
 	private AnswerHandler $answerHandler;
 	private AnswerAPI $answerAPI;
 	private StatusAdminPage $answerAdminPage;
 	private ResultAdminPage $reportingAdminPage;
+	private EmailSettingsAdminPage $emailSettingsAdminPage;
 
 	/**
 	 * Initialize the plugin
@@ -30,13 +35,18 @@ class Plugin
 		// Load constants
 		Constants::init();
 
+		// Initialize email settings with defaults
+		EmailSettings::initialize();
+
 		// Initialize services
 		$this->assetService = new AssetService();
+		$this->adminAssetService = new AdminAssetService();
 		$this->shortcodeService = new ShortcodeService();
 		$this->answerHandler = new AnswerHandler();
 		$this->answerAPI = new AnswerAPI();
 		$this->answerAdminPage = new StatusAdminPage();
 		$this->reportingAdminPage = new ResultAdminPage();
+		$this->emailSettingsAdminPage = new EmailSettingsAdminPage();
 
 		// Register hooks
 		$this->registerHooks();
@@ -49,6 +59,8 @@ class Plugin
 	{
 		// Asset hooks
 		add_action('wp_enqueue_scripts', [$this->assetService, 'enqueueScripts']);
+		// Hook admin assets
+		add_action('admin_enqueue_scripts', [$this->adminAssetService, 'enqueueScripts']);
 
 		// Shortcode hooks
 		add_action('init', [$this->shortcodeService, 'registerShortcodes']);
@@ -64,6 +76,7 @@ class Plugin
 		// Admin page hooks
 		$this->answerAdminPage->init();
 		$this->reportingAdminPage->init();
+		$this->emailSettingsAdminPage->init();
 
 		// SEO - Exclude answer post type from search engines
 		add_action('init', [$this, 'modifyAnswerPostType'], 99);

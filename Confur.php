@@ -3,10 +3,9 @@
  * Plugin Name: Confur
  * Plugin URI:
  * Description: Automated collation of answers to questions for conference.
- * Version: 2.1
  * Author: The Bleeding Deacons
- * Author URI:
- * License: MIT
+ * Author: thebleedingdeacons@gmail.com
+ * License: MIT (Modified)
  */
 
 // Prevent direct access to this file
@@ -15,7 +14,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('CONFUR_VERSION', '2.1');
+define('CONFUR_VERSION', '2.1.1');
 define('CONFUR_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('CONFUR_PLUGIN_URL', plugin_dir_url(__FILE__));
 

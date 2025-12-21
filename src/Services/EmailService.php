@@ -3,6 +3,7 @@
 namespace Confur\Services;
 
 use Confur\Config\Constants;
+use Confur\Config\EmailSettings;
 
 /**
  * Handles email sending functionality
@@ -84,6 +85,13 @@ class EmailService
 	 */
 	public function sendRegistrationConfirmation(string $recipient, string $meetingName, string $registeredUrl): bool
 	{
+		// Test EmailSettings
+		error_log('Testing EmailSettings:');
+		error_log('Registration: ' . EmailSettings::getRegistrationReplyEmail());
+		error_log('Support: ' . EmailSettings::getSupportEmail());
+		error_log('Backup: ' . EmailSettings::getBackupEmail());
+
+
 		error_log('EmailService::sendRegistrationConfirmation');
 
 		$recipient = sanitize_email($recipient);
@@ -99,7 +107,7 @@ class EmailService
 		);
 
 		$params = ['content' => $body];
-		$from = 'Bristol and District <' . Constants::REGISTRATION_REPLY_EMAIL . '>';
+		$from = 'Bristol and District <' . EmailSettings::getRegistrationReplyEmail() . '>';
 
 		return $this->sendCustomEmail($recipient, $from, 'Registration Successful', $params);
 	}
@@ -127,7 +135,7 @@ class EmailService
 		);
 
 		$params = ['content' => $body];
-		$from = 'Bristol and District <' . Constants::REGISTRATION_REPLY_EMAIL . '>';
+		$from = 'Bristol and District <' . EmailSettings::getRegistrationReplyEmail() . '>';
 
 		return $this->sendCustomEmail($recipient, $from, 'All Questions Completed', $params);
 	}

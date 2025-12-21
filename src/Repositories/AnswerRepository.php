@@ -167,7 +167,7 @@ class AnswerRepository
 
 				foreach ($allFields as $fieldName => $fieldValue) {
 
-					if (str_starts_with($fieldName, 'c')) {
+					if (preg_match('/^c\d+_/',$fieldName)) {
 
 						$answer = $fieldValue;
 

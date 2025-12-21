@@ -540,7 +540,7 @@ Auto-rebuild on file changes:
 brew install fswatch
 
 # Watch and auto-build
-fswatch -o src/ js/ config/ Confur.php | xargs -n1 -I{} php build.php
+fswatch -o src/ js/ Confur.php | xargs -n1 -I{} php build.php
 ```
 
 That's it! Your plugin is ready to distribute. 🚀
