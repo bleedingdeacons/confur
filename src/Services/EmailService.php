@@ -85,6 +85,13 @@ class EmailService
 	 */
 	public function sendRegistrationConfirmation(string $recipient, string $meetingName, string $registeredUrl): bool
 	{
+		// Test EmailSettings
+		error_log('Testing EmailSettings:');
+		error_log('Registration: ' . EmailSettings::getRegistrationReplyEmail());
+		error_log('Support: ' . EmailSettings::getSupportEmail());
+		error_log('Backup: ' . EmailSettings::getBackupEmail());
+
+
 		error_log('EmailService::sendRegistrationConfirmation');
 
 		$recipient = sanitize_email($recipient);

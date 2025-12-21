@@ -3,6 +3,7 @@
 namespace Confur;
 
 use Confur\Config\Constants;
+use Confur\Config\EmailSettings;
 use Confur\Services\AdminAssetService;
 use Confur\Services\AssetService;
 use Confur\Services\ShortcodeService;
@@ -33,6 +34,9 @@ class Plugin
 	{
 		// Load constants
 		Constants::init();
+
+		// Initialize email settings with defaults
+		EmailSettings::initialize();
 
 		// Initialize services
 		$this->assetService = new AssetService();
