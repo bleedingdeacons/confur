@@ -1,23 +1,24 @@
+
 function copyCommitteeToClipboard(committeeId, committeeNumber) {
-    var committeeDiv = document.getElementById(committeeId);
+    const committeeDiv = document.getElementById(committeeId);
     if (!committeeDiv) {
         alert("Committee section not found");
         return;
     }
 
-    var answerGroups = committeeDiv.getElementsByClassName("answer-group");
-    var clipboardText = "Committee " + committeeNumber + "\\n";
+    const answerGroups = committeeDiv.getElementsByClassName("answer-group");
+    let clipboardText = "Committee " + committeeNumber + "\n";
 
-    for (var i = 0; i < answerGroups.length; i++) {
-        var questionNumber = answerGroups[i].getAttribute("data-question");
-        var meeting = answerGroups[i].getAttribute("data-meeting");
-        var status = answerGroups[i].getAttribute("data-status");
-        var answer = answerGroups[i].getAttribute("data-answer");
+    for (let i = 0; i < answerGroups.length; i++) {
+        const questionNumber = answerGroups[i].getAttribute("data-question");
+        const meeting = answerGroups[i].getAttribute("data-meeting");
+        const status = answerGroups[i].getAttribute("data-status");
+        const answer = answerGroups[i].getAttribute("data-answer");
 
-        clipboardText += "\\nQuestion: " + questionNumber + "\\n";
-        clipboardText += "Meeting: " + meeting + (status ? " - " + status : "") + "\\n";
-        clipboardText += answer + "\\n";
-        clipboardText += "\\n";
+        clipboardText += "\nQuestion: " + questionNumber + "\n";
+        clipboardText += "Meeting: " + meeting + (status ? " - " + status : "") + "\n";
+        clipboardText += answer + "\n";
+        clipboardText += "\n";
     }
 
     navigator.clipboard.writeText(clipboardText).then(function() {
@@ -29,26 +30,26 @@ function copyCommitteeToClipboard(committeeId, committeeNumber) {
 }
 
 function copyAllAnswersToClipboard(committeeNumber, questionNumber) {
-    var committeeDiv = document.getElementById("committee_" + committeeNumber);
+    const committeeDiv = document.getElementById("committee_" + committeeNumber);
     if (!committeeDiv) {
         alert("Committee section not found");
         return;
     }
 
-    var answerGroups = committeeDiv.getElementsByClassName("answer-group");
-    var clipboardText = "All Answers for Committee " + committeeNumber + " - Question " + questionNumber + "\\n";
+    const answerGroups = committeeDiv.getElementsByClassName("answer-group");
+    let clipboardText = "All Answers for Committee " + committeeNumber + " - Question " + questionNumber + "\n";
 
-    for (var i = 0; i < answerGroups.length; i++) {
-        var currentCommitteeNumber = answerGroups[i].getAttribute("data-committee");
-        var currentQuestionNumber = answerGroups[i].getAttribute("data-question");
+    for (let i = 0; i < answerGroups.length; i++) {
+        const currentCommitteeNumber = answerGroups[i].getAttribute("data-committee");
+        const currentQuestionNumber = answerGroups[i].getAttribute("data-question");
 
         if (currentCommitteeNumber == committeeNumber && currentQuestionNumber == questionNumber) {
-            var meeting = answerGroups[i].getAttribute("data-meeting");
-            var status = answerGroups[i].getAttribute("data-status");
-            var answer = answerGroups[i].getAttribute("data-answer");
-            clipboardText += "\\nMeeting: " + meeting + (status ? " - " + status : "") + "\\n";
-            clipboardText += answer + "\\n";
-            clipboardText += "\\n";
+            const meeting = answerGroups[i].getAttribute("data-meeting");
+            const status = answerGroups[i].getAttribute("data-status");
+            const answer = answerGroups[i].getAttribute("data-answer");
+            clipboardText += "\nMeeting: " + meeting + (status ? " - " + status : "") + "\n";
+            clipboardText += answer + "\n";
+            clipboardText += "\n";
         }
     }
 
