@@ -24,18 +24,23 @@ class AnswerAPI
 	 */
 	public function registerRoutes(): void
 	{
-		register_rest_route('answer/v1', '/status/(?P<name>[a-zA-Z0-9_-]+)', [
-			'methods' => 'GET',
-			'callback' => [$this, 'getAnswerPostStatus'],
-			'args' => [
-				'name' => [
-					'required' => true,
-					'validate_callback' => function ($param) {
-						return is_string($param) && preg_match('/^[a-zA-Z0-9_-]+$/', $param);
-					},
+		try {
+			register_rest_route('answer/v1', '/status/(?P<name>[a-zA-Z0-9_-]+)', [
+				'methods' => 'GET',
+				'callback' => [$this, 'getAnswerPostStatus'],
+				'args' => [
+					'name' => [
+						'required' => true,
+						'validate_callback' => function ($param) {
+							return is_string($param) && preg_match('/^[a-zA-Z0-9_-]+$/', $param);
+						},
+					],
 				],
-			],
-		]);
+			]);
+		} catch (\Exception $e) {
+			error_log("AnswerAPI::registerRoutes - Failed to register routes: " . $e->getMessage());
+			error_log("AnswerAPI::registerRoutes - Stack trace: " . $e->getTraceAsString());
+		}
 	}
 
 	/**
@@ -46,21 +51,40 @@ class AnswerAPI
 	 */
 	public function getAnswerPostStatus($request)
 	{
-		$postName = sanitize_text_field($request['name']);
+		try {
+			$postName = sanitize_text_field($request['name']);
 
-		if (empty($postName)) {
-			error_log('[AnswerAPI::getAnswerPostStatus] Empty post name received');
-			return new WP_Error('invalid_request', 'Post name is required.', ['status' => 400]);
+			if (empty($postName)) {
+				error_log('[AnswerAPI::getAnswerPostStatus] Empty post name received');
+				return new WP_Error('invalid_request', 'Post name is required.', ['status' => 400]);
+			}
+
+			$post = get_page_by_path($postName, OBJECT, Constants::ANSWER_CUSTOM_TYPE);
+			if (!$post) {
+				error_log("[AnswerAPI::getAnswerPostStatus] Post not found: $postName");
+				return new WP_Error('invalid_post', 'The specified post does not exist.', ['status' => 404]);
+			}
+
+			try {
+				$status = $this->answerRepository->getAnswerStatus($post->ID);
+			} catch (\Exception $e) {
+				error_log("[AnswerAPI::getAnswerPostStatus] Failed to retrieve answer status for post ID {$post->ID}: " . $e->getMessage());
+				return new WP_Error(
+					'repository_error',
+					'Failed to retrieve answer status.',
+					['status' => 500]
+				);
+			}
+
+			return new WP_REST_Response($status, 200);
+		} catch (\Exception $e) {
+			error_log("AnswerAPI::getAnswerPostStatus - Unexpected error: " . $e->getMessage());
+			error_log("AnswerAPI::getAnswerPostStatus - Stack trace: " . $e->getTraceAsString());
+			return new WP_Error(
+				'internal_error',
+				'An unexpected error occurred while processing your request.',
+				['status' => 500]
+			);
 		}
-
-		$post = get_page_by_path($postName, OBJECT, Constants::ANSWER_CUSTOM_TYPE);
-		if (!$post) {
-			error_log("[AnswerAPI::getAnswerPostStatus] Post not found: $postName");
-			return new WP_Error('invalid_post', 'The specified post does not exist.', ['status' => 404]);
-		}
-
-		$status = $this->answerRepository->getAnswerStatus($post->ID);
-
-		return new WP_REST_Response($status, 200);
 	}
 }
