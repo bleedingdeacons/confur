@@ -298,31 +298,31 @@ Add to `.vscode/tasks.json`:
 
 ```json
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "Build Plugin",
-            "type": "shell",
-            "command": "php",
-            "args": ["build.php", "--clean"],
-            "problemMatcher": [],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "presentation": {
-                "reveal": "always",
-                "panel": "new"
-            }
-        },
-        {
-            "label": "Build Plugin (Dev)",
-            "type": "shell",
-            "command": "php",
-            "args": ["build.php", "--type=dev", "--clean"],
-            "problemMatcher": []
-        }
-    ]
+   "version": "2.0.0",
+   "tasks": [
+      {
+         "label": "Build Plugin",
+         "type": "shell",
+         "command": "php",
+         "args": ["build.php", "--clean"],
+         "problemMatcher": [],
+         "group": {
+            "kind": "build",
+            "isDefault": true
+         },
+         "presentation": {
+            "reveal": "always",
+            "panel": "new"
+         }
+      },
+      {
+         "label": "Build Plugin (Dev)",
+         "type": "shell",
+         "command": "php",
+         "args": ["build.php", "--type=dev", "--clean"],
+         "problemMatcher": []
+      }
+   ]
 }
 ```
 
@@ -343,13 +343,13 @@ Add to project settings:
 
 ```json
 {
-    "build_systems": [
-        {
-            "name": "Build Confur Plugin",
-            "cmd": ["php", "build.php", "--clean"],
-            "working_dir": "$project_path"
-        }
-    ]
+   "build_systems": [
+      {
+         "name": "Build Confur Plugin",
+         "cmd": ["php", "build.php", "--clean"],
+         "working_dir": "$project_path"
+      }
+   ]
 }
 ```
 

@@ -16,7 +16,38 @@ public function __construct() {
 }
 ```
 
-### 2. Path Normalization
+### 2. Linux-Safe Mode (NEW in 2.1.1)
+- **Purpose**: Ensures proper directory structure when building on Windows for Linux deployment
+- **Problem Solved**: Windows paths use backslashes (`\`), which Linux treats as literal filename characters
+- **Solution**: Force forward slashes (`/`) in all zip entry paths
+
+```php
+private $linuxSafe = false;
+
+public function setLinuxSafe($enabled = true) {
+    $this->linuxSafe = $enabled;
+    if ($enabled) {
+        $this->log("Linux-safe mode enabled: All paths will use forward slashes");
+    }
+}
+
+// In createZip method:
+if ($this->linuxSafe) {
+    $relativePath = str_replace('\\', '/', $relativePath);
+}
+```
+
+**Usage:**
+```bash
+# On Windows, building for Linux servers:
+php build.php --linux-safe
+
+# Combined with other options:
+php build.php --linux-safe --clean
+php build.php --linux-safe --type=dev
+```
+
+### 3. Path Normalization
 - Uses `DIRECTORY_SEPARATOR` constant instead of hardcoded `/` or `\`
 - Automatically handles Windows backslashes and Unix forward slashes
 - Cross-platform path handling in all file operations
@@ -131,6 +162,7 @@ The build system has been tested and works on:
 ```batch
 C:\Projects\confur> composer build
 C:\Projects\confur> php build.php --clean
+C:\Projects\confur> php build.php --linux-safe
 C:\Projects\confur> dir build
 ```
 
@@ -138,6 +170,7 @@ C:\Projects\confur> dir build
 ```powershell
 PS C:\Projects\confur> composer build
 PS C:\Projects\confur> php build.php --type=dev
+PS C:\Projects\confur> php build.php --linux-safe --clean
 PS C:\Projects\confur> ls build
 ```
 
@@ -165,6 +198,7 @@ PS C:\Projects\confur> ls build
 ✅ ZIP archive creation
 ✅ File size reporting
 ✅ Path normalization
+✅ Linux-safe mode for Windows→Linux deployment
 ✅ Error handling
 ✅ Requirements checking
 ✅ Platform detection
@@ -253,6 +287,7 @@ confur/
 - PowerShell and Command Prompt support
 - Batch file examples for automation
 - IDE integration guides
+- **Linux-safe mode** for deploying to Linux servers
 
 ### For macOS Users
 - Homebrew installation instructions
@@ -262,7 +297,7 @@ confur/
 - Terminal aliases and shortcuts
 - Apple Silicon (M1/M2/M3) notes
 
-### For Linux Users  
+### For Linux Users
 - Works out of the box
 - Standard Unix conventions
 - Shell script compatibility
@@ -280,6 +315,7 @@ confur/
 The Confur WordPress plugin build system is now fully cross-platform:
 
 - ✅ **Works on Windows** with native path handling
+- ✅ **Linux-safe mode** for Windows→Linux deployment (NEW)
 - ✅ **Works on macOS** with Unix conventions
 - ✅ **Works on Linux** with standard tools
 - ✅ **Comprehensive documentation** for each platform
@@ -287,5 +323,16 @@ The Confur WordPress plugin build system is now fully cross-platform:
 - ✅ **Same commands** work everywhere via Composer
 - ✅ **Professional IDE integration** examples
 - ✅ **Detailed troubleshooting** for common issues
+
+### Critical Fix for Linux Deployment
+
+**Problem:** Building on Windows created zip files with backslash paths (`src\Plugin.php`) which Linux interpreted as literal filenames instead of directory structures, causing "Class not found" errors.
+
+**Solution:** New `--linux-safe` flag forces forward slashes in all zip paths, ensuring proper directory extraction on Linux servers.
+
+```bash
+# Always use when deploying to Linux from Windows:
+php build.php --linux-safe
+```
 
 Users can now build the plugin on any platform with confidence! 🚀

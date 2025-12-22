@@ -21,7 +21,7 @@ No installation needed! The build system is ready to use.
 ### Platform-Specific Setup Guides
 
 - **Windows users**: See `WINDOWS.md` for detailed Windows setup instructions
-- **macOS users**: See `MACOS.md` for detailed macOS setup instructions  
+- **macOS users**: See `MACOS.md` for detailed macOS setup instructions
 - **Linux users**: The build system works out of the box on most distributions
 
 ## Quick Commands
@@ -59,6 +59,9 @@ php build.php --version=2.2
 
 # Clean and build
 php build.php --clean
+
+# Build for Linux deployment (from Windows)
+php build.php --linux-safe
 
 # Get help
 php build.php --help
@@ -165,6 +168,16 @@ See platform-specific guides:
 - **Windows**: `WINDOWS.md` - Enable extension in php.ini
 - **macOS**: `MACOS.md` - Reinstall PHP via Homebrew
 - **Linux**: `sudo apt-get install php-zip`
+
+### Building on Windows for Linux deployment
+If you're developing on Windows but deploying to Linux:
+```bash
+# Use the --linux-safe flag
+php build.php --linux-safe
+
+# This ensures forward slashes in zip paths
+# Without this, Linux may not extract directories correctly
+```
 
 ## Files Explained
 
