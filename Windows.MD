@@ -78,6 +78,9 @@ php build.php --version=2.2
 # Clean and build
 php build.php --clean
 
+# Build for Linux deployment (IMPORTANT!)
+php build.php --linux-safe
+
 # Get help
 php build.php --help
 ```
@@ -146,6 +149,39 @@ New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name
 # Restart your computer
 ```
 
+### Issue 6: Building for Linux Deployment ⚠️ IMPORTANT
+
+**Problem:**
+When you build on Windows without the `--linux-safe` flag, the zip file contains backslashes in paths (e.g., `src\Plugin.php`). When extracted on Linux, this creates files with literal backslash characters in the filename instead of creating directories.
+
+**Result on Linux:**
+```
+confur/
+└── src\Plugin.php        ❌ Wrong (file with backslash in name)
+└── src\Config\Constants.php  ❌ Wrong
+```
+
+**Expected on Linux:**
+```
+confur/
+└── src/
+    ├── Plugin.php        ✅ Correct
+    └── Config/
+        └── Constants.php ✅ Correct
+```
+
+**Solution:**
+Always use the `--linux-safe` flag when building for Linux deployment:
+```powershell
+# Correct way to build for Linux servers
+php build.php --linux-safe
+
+# Or with composer (add to composer.json scripts)
+php build.php --linux-safe --clean
+```
+
+This forces all paths to use forward slashes (`/`) regardless of Windows conventions, ensuring proper directory structure on Linux.
+
 ## Building Your Plugin
 
 ### Standard Workflow
@@ -162,6 +198,29 @@ composer build
 
 # Output will be in: .\build\confur-production-2.1.zip
 ```
+
+### Building for Linux Servers (Recommended)
+
+If you're deploying to a Linux server (which is very common), **always** use the `--linux-safe` flag:
+
+```powershell
+# Build for Linux deployment
+php build.php --linux-safe
+
+# Or combined with other options
+php build.php --linux-safe --clean
+php build.php --linux-safe --type=dev
+php build.php --linux-safe --version=2.2
+```
+
+**Why this matters:**
+- Windows uses backslashes (`\`) in paths
+- Linux uses forward slashes (`/`) in paths
+- Without `--linux-safe`, your zip will have `src\Plugin.php`
+- On Linux, this creates a file literally named `src\Plugin.php` instead of `src/Plugin.php` in a directory
+- Your plugin will fail to load with "Class not found" errors
+
+**TL;DR:** Use `--linux-safe` if deploying to Linux! 🐧
 
 ### Using PowerShell
 
@@ -291,20 +350,20 @@ Add to `.vscode/tasks.json`:
 
 ```json
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "Build Plugin",
-            "type": "shell",
-            "command": "php",
-            "args": ["build.php", "--clean"],
-            "problemMatcher": [],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            }
-        }
-    ]
+   "version": "2.0.0",
+   "tasks": [
+      {
+         "label": "Build Plugin",
+         "type": "shell",
+         "command": "php",
+         "args": ["build.php", "--clean"],
+         "problemMatcher": [],
+         "group": {
+            "kind": "build",
+            "isDefault": true
+         }
+      }
+   ]
 }
 ```
 
@@ -319,8 +378,14 @@ cd C:\path\to\confur
 # Build production
 composer build
 
+# Build production for Linux (recommended)
+php build.php --linux-safe
+
 # Build development  
 composer build:dev
+
+# Build development for Linux
+php build.php --linux-safe --type=dev
 
 # Clean build directory
 composer clean
