@@ -89,25 +89,19 @@ class Plugin
 			remove_submenu_page('edit.php?post_type=answer', 'post-new.php?post_type=answer');
 		}, 999);
 
-		// Hide the admin menu items if not me.
+// Hide the admin menu items if not an administrator.
 		add_action('admin_menu', function() {
-
-			$allowed_user = 'dave';
-
 			$current_user = wp_get_current_user();
 
-			// If NOT the allowed user, remove submenu items
-			if ( ! empty( $current_user ) ) {
-				if ( $allowed_user !== $current_user->user_login ) {
+			// If NOT an administrator, remove submenu items
+			if (!empty($current_user) && !in_array('administrator', (array) $current_user->roles)) {
+				// Hide "All Items" submenu
+				remove_submenu_page('edit.php?post_type=answer', 'edit.php?post_type=answer');
 
-					// Hide "All Items" submenu
-					remove_submenu_page('edit.php?post_type=answer', 'edit.php?post_type=answer');
+				// Hide "Add New" submenu
+				remove_submenu_page('edit.php?post_type=answer', 'post-new.php?post_type=answer');
 
-					// Hide "Add New" submenu
-					remove_submenu_page('edit.php?post_type=answer', 'post-new.php?post_type=answer');
-
-					// Add any other submenus you want to hide (categories, tags, etc.)
-				}
+				// Add any other submenus you want to hide (categories, tags, etc.)
 			}
 		}, 999);
 	}
