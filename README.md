@@ -1,6 +1,6 @@
 # Confur
 
-A WordPress plugin for collating and managing conference questions submitted by groups online.
+A WordPress plugin for collating answers to questions for conference submitted online by groups.
 
 ## Description
 

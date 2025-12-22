@@ -14,7 +14,6 @@
  *   --type=dev          Create development archive (includes tests)
  *   --version=X.X       Override version number
  *   --clean             Clean build directory first
- *   --linux-safe        Force forward slashes in zip (for Linux deployment)
  *   --help              Show this help message
  */
 
@@ -24,7 +23,6 @@ class PluginBuilder {
     private $version;
     private $pluginName = 'confur';
     private $isWindows;
-    private $linuxSafe = false;
 
     // Files and directories to exclude in production builds
     private $productionExcludes = [
@@ -34,6 +32,8 @@ class PluginBuilder {
             '.idea',
             'build',
             'tests',
+            'vendor/tests',
+            'setup',
             'node_modules',
             '.DS_Store',
             'composer.json',
@@ -42,7 +42,7 @@ class PluginBuilder {
             'phpunit.xml.dist',
             '.phpcs.xml',
             '.phpcs.xml.dist',
-            'README.md',
+            '*.md',
             'package.json',
             'package-lock.json',
             '.editorconfig',
@@ -93,44 +93,19 @@ class PluginBuilder {
     }
 
     /**
-     * Enable Linux-safe mode (force forward slashes in zip paths)
-     */
-    public function setLinuxSafe($enabled = true) {
-        $this->linuxSafe = $enabled;
-        if ($enabled) {
-            $this->log("Linux-safe mode enabled: All paths will use forward slashes");
-        }
-    }
-
-    /**
      * Extract version from the main plugin file
      */
     private function getVersionFromPlugin() {
         $mainFile = $this->pluginDir . DIRECTORY_SEPARATOR . 'Confur.php';
-
-        if (!file_exists($mainFile)) {
-            $this->error("Warning: Confur.php not found at: {$mainFile}");
-            $this->error("Using default version: 1.0.0");
-            $this->error("To fix: Ensure you're running build.php from the plugin root directory");
-            return '1.0.0';
+        if (file_exists($mainFile)) {
+            $content = file_get_contents($mainFile);
+            if (preg_match('/Version:\s*([0-9.]+)/', $content, $matches)) {
+                return $matches[1];
+            }
+            if (preg_match("/define\('CONFUR_VERSION',\s*'([^']+)'/", $content, $matches)) {
+                return $matches[1];
+            }
         }
-
-        $content = file_get_contents($mainFile);
-
-        // Try to match the Version header first
-        if (preg_match('/Version:\s*([0-9.]+)/', $content, $matches)) {
-            return $matches[1];
-        }
-
-        // Try to match the CONFUR_VERSION constant
-        if (preg_match("/define\('CONFUR_VERSION',\s*'([^']+)'/", $content, $matches)) {
-            return $matches[1];
-        }
-
-        // If we get here, the file exists but version couldn't be parsed
-        $this->error("Warning: Could not parse version from Confur.php");
-        $this->error("Expected format: 'Version: X.X.X' or define('CONFUR_VERSION', 'X.X.X')");
-        $this->error("Using default version: 1.0.0");
         return '1.0.0';
     }
 
@@ -151,15 +126,6 @@ class PluginBuilder {
     public function build($type = 'production', $customVersion = null) {
         if ($customVersion) {
             $this->version = $customVersion;
-            $this->log("Using custom version: {$this->version}");
-        } else {
-            // Warn if using default version
-            if ($this->version === '1.0.0') {
-                $this->log("⚠️  WARNING: Using default version 1.0.0");
-                $this->log("    This likely means Confur.php could not be found or parsed.");
-                $this->log("    Your zip will be named: confur-{$type}-1.0.0.zip");
-                $this->log("");
-            }
         }
 
         $this->log("Building {$type} archive for version {$this->version}...");
@@ -211,10 +177,10 @@ class PluginBuilder {
         foreach ($files as $file) {
             $relativePath = substr($file, strlen($this->pluginDir) + 1);
             if (is_file($file)) {
-                // Force forward slashes for Linux compatibility if linuxSafe is enabled
-                if ($this->linuxSafe) {
-                    $relativePath = str_replace('\\', '/', $relativePath);
-                }
+                // Normalize path to use forward slashes for ZIP standard compliance
+                // The ZIP file format specification requires forward slashes
+                // This ensures proper extraction on all platforms (Windows, macOS, Linux)
+                $relativePath = str_replace('\\', '/', $relativePath);
 
                 $zipPath = $this->pluginName . '/' . $relativePath;
                 $zip->addFile($file, $zipPath);
@@ -261,14 +227,34 @@ class PluginBuilder {
         foreach ($excludes as $exclude) {
             $normalizedExclude = str_replace('\\', '/', $exclude);
 
+            // Check for wildcard patterns (e.g., *.md)
+            if (strpos($normalizedExclude, '*') !== false) {
+                $pattern = str_replace('*', '.*', preg_quote($normalizedExclude, '/'));
+                // Use case-insensitive matching (i flag) for wildcard patterns
+                if (preg_match('/^' . $pattern . '$/i', $normalizedPath)) {
+                    return true;
+                }
+                // Also check basename for file extensions (case-insensitive)
+                if (preg_match('/' . $pattern . '$/i', basename($normalizedPath))) {
+                    return true;
+                }
+            }
+
             // Check if path starts with exclude pattern
             if (strpos($normalizedPath, $normalizedExclude) === 0) {
                 return true;
             }
+
             // Check if any part of the path matches
             if (strpos($normalizedPath, '/' . $normalizedExclude . '/') !== false) {
                 return true;
             }
+
+            // Check if path contains the exclude pattern as a directory
+            if (strpos($normalizedPath, '/' . $normalizedExclude) !== false) {
+                return true;
+            }
+
             // Check exact match
             if ($normalizedPath === $normalizedExclude) {
                 return true;
@@ -357,7 +343,6 @@ Options:
   --version=X.X       Override version number (default: from plugin file)
   --clean             Clean build directory before building
   --clean-only        Only clean build directory without building
-  --linux-safe        Force forward slashes in zip paths (for Linux servers)
   --help              Show this help message
 
 Examples:
@@ -367,8 +352,6 @@ Examples:
   php build.php --version=2.2             # Build with custom version
   php build.php --type=dev --version=2.2  # Dev build with custom version
   php build.php --clean-only              # Only clean build directory
-  php build.php --linux-safe              # Build with Linux-safe paths
-  php build.php --linux-safe --type=dev   # Dev build for Linux deployment
 
 Files Excluded (Production):
   - Development files (.git, .idea, tests, etc.)
@@ -390,12 +373,6 @@ HELP;
   - If permission errors occur, run Command Prompt as Administrator
   - Ensure ZIP extension is enabled in php.ini (extension=zip)
   - You can also run via composer: composer build
-  
-  IMPORTANT for Linux Deployment:
-  - Use --linux-safe flag when building for Linux servers
-  - This ensures forward slashes (/) in zip paths instead of backslashes (\\)
-  - Without this, Linux servers may not extract the directory structure correctly
-  - Example: php build.php --linux-safe
 
 WINDOWS;
         } else {
@@ -407,8 +384,6 @@ WINDOWS;
   - Then run directly: ./build.php [options]
   - Or run via: php build.php [options]
   - Or run via composer: composer build
-  
-  Note: --linux-safe is automatically applied on Unix systems
 
 UNIX;
         }
@@ -416,7 +391,7 @@ UNIX;
 }
 
 // Parse command line arguments
-$options = getopt('', ['type:', 'version:', 'clean', 'clean-only', 'linux-safe', 'help']);
+$options = getopt('', ['type:', 'version:', 'clean', 'clean-only', 'help']);
 
 $builder = new PluginBuilder();
 
@@ -435,11 +410,6 @@ if (isset($options['clean-only'])) {
 // Handle clean before build
 if (isset($options['clean'])) {
     $builder->clean();
-}
-
-// Enable Linux-safe mode if requested
-if (isset($options['linux-safe'])) {
-    $builder->setLinuxSafe(true);
 }
 
 // Build archive
