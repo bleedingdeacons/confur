@@ -157,8 +157,13 @@ class AnswerShortcode
 	 */
 	public function generateHeader(): string
 	{
-		$meetingId = get_field('meeting');
+		$meetingId = get_field(Constants::MEETING_FIELD);
+		$fellow_meetingId = get_field(Constants::FELLOW_MEETING_FIELD);
 		$meetingTitle = get_the_title($meetingId);
+
+		if (! empty($fellow_meetingId ) ) {
+			$meetingTitle .= ' and ' . get_the_title($fellow_meetingId);
+		}
 
 		return sprintf(
 			'<h2>%s Answers</h2>',
