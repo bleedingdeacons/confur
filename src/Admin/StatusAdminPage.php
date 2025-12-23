@@ -304,7 +304,18 @@ class StatusAdminPage
         // Create lookup for registered meetings
         $registeredLookup = [];
         foreach ($registered as $item) {
-            $registeredLookup[$item['meeting']] = $item;
+            // Get meeting ID - handle if it's an object, array, or scalar
+            $meetingId = $item['meeting'];
+            if (is_object($meetingId)) {
+                $meetingId = $meetingId->ID;
+            } elseif (is_array($meetingId)) {
+                $meetingId = $meetingId['ID'] ?? null;
+            }
+
+            // Only add if we have a valid ID
+            if ($meetingId && is_numeric($meetingId)) {
+                $registeredLookup[(int)$meetingId] = $item;
+            }
         }
 
         // Process all meetings

@@ -229,11 +229,13 @@ class ResultAdminPage
      */
     private function renderAnswerGroup(string $committeeNumber, string $questionNumber, array $row, array &$addedAnchors): string
     {
-        $time = $row[4];
-        $meeting = $row[1];
-        $email = $row[3];
-        $answer = $row[5];
-        $status = $row[6];
+        $meetingId = $row[0];           // meetingId
+        $fellowMeetingId = $row[1];     // fellowMeetingId
+        $meeting = $row[2];             // meetingName
+        $email = $row[4];               // email
+        $time = $row[5];                // updated
+        $answer = $row[6];              // answer
+        $status = $row[7];              // status
 
         $anchorKey = "c{$committeeNumber}_a{$questionNumber}";
         $anchorId = "";
@@ -242,8 +244,17 @@ class ResultAdminPage
             $addedAnchors[$anchorKey] = true;
         }
 
+        // Build meeting header - show both meetings if fellow_meeting exists
+        $meetingHeader = $meeting;
+        if (!empty($fellowMeetingId) && $fellowMeetingId != $meetingId) {
+            $fellowMeetingName = get_the_title($fellowMeetingId);
+            if (!empty($fellowMeetingName)) {
+                $meetingHeader = "{$meeting} & {$fellowMeetingName}";
+            }
+        }
+
         $html = "<div class='answer-group' $anchorId data-committee='{$committeeNumber}' data-question='{$questionNumber}' data-meeting='{$meeting}' data-status='{$status}' data-answer='{$answer}'>";
-        $html .= "<div class='question-header'>{$meeting} - {$status}</div>";
+        $html .= "<div class='question-header'>{$meetingHeader} - {$status}</div>";
         $html .= "<div><strong>Committee {$committeeNumber} - Question {$questionNumber}</strong></div>";
         $html .= "<div><strong>Updated:</strong> {$time}</div>";
         $html .= "<div><strong>Email:</strong> {$email}</div>";

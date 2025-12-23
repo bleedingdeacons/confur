@@ -80,14 +80,33 @@ class AnswerRepository
 
 		foreach ($all as $postId) {
 			$meeting = get_field(Constants::MEETING_FIELD, $postId);
+			$fellow_meeting = get_field(Constants::FELLOW_MEETING_FIELD, $postId);
 			$email = get_field(Constants::EMAIL_FIELD, $postId);
 			$updated = get_field(Constants::UPDATED_FIELD, $postId);
 			$status = get_field(Constants::STATUS_FIELD, $postId);
 
-			if (!empty($meeting)) {
+			// Normalize meeting IDs (handle objects/arrays from ACF)
+			$meetingId = $this->normalizePostId($meeting);
+			$fellowMeetingId = $this->normalizePostId($fellow_meeting);
+
+			// Add primary meeting if it exists
+			if (!empty($meetingId)) {
 				$registered[] = [
 					'answers' => $postId,
-					'meeting' => $meeting,
+					'meeting' => $meetingId,
+					'fellow_meeting' => $fellowMeetingId,
+					'email' => $email,
+					'updated' => $updated,
+					'state' => $status
+				];
+			}
+
+			// Add fellow_meeting as a separate entry if it exists
+			if (!empty($fellowMeetingId)) {
+				$registered[] = [
+					'answers' => $postId,
+					'meeting' => $fellowMeetingId,
+					'fellow_meeting' => null,
 					'email' => $email,
 					'updated' => $updated,
 					'state' => $status
@@ -96,6 +115,37 @@ class AnswerRepository
 		}
 
 		return $registered;
+	}
+
+	/**
+	 * Normalize post ID from ACF field value
+	 * ACF can return post ID as int, object, or array depending on configuration
+	 *
+	 * @param mixed $value ACF field value
+	 * @return int|null Post ID or null
+	 */
+	private function normalizePostId($value): ?int
+	{
+		if (empty($value)) {
+			return null;
+		}
+
+		// Already an integer
+		if (is_numeric($value)) {
+			return (int)$value;
+		}
+
+		// Post object
+		if (is_object($value) && isset($value->ID)) {
+			return (int)$value->ID;
+		}
+
+		// Array with ID key
+		if (is_array($value) && isset($value['ID'])) {
+			return (int)$value['ID'];
+		}
+
+		return null;
 	}
 
 	/**
@@ -157,9 +207,14 @@ class AnswerRepository
 
 		foreach ($all as $postId) {
 			$meeting = get_field(Constants::MEETING_FIELD, $postId);
+			$fellow_meeting = get_field(Constants::FELLOW_MEETING_FIELD, $postId);
 			$email = get_field(Constants::EMAIL_FIELD, $postId);
 			$updated = get_field(Constants::UPDATED_FIELD, $postId);
 			$status = get_field(Constants::STATUS_FIELD, $postId);
+
+			// Normalize meeting IDs
+			$meetingId = $this->normalizePostId($meeting);
+			$fellowMeetingId = $this->normalizePostId($fellow_meeting);
 
 			if (!empty($updated)) {
 
@@ -173,11 +228,12 @@ class AnswerRepository
 
 						if (!empty($answer)) {
 
-							$meetingName = get_the_title($meeting);
+							$meetingName = get_the_title($meetingId);
 							$resultUrl = get_permalink($postId);
 
 							$groupAnswer = [
-								$meeting,
+								$meetingId,
+								$fellowMeetingId,
 								$meetingName,
 								$resultUrl,
 								$email,

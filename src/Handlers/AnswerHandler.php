@@ -39,7 +39,7 @@ class AnswerHandler
 				return;
 			}
 
-			$postId = intval($_POST['post_id']);
+			$postId = (int) $_POST['post_id'];
 
 			if (get_post_status($postId) === false) {
 				error_log("AnswerHandler::handleSubmission - Post ID: $postId does not exist");
@@ -126,10 +126,9 @@ class AnswerHandler
 	 * @param string $formId Form ID
 	 * @param int $postId Post ID
 	 */
-	public function handleAfterInsert(string $formId, int $postId): void
+	public function handleRegistration(string $formId, int $postId): void
 	{
 		try {
-			error_log('AnswerHandler::handleAfterInsert triggered');
 
 			if (Constants::REGISTER_QUESTION_FORM !== $formId) {
 				return;
@@ -138,6 +137,7 @@ class AnswerHandler
 			error_log(Constants::REGISTER_QUESTION_FORM);
 
 			$meetingId = get_field(Constants::MEETING_FIELD, $postId);
+			$fellow_meetingId = get_field(Constants::FELLOW_MEETING_FIELD, $postId);
 			$email = get_field(Constants::REGISTRATION_RECIPIENT_EMAIL, $postId);
 
 			if (empty($meetingId)) {
@@ -154,15 +154,22 @@ class AnswerHandler
 						$params
 					);
 				} catch (\Exception $e) {
-					error_log("AnswerHandler::handleAfterInsert - Failed to send error email: " . $e->getMessage());
+					error_log("AnswerHandler::handleRegistration - Failed to send error email: " . $e->getMessage());
 				}
 
 				return;
 			}
 
 			$meetingName = get_the_title($meetingId);
+
+			if (!empty($fellow_meetingId)) {
+				$meetingName = substr($meetingName, 0, 75)  . " and " . get_the_title( $fellow_meetingId );
+			}
+
 			$slug = $this->generateUniqueSlug($meetingName);
+
 			$title = 'Answers from ' . $meetingName;
+
 
 			update_field(Constants::STATUS_FIELD, Constants::DEFAULT_STATUS);
 			acf_save_post();
@@ -178,12 +185,12 @@ class AnswerHandler
 			try {
 				$this->emailService->sendRegistrationConfirmation($email, $meetingName, $url);
 			} catch (\Exception $e) {
-				error_log("AnswerHandler::handleAfterInsert - Failed to send registration confirmation email: " . $e->getMessage());
+				error_log("AnswerHandler::handleRegistration - Failed to send registration confirmation email: " . $e->getMessage());
 				// Continue processing even if email fails
 			}
 		} catch (\Exception $e) {
-			error_log("AnswerHandler::handleAfterInsert - Unexpected error: " . $e->getMessage());
-			error_log("AnswerHandler::handleAfterInsert - Stack trace: " . $e->getTraceAsString());
+			error_log("AnswerHandler::handleRegistration - Unexpected error: " . $e->getMessage());
+			error_log("AnswerHandler::handleRegistration - Stack trace: " . $e->getTraceAsString());
 
 			// Attempt to send error notification email if we have an email address
 			if (!empty($email)) {
@@ -197,7 +204,7 @@ class AnswerHandler
 						$params
 					);
 				} catch (\Exception $emailException) {
-					error_log("AnswerHandler::handleAfterInsert - Failed to send error notification email: " . $emailException->getMessage());
+					error_log("AnswerHandler::handleRegistration - Failed to send error notification email: " . $emailException->getMessage());
 				}
 			}
 		}

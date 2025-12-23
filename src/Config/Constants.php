@@ -21,6 +21,7 @@ class Constants
 	public const ACTION = 'answer_submission';
 	public const ANSWER_CUSTOM_TYPE = 'Answer';
 	public const MEETING_FIELD = 'meeting';
+	public const FELLOW_MEETING_FIELD = 'fellow_meeting';
 	public const UPDATED_FIELD = 'updated';
 	public const EMAIL_FIELD = 'email';
 
