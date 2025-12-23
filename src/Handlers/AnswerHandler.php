@@ -97,9 +97,11 @@ class AnswerHandler
 			acf_save_post();
 			wp_publish_post($postId);
 
+			$title = get_the_title($postId);
+
 			if ($status === Constants::STATUS_COMPLETED) {
 				try {
-					$this->emailService->sendCompletionThanks($email, $meetingName);
+					$this->emailService->sendCompletionEmail($email, $title);
 				} catch (\Exception $e) {
 					error_log("AnswerHandler::handleSubmission - Failed to send completion email: " . $e->getMessage());
 					// Continue processing even if email fails

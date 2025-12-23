@@ -119,7 +119,7 @@ class EmailService
 	 * @param string $meetingName Meeting name
 	 * @return bool Success status
 	 */
-	public function sendCompletionThanks(string $recipient, string $meetingName): bool
+	public function sendCompletionEmail(string $recipient, string $meetingName): bool
 	{
 		error_log('EmailService::sendCompletionThanks');
 
@@ -130,14 +130,14 @@ class EmailService
 		}
 
 		$body = sprintf(
-			'<h3>Complete!</h3><p>Many thanks to %s for taking the time to give your feedback, the conference committee is very grateful.</p><p>If you have made a mistake or want to change something, you can still make alterations and Save Complete again.</p>',
+			'<h3>Complete!</h3><p>Many thanks %s for taking the time to give your feedback, the region reps are very grateful.</p><p>If you have made a mistake or want to change something, you can still make alterations and Save Complete again.</p>',
 			esc_html($meetingName)
 		);
 
 		$params = ['content' => $body];
-		$from = 'Bristol and District <' . EmailSettings::getRegistrationReplyEmail() . '>';
+		$from = 'Region Representatives <' . EmailSettings::getRegistrationReplyEmail() . '>';
 
-		return $this->sendCustomEmail($recipient, $from, 'All Questions Completed', $params);
+		return $this->sendCustomEmail($recipient, $from, 'All Questions Completed :)', $params);
 	}
 
 	/**
