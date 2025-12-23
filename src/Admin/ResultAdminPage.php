@@ -134,7 +134,7 @@ class ResultAdminPage
 
         // Return report without registration section
         return sprintf(
-                '<h1 id="answer_table">Answers</h1>%s<h2 id="answer_table"></h2>%s<h2 id="coverage">Coverage</h2>%s',
+                '<h2 id="answer_table">Navigation</h2>%s<h2 id="answer_table">Answers</h2>%s<h2 id="coverage">Coverage</h2>%s',
                 $linksTable,
                 $allAnswerTable,
                 $coverage

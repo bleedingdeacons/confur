@@ -97,9 +97,11 @@ class AnswerHandler
 			acf_save_post();
 			wp_publish_post($postId);
 
+			$title = get_the_title($postId);
+
 			if ($status === Constants::STATUS_COMPLETED) {
 				try {
-					$this->emailService->sendCompletionThanks($email, $meetingName);
+					$this->emailService->sendCompletionEmail($email, $title);
 				} catch (\Exception $e) {
 					error_log("AnswerHandler::handleSubmission - Failed to send completion email: " . $e->getMessage());
 					// Continue processing even if email fails
@@ -163,13 +165,12 @@ class AnswerHandler
 			$meetingName = get_the_title($meetingId);
 
 			if (!empty($fellow_meetingId)) {
-				$meetingName = substr($meetingName, 0, 75)  . " and " . get_the_title( $fellow_meetingId );
+				$meetingName = substr($meetingName, 0, 85)  . " and " . substr(get_the_title( $fellow_meetingId), 0, 85);
 			}
 
 			$slug = $this->generateUniqueSlug($meetingName);
 
 			$title = 'Answers from ' . $meetingName;
-
 
 			update_field(Constants::STATUS_FIELD, Constants::DEFAULT_STATUS);
 			acf_save_post();
