@@ -12,6 +12,7 @@ use Confur\API\AnswerAPI;
 use Confur\Admin\StatusAdminPage;
 use Confur\Admin\ResultAdminPage;
 use Confur\Admin\EmailSettingsAdminPage;
+use Confur\PostTypes\AnswerPostType;
 
 /**
  * Main plugin class
@@ -26,6 +27,7 @@ class Plugin
 	private StatusAdminPage $answerAdminPage;
 	private ResultAdminPage $reportingAdminPage;
 	private EmailSettingsAdminPage $emailSettingsAdminPage;
+	private AnswerPostType $answerPostType;
 
 	/**
 	 * Initialize the plugin
@@ -59,6 +61,7 @@ class Plugin
 				$this->answerAdminPage = new StatusAdminPage();
 				$this->reportingAdminPage = new ResultAdminPage();
 				$this->emailSettingsAdminPage = new EmailSettingsAdminPage();
+				$this->answerPostType = new AnswerPostType();
 			} catch (\Exception $e) {
 				error_log('Plugin::init - Failed to initialize services: ' . $e->getMessage());
 				throw new \Exception('Failed to initialize plugin services: ' . $e->getMessage());
@@ -96,6 +99,9 @@ class Plugin
 			add_action('wp_enqueue_scripts', [$this->assetService, 'enqueueScripts']);
 			// Hook admin assets
 			add_action('admin_enqueue_scripts', [$this->adminAssetService, 'enqueueScripts']);
+
+			// Post type and field group registration
+			$this->answerPostType->init();
 
 			// Shortcode hooks
 			add_action('init', [$this->shortcodeService, 'registerShortcodes']);
