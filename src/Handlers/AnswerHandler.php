@@ -163,13 +163,12 @@ class AnswerHandler
 			$meetingName = get_the_title($meetingId);
 
 			if (!empty($fellow_meetingId)) {
-				$meetingName = substr($meetingName, 0, 75)  . " and " . get_the_title( $fellow_meetingId );
+				$meetingName = substr($meetingName, 0, 85)  . " and " . substr(get_the_title( $fellow_meetingId), 0, 85);
 			}
 
 			$slug = $this->generateUniqueSlug($meetingName);
 
 			$title = 'Answers from ' . $meetingName;
-
 
 			update_field(Constants::STATUS_FIELD, Constants::DEFAULT_STATUS);
 			acf_save_post();
