@@ -354,11 +354,11 @@ class ResultAdminPage
     {
         $html = '<table id="answer_links"><tbody>';
 
-        $committee1 = $this->createAnswerLinks(1, 4);
-        $committee2 = $this->createAnswerLinks(2, 4);
-        $committee3 = $this->createAnswerLinks(3, 4);
-        $committee4 = $this->createAnswerLinks(4, 4);
-        $committee5 = $this->createAnswerLinks(5, 3);
+        $committee1 = $this->createAnswerLinks(1, 3);
+        $committee2 = $this->createAnswerLinks(2, 2);
+        $committee3 = $this->createAnswerLinks(3, 2);
+        $committee4 = $this->createAnswerLinks(4, 2);
+        $committee5 = $this->createAnswerLinks(5, 2);
         $committee6 = $this->createAnswerLinks(6, 2);
         $committee7 = $this->createAnswerLinks(7, 1);
 
