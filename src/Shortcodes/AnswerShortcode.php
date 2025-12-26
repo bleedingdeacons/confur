@@ -20,6 +20,14 @@ class AnswerShortcode
 		$this->answerRepository = new AnswerRepository();
 	}
 
+	function get_field($selector, $post_id = false, $format_value = true) {
+		return \get_field($selector, $post_id, $format_value);  // Calls global
+	}
+
+	function get_the_ID() {
+		return \get_the_ID();  // Calls global
+	}
+
 	/**
 	 * Generate answer field
 	 *
