@@ -46,16 +46,6 @@ wp-config.php
 # Note: If you wish to whitelist themes,
 # uncomment the next line
 #/wp-content/themes
-.idea/codeStyles/codeStyleConfig.xml
-.idea/codeStyles/Project.xml
-.idea/confur.iml
-.idea/modules.xml
-.idea/php.xml
-.idea/vcs.xml
-.idea/confur.iml
-.idea/php.xml
-.idea/php.xml
-.idea/php.xml
 
 # Build artifacts
 build/
@@ -64,6 +54,55 @@ build/
 # Composer
 /vendor/
 composer.lock
+
+# IDE - PhpStorm / IntelliJ IDEA
+/.idea/
+.idea/codeStyles/codeStyleConfig.xml
+.idea/codeStyles/Project.xml
 .idea/confur.iml
+.idea/modules.xml
+.idea/php.xml
+.idea/vcs.xml
 .idea/laravel-idea.xml
-/.idea
+
+# IDE - Visual Studio Code
+.vscode/
+*.code-workspace
+
+# IDE - Other
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# PHPUnit Testing
+/.phpunit.cache/
+/coverage/
+phpunit.xml.local
+.phpunit.result.cache
+
+# PHPStan
+/phpstan.neon
+/phpstan-baseline.neon
+phpstan-baseline.php
+
+# PHP_CodeSniffer
+.phpcs-cache
+
+# Node.js (if using any frontend build tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.backup
+
+# Temporary files
+*.tmp
+*.temp
+*.cache
