@@ -38,6 +38,7 @@ class ShortcodeService
 		add_shortcode('open_new_link', [$this->generalShortcodes, 'openBlank']);
 		add_shortcode('open_email', [$this->generalShortcodes, 'linkEmail']);
 		add_shortcode('pdf_link', [$this->generalShortcodes, 'generatePdfLink']);
+		add_shortcode('days_remaining', [$this->generalShortcodes, 'generateDaysRemaining']);
 
 		// Answer shortcodes
 		add_shortcode('answer', [$this->answerShortcode, 'generateAnswerField']);
@@ -50,7 +51,7 @@ class ShortcodeService
 		add_shortcode('status', [$this->answerShortcode, 'generateStatus']);
 		add_shortcode('progress_table', [$this->answerShortcode, 'generateProgressTable']);
 		add_shortcode('control', [$this->answerShortcode, 'generateControl']);
-		add_shortcode('days_remaining', [$this->answerShortcode, 'generateDaysRemaining']);
+
 
 	}
 }
