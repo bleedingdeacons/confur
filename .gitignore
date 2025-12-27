@@ -106,3 +106,5 @@ yarn-error.log*
 *.tmp
 *.temp
 *.cache
+.idea/php.xml
+.idea/php.xml
