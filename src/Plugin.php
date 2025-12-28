@@ -12,7 +12,7 @@ use Confur\API\AnswerAPI;
 use Confur\Admin\StatusAdminPage;
 use Confur\Admin\ResultAdminPage;
 use Confur\Admin\EmailSettingsAdminPage;
-use Confur\PostTypes\AnswerPostType;
+
 
 /**
  * Main plugin class
@@ -27,7 +27,6 @@ class Plugin
 	private StatusAdminPage $answerAdminPage;
 	private ResultAdminPage $reportingAdminPage;
 	private EmailSettingsAdminPage $emailSettingsAdminPage;
-	private AnswerPostType $answerPostType;
 
 	/**
 	 * Initialize the plugin
@@ -61,7 +60,6 @@ class Plugin
 				$this->answerAdminPage = new StatusAdminPage();
 				$this->reportingAdminPage = new ResultAdminPage();
 				$this->emailSettingsAdminPage = new EmailSettingsAdminPage();
-				$this->answerPostType = new AnswerPostType();
 			} catch (\Exception $e) {
 				error_log('Plugin::init - Failed to initialize services: ' . $e->getMessage());
 				throw new \Exception('Failed to initialize plugin services: ' . $e->getMessage());
@@ -100,9 +98,6 @@ class Plugin
 			// Hook admin assets
 			add_action('admin_enqueue_scripts', [$this->adminAssetService, 'enqueueScripts']);
 
-			// Post type and field group registration
-			$this->answerPostType->init();
-
 			// Shortcode hooks
 			add_action('init', [$this->shortcodeService, 'registerShortcodes']);
 
@@ -124,64 +119,13 @@ class Plugin
 				// Continue - admin pages are not critical for front-end functionality
 			}
 
-			// SEO - Exclude answer post type from search engines
-			add_action('init', [$this, 'modifyAnswerPostType'], 99);
-
 			// Divi compatibility - disable custom shortcodes when Visual Builder is active
 			add_action('init', [$this, 'maybeDisableShortcodesForDivi'], 20);
-
-			// Hide edit answer admin menu
-			add_action('admin_menu', function() {
-				try {
-					remove_submenu_page('edit.php?post_type=answer', 'post-new.php?post_type=answer');
-				} catch (\Exception $e) {
-					error_log('Plugin::registerHooks - Failed to remove submenu page: ' . $e->getMessage());
-				}
-			}, 999);
-
-			// Hide the admin menu items if not an administrator.
-			add_action('admin_menu', function() {
-				try {
-					$current_user = wp_get_current_user();
-
-					// If NOT an administrator, remove submenu items
-					if (!empty($current_user) && !in_array('administrator', (array) $current_user->roles)) {
-						// Hide "All Items" submenu
-						remove_submenu_page('edit.php?post_type=answer', 'edit.php?post_type=answer');
-
-						// Hide "Add New" submenu
-						remove_submenu_page('edit.php?post_type=answer', 'post-new.php?post_type=answer');
-
-						// Add any other submenus you want to hide (categories, tags, etc.)
-					}
-				} catch (\Exception $e) {
-					error_log('Plugin::registerHooks - Failed to hide admin menu items: ' . $e->getMessage());
-				}
-			}, 999);
 
 		} catch (\Exception $e) {
 			error_log('Plugin::registerHooks - Failed to register hooks: ' . $e->getMessage());
 			error_log('Plugin::registerHooks - Stack trace: ' . $e->getTraceAsString());
 			throw $e;
-		}
-	}
-
-	/**
-	 * Modify answer post type to exclude from SEO while keeping it publicly accessible
-	 */
-	public function modifyAnswerPostType(): void
-	{
-		try {
-			global $wp_post_types;
-
-			if (isset($wp_post_types['answer'])) {
-				//$wp_post_types['answer']->public = false;
-				$wp_post_types['answer']->publicly_queryable = true;
-				$wp_post_types['answer']->exclude_from_search = true;
-			}
-		} catch (\Exception $e) {
-			error_log('Plugin::modifyAnswerPostType - Failed to modify post type: ' . $e->getMessage());
-			// Don't throw - this is not critical
 		}
 	}
 
