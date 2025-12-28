@@ -2,7 +2,7 @@
   "name": "bleeding-deacons/confur",
   "description": "Automated collation of answers to questions for conference",
   "type": "wordpress-plugin",
-  "license": "MIT",
+  "license": "MIT (Modified)",
   "version": "2.1",
   "authors": [
     {
