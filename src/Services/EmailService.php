@@ -10,149 +10,119 @@ use Confur\Config\EmailSettings;
  */
 class EmailService
 {
-	private const EMAIL_TEMPLATE = '
-        <html>
-        <head>
-            <style>
-                body { font-family: Arial, sans-serif; }
-                .email-content { padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
-                .footer { margin-top: 20px; font-size: 12px; color: #777; }
-            </style>
-        </head>
-        <body>
-            {{content}}
-        </body>
-        </html>
-    ';
+    /**
+     * Send a custom email
+     *
+     * @param string $recipient Recipient email address
+     * @param string $from From email address
+     * @param string $subject Email subject
+     * @return bool Success status
+     */
+    public function sendEmail(string $recipient, string $from, string $subject, $body): bool
+    {
 
-	/**
-	 * Send a custom email
-	 *
-	 * @param string $recipientEmail Recipient email address
-	 * @param string $from From email address
-	 * @param string $subject Email subject
-	 * @param array $params Template parameters
-	 * @return bool Success status
-	 */
-	public function sendCustomEmail(string $recipientEmail, string $from, string $subject, array $params = []): bool
-	{
-		error_log('EmailService::sendCustomEmail');
+        $headers = [
+            'Content-Type: text/html; charset=UTF-8',
+            'From: ' . $from
+        ];
 
-		$emailContent = $this->renderTemplate(self::EMAIL_TEMPLATE, $params);
+        return wp_mail($recipient, $subject, $body, $headers);
+    }
 
-		$headers = [
-			'Content-Type: text/html; charset=UTF-8',
-			'From: ' . $from
-		];
+    /**
+     * Send backup email
+     *
+     * @param string $recipientEmail Recipient email
+     * @param string $from From email
+     * @param string $subject Subject
+     * @param string $body Email body
+     * @return bool Success status
+     */
+    public function sendBackup(string $recipientEmail, string $from, string $subject, string $body): bool
+    {
 
-		return wp_mail($recipientEmail, $subject, $emailContent, $headers);
-	}
+        $headers = [
+            'Content-Type: text/html; charset=UTF-8',
+            'From: ' . $from
+        ];
 
-	/**
-	 * Send backup email
-	 *
-	 * @param string $recipientEmail Recipient email
-	 * @param string $from From email
-	 * @param string $subject Subject
-	 * @param string $body Email body
-	 * @return bool Success status
-	 */
-	public function sendBackupEmail(string $recipientEmail, string $from, string $subject, string $body): bool
-	{
-		error_log($body);
+        $isSent = wp_mail($recipientEmail, $subject, $body, $headers);
 
-		$headers = [
-			'Content-Type: text/html; charset=UTF-8',
-			'From: ' . $from
-		];
+        if (!$isSent) {
+            error_log('EmailService::sendBackupEmail failed!');
+        }
 
-		$isSent = wp_mail($recipientEmail, $subject, $body, $headers);
+        return $isSent;
+    }
 
-		if (!$isSent) {
-			error_log('EmailService::sendBackupEmail failed!');
-		}
+    /**
+     * Send registration confirmation email
+     *
+     * @param string $recipient Recipient email
+     * @param string $meetingName Meeting name
+     * @param string $answerUrl Answer URL
+     *
+     * @return bool Success status
+     */
+    public function sendConfirmation(string $recipient, string $meetingName, string $answerUrl): bool
+    {
+        $recipient   = sanitize_email($recipient);
+        $meetingName = sanitize_text_field($meetingName);
+        $answerUrl   = sanitize_url($answerUrl);
 
-		return $isSent;
-	}
+        if (!is_email($recipient)) {
+            error_log('EmailService::sendRegistrationConfirmation - Invalid email: ' . esc_html($recipient));
+            return false;
+        }
 
-	/**
-	 * Send registration confirmation email
-	 *
-	 * @param string $recipient Recipient email
-	 * @param string $meetingName Meeting name
-	 * @param string $registeredUrl Registration URL
-	 * @return bool Success status
-	 */
-	public function sendRegistrationConfirmation(string $recipient, string $meetingName, string $registeredUrl): bool
-	{
-		// Test EmailSettings
-		error_log('Testing EmailSettings:');
-		error_log('Registration: ' . EmailSettings::getRegistrationReplyEmail());
-		error_log('Support: ' . EmailSettings::getSupportEmail());
-		error_log('Backup: ' . EmailSettings::getBackupEmail());
+        $params = ["meetingName" => $meetingName, "registeredUrl" => $answerUrl];
 
+        $body = $this->renderTemplate("RegistrationConfirmation", $params);
 
-		error_log('EmailService::sendRegistrationConfirmation');
+        $from = 'Bristol and District <' . EmailSettings::getRegistrationReplyEmail() . '>';
 
-		$recipient = sanitize_email($recipient);
-		if (!is_email($recipient)) {
-			error_log('EmailService::sendRegistrationConfirmation - Invalid email: ' . esc_html($recipient));
-			return false;
-		}
+        return $this->sendEmail($recipient, $from, 'Registration Successful', $body);
+    }
 
-		$body = sprintf(
-			'<h3>Welcome</h3><p>Hello %s, you are all set to enter your answers.</p><p>To get started <a href="%s" target="_blank" rel="noreferrer noopener">View Questions</a>. You do not need to start entering answers straight away.</p>',
-			esc_html($meetingName),
-			esc_url($registeredUrl)
-		);
+    /**
+     * Send completion thanks email
+     *
+     * @param string $recipient Recipient email
+     * @param string $meetingName Meeting name
+     * @return bool Success status
+     */
+    public function sendCompletion(string $recipient, string $meetingName): bool
+    {
+        $recipient = sanitize_email($recipient);
+        $meetingName = sanitize_text_field($meetingName);
 
-		$params = ['content' => $body];
-		$from = 'Bristol and District <' . EmailSettings::getRegistrationReplyEmail() . '>';
+        if (!is_email($recipient)) {
+            error_log('EmailService::sendCompletionThanks - Invalid email: ' . esc_html($recipient));
+            return false;
+        }
 
-		return $this->sendCustomEmail($recipient, $from, 'Registration Successful', $params);
-	}
+        $params = ["meetingName" => $meetingName];
 
-	/**
-	 * Send completion thanks email
-	 *
-	 * @param string $recipient Recipient email
-	 * @param string $meetingName Meeting name
-	 * @return bool Success status
-	 */
-	public function sendCompletionEmail(string $recipient, string $meetingName): bool
-	{
-		error_log('EmailService::sendCompletionThanks');
+        $from = 'Region Representatives <' . EmailSettings::getRegistrationReplyEmail() . '>';
 
-		$recipient = sanitize_email($recipient);
-		if (!is_email($recipient)) {
-			error_log('EmailService::sendCompletionThanks - Invalid email: ' . esc_html($recipient));
-			return false;
-		}
+        return $this->sendEmail($recipient, $from, 'All Questions Completed :)', $params);
+    }
 
-		$body = sprintf(
-			'<h3>Complete!</h3><p>Many thanks %s for taking the time to give your feedback, the region reps are very grateful.</p><p>If you have made a mistake or want to change something, you can still make alterations and Save Complete again.</p>',
-			esc_html($meetingName)
-		);
+    /**
+     * Render email template with parameters
+     *
+     * @param string $template Template string
+     * @param array $params Template parameters
+     * @return string Rendered template
+     */
+    private function renderTemplate(string $name, array $params): string
+    {
+        $template = file_get_contents(get_template_directory() . "/emails/{$name}.html");
 
-		$params = ['content' => $body];
-		$from = 'Region Representatives <' . EmailSettings::getRegistrationReplyEmail() . '>';
+        foreach ($params as $key => $value) {
+            $template = str_replace("{{{$key}}}", $value, $template);
+        }
 
-		return $this->sendCustomEmail($recipient, $from, 'All Questions Completed :)', $params);
-	}
-
-	/**
-	 * Render email template with parameters
-	 *
-	 * @param string $template Template string
-	 * @param array $params Template parameters
-	 * @return string Rendered template
-	 */
-	private function renderTemplate(string $template, array $params): string
-	{
-		foreach ($params as $key => $value) {
-			$template = str_replace("{{{$key}}}", $value, $template);
-		}
-
-		return $template;
-	}
+        return $template;
+    }
 }
