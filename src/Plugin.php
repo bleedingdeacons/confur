@@ -140,13 +140,13 @@ class Plugin
 	public function registerConfurMenu(): void
 	{
 		add_menu_page(
-			'Confur',                    // Page title
-			'Confur',                    // Menu title
-			'read',                      // Capability
-			'confur',                    // Menu slug
-			'__return_null',             // No callback needed
-			'dashicons-forms',           // Icon
-			30                           // Position
+			'Questions for Conference',                    // Page title
+			'Questions for Conference',                    // Menu title
+			'read',                                        // Capability
+			'confur',                                      // Menu slug
+			'__return_null',                               // No callback needed
+			'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSJibGFjayI+PHBhdGggZD0iTTg4MC04MCBMNzIwLTI0MEgzMjBxLTMzIDAtNTYuNS0yMy41VDI0MC0zMjB2LTQwaDQ0MHEzMyAwIDU2LjUtMjMuNVQ3NjAtNDQwdi0yODBoNDBxMzMgMCA1Ni41IDIzLjVUODgwLTY0MHY1NjBaTTE2MC00NzNsNDctNDdoMzkzdi0yODBIMTYwdjMyN1pNODAtMjgwdi01MjBxMC0zMyAyMy41LTU2LjVUMTYwLTg4MGg0NDBxMzMgMCA1Ni41IDIzLjVUNjgwLTgwMHYyODBxMCAzMy0yMy41IDU2LjVUNjAwLTQ0MEgyNDBMODAtMjgwWm04MC0yNDB2LTI4MCAyODBaIi8+PC9zdmc+',
+			30                                             // Position
 		);
 
 		// Remove the auto-created "Confur" submenu that duplicates the parent
