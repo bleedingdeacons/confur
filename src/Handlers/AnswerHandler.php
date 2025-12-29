@@ -54,7 +54,7 @@ class AnswerHandler
 			}
 
 			try {
-				$this->emailService->sendBackupEmail(
+				$this->emailService->sendBackup(
 					EmailSettings::getBackupEmail(),
 					EmailSettings::getSupportEmail(),
 					$subject,
@@ -101,7 +101,7 @@ class AnswerHandler
 
 			if ($status === Constants::STATUS_COMPLETED) {
 				try {
-					$this->emailService->sendCompletionEmail($email, $title);
+					$this->emailService->sendCompletion($email, $title);
 				} catch (\Exception $e) {
 					error_log("AnswerHandler::handleSubmission - Failed to send completion email: " . $e->getMessage());
 					// Continue processing even if email fails
@@ -184,7 +184,7 @@ class AnswerHandler
 			$url = get_permalink($postId);
 
 			try {
-				$this->emailService->sendRegistrationConfirmation($email, $meetingName, $url);
+				$this->emailService->sendConfirmation($email, $meetingName, $url);
 			} catch (\Exception $e) {
 				error_log("AnswerHandler::handleRegistration - Failed to send registration confirmation email: " . $e->getMessage());
 				// Continue processing even if email fails
