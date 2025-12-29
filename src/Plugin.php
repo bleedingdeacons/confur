@@ -33,6 +33,7 @@ class Plugin
 	public function init(): void
 	{
 		try {
+
 			// Load constants
 			try {
 				Constants::init();
@@ -92,6 +93,34 @@ class Plugin
 	private function registerHooks(): void
 	{
 		try {
+			// Register answer post type early for AAM compatibility
+			// ACF registers it later, but AAM needs it available early for permission checks
+			add_action('init', function() {
+				if (post_type_exists('answer')) return;
+
+				register_post_type('answer', [
+					'public' => true,
+					'capability_type' => 'answer',
+					'map_meta_cap' => true,
+				]);
+			}, 0);
+
+			// Debug Security
+			add_action('plugins_loaded', function() {
+				if (!isset($_GET['post']) || $_GET['post'] != 23568) return;
+				if (!isset($_GET['action']) || $_GET['action'] != 'edit') return;
+
+				$user = wp_get_current_user();
+				if (!$user->ID) return;
+
+				error_log('=== AAM DEBUG POST 23568 ===');
+				error_log('User: ' . $user->user_login);
+				error_log('Roles: ' . implode(', ', $user->roles));
+				error_log('edit_post (23568): ' . (current_user_can('edit_post', 23568) ? 'YES' : 'NO'));
+				error_log('edit_answer: ' . (current_user_can('edit_answer') ? 'YES' : 'NO'));
+				error_log('edit_others_answers: ' . (current_user_can('edit_others_answers') ? 'YES' : 'NO'));
+			});
+
 			// Asset hooks
 			add_action('wp_enqueue_scripts', [$this->assetService, 'enqueueScripts']);
 			// Hook admin assets
@@ -272,4 +301,6 @@ class Plugin
 			$admin->add_cap($cap);
 		}
 	}
+
+
 }
