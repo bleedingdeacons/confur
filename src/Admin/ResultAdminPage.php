@@ -55,7 +55,7 @@ class ResultAdminPage
     public function enqueueAdminAssets(string $hook): void
     {
         // Only load on our reporting page
-        if ('confur_page_' . self::PAGE_SLUG !== $hook) {
+        if ('questions-for-conference_page_' . self::PAGE_SLUG !== $hook) {
             return;
         }
 

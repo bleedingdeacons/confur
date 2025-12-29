@@ -56,7 +56,7 @@ class StatusAdminPage
     public function enqueueAdminAssets($hook): void
     {
         // Only load on our admin page
-        if ($hook !== 'confur_page_confur-answer-submissions') {
+        if ($hook !== 'questions-for-conference_page_confur-answer-submissions') {
             return;
         }
 
