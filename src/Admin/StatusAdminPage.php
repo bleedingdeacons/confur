@@ -36,15 +36,15 @@ class StatusAdminPage
     }
 
     /**
-     * Add admin menu item as submenu under ACF Answers
+     * Add admin menu item as submenu under Confur
      */
     public function addAdminMenu(): void
     {
         add_submenu_page(
-                'edit.php?post_type=answer',   // Parent slug (ACF Answers menu)
+                'confur',                       // Parent slug (Confur menu)
                 'Status',                       // Page title
                 'Status',                       // Menu title
-                'manage_options',               // Capability
+                'read',                         // Capability
                 'confur-answer-submissions',    // Menu slug
                 [$this, 'renderAdminPage']     // Callback
         );
@@ -56,7 +56,7 @@ class StatusAdminPage
     public function enqueueAdminAssets($hook): void
     {
         // Only load on our admin page
-        if ($hook !== 'answer_page_confur-answer-submissions') {
+        if ($hook !== 'confur_page_confur-answer-submissions') {
             return;
         }
 
@@ -179,7 +179,7 @@ class StatusAdminPage
      */
     public function renderAdminPage(): void
     {
-        if (!current_user_can('manage_options')) {
+        if (!current_user_can('read')) {
             wp_die(__('You do not have sufficient permissions to access this page.'));
         }
 

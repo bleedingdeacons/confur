@@ -13,7 +13,6 @@ use Confur\Admin\StatusAdminPage;
 use Confur\Admin\ResultAdminPage;
 use Confur\Admin\EmailSettingsAdminPage;
 
-
 /**
  * Main plugin class
  */
@@ -109,6 +108,9 @@ class Plugin
 			// REST API hooks
 			add_action('rest_api_init', [$this->answerAPI, 'registerRoutes']);
 
+			// Register Confur parent menu
+			add_action('admin_menu', [$this, 'registerConfurMenu'], 5);
+
 			// Admin page hooks
 			try {
 				$this->answerAdminPage->init();
@@ -119,6 +121,9 @@ class Plugin
 				// Continue - admin pages are not critical for front-end functionality
 			}
 
+			// SEO - Exclude answer post type from search engines
+			add_action('init', [$this, 'modifyAnswerPostType'], 99);
+
 			// Divi compatibility - disable custom shortcodes when Visual Builder is active
 			add_action('init', [$this, 'maybeDisableShortcodesForDivi'], 20);
 
@@ -126,6 +131,54 @@ class Plugin
 			error_log('Plugin::registerHooks - Failed to register hooks: ' . $e->getMessage());
 			error_log('Plugin::registerHooks - Stack trace: ' . $e->getTraceAsString());
 			throw $e;
+		}
+	}
+
+	/**
+	 * Register the Confur parent admin menu
+	 */
+	public function registerConfurMenu(): void
+	{
+		add_menu_page(
+			'Confur',                    // Page title
+			'Confur',                    // Menu title
+			'read',                      // Capability
+			'confur',                    // Menu slug
+			'__return_null',             // No callback needed
+			'dashicons-forms',           // Icon
+			30                           // Position
+		);
+
+		// Remove the auto-created "Confur" submenu that duplicates the parent
+		add_action('admin_menu', function() {
+			global $submenu;
+			if (isset($submenu['confur'])) {
+				foreach ($submenu['confur'] as $key => $item) {
+					if (isset($item[2]) && $item[2] === 'confur') {
+						unset($submenu['confur'][$key]);
+						break;
+					}
+				}
+			}
+		}, 999);
+	}
+
+	/**
+	 * Modify answer post type to exclude from SEO while keeping it publicly accessible
+	 */
+	public function modifyAnswerPostType(): void
+	{
+		try {
+			global $wp_post_types;
+
+			if (isset($wp_post_types['answer'])) {
+				//$wp_post_types['answer']->public = false;
+				$wp_post_types['answer']->publicly_queryable = true;
+				$wp_post_types['answer']->exclude_from_search = true;
+			}
+		} catch (\Exception $e) {
+			error_log('Plugin::modifyAnswerPostType - Failed to modify post type: ' . $e->getMessage());
+			// Don't throw - this is not critical
 		}
 	}
 
@@ -183,6 +236,40 @@ class Plugin
 		} catch (\Exception $e) {
 			error_log('Plugin::maybeDisableShortcodesForDivi - Failed to disable shortcodes: ' . $e->getMessage());
 			// Don't throw - this is not critical for functionality
+		}
+	}
+
+	/**
+	 * Run on plugin activation
+	 *
+	 * Register this with: register_activation_hook(__FILE__, [Plugin::class, 'activate']);
+	 */
+	public static function activate(): void
+	{
+		$admin = get_role('administrator');
+		if (!$admin) {
+			return;
+		}
+
+		$capabilities = [
+			'edit_answer',
+			'read_answer',
+			'delete_answer',
+			'edit_answers',
+			'edit_others_answers',
+			'publish_answers',
+			'read_private_answers',
+			'delete_answers',
+			'delete_private_answers',
+			'delete_published_answers',
+			'delete_others_answers',
+			'edit_private_answers',
+			'edit_published_answers',
+			'create_answers',
+		];
+
+		foreach ($capabilities as $cap) {
+			$admin->add_cap($cap);
 		}
 	}
 }

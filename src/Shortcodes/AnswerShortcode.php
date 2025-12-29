@@ -4,9 +4,6 @@ namespace Confur\Shortcodes;
 
 use Confur\Config\Constants;
 use Confur\Repositories\AnswerRepository;
-use DateTime;
-use DateTimeImmutable;
-use Exception;
 
 /**
  * Answer-related shortcodes

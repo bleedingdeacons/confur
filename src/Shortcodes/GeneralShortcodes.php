@@ -3,6 +3,8 @@
 namespace Confur\Shortcodes;
 
 use Confur\Utils\HtmlHelper;
+use DateTime;
+use Exception;
 
 /**
  * General purpose shortcodes
