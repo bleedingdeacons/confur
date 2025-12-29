@@ -25,15 +25,15 @@ class EmailSettingsAdminPage
     }
 
     /**
-     * Add admin menu item as submenu under ACF Answers
+     * Add admin menu item as submenu under Confur
      */
     public function addAdminMenu(): void
     {
         add_submenu_page(
-                'edit.php?post_type=answer',    // Parent slug (ACF Answers menu)
+                'confur',                        // Parent slug (Confur menu)
                 'Email Settings',                // Page title
                 'Email Settings',                // Menu title
-                'manage_options',                // Capability
+                'manage_options',                // Capability (admin only)
                 'confur-email-settings',         // Menu slug
                 [$this, 'renderAdminPage']      // Callback
         );
@@ -45,7 +45,7 @@ class EmailSettingsAdminPage
     public function enqueueAdminAssets($hook): void
     {
         // Only load on our admin page
-        if ($hook !== 'answer_page_confur-email-settings') {
+        if ($hook !== 'confur_page_confur-email-settings') {
             return;
         }
 

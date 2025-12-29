@@ -12,7 +12,7 @@ use Confur\Repositories\AnswerRepository;
 class ResultAdminPage
 {
     private const PAGE_SLUG = 'confur-reporting';
-    private const CAPABILITY = 'manage_options';
+    private const CAPABILITY = 'read';
     private const MENU_TITLE = 'Results';
     private const PAGE_TITLE = 'Current Results';
 
@@ -33,12 +33,12 @@ class ResultAdminPage
     }
 
     /**
-     * Register the admin page as a submenu under the Answers menu
+     * Register the admin page as a submenu under Confur
      */
     public function registerAdminPage(): void
     {
         add_submenu_page(
-                'edit.php?post_type=answer',  // Parent slug - Answers custom post type
+                'confur',                      // Parent slug (Confur menu)
                 self::PAGE_TITLE,              // Page title
                 self::MENU_TITLE,              // Menu title
                 self::CAPABILITY,              // Capability
@@ -54,8 +54,8 @@ class ResultAdminPage
      */
     public function enqueueAdminAssets(string $hook): void
     {
-        // Only load on our reporting page (submenu under answer post type)
-        if ('answer_page_' . self::PAGE_SLUG !== $hook) {
+        // Only load on our reporting page
+        if ('confur_page_' . self::PAGE_SLUG !== $hook) {
             return;
         }
 

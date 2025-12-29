@@ -12,7 +12,6 @@ use Confur\API\AnswerAPI;
 use Confur\Admin\StatusAdminPage;
 use Confur\Admin\ResultAdminPage;
 use Confur\Admin\EmailSettingsAdminPage;
-use Confur\PostTypes\AnswerPostType;
 
 /**
  * Main plugin class
@@ -27,7 +26,6 @@ class Plugin
 	private StatusAdminPage $answerAdminPage;
 	private ResultAdminPage $reportingAdminPage;
 	private EmailSettingsAdminPage $emailSettingsAdminPage;
-	private AnswerPostType $answerPostType;
 
 	/**
 	 * Initialize the plugin
@@ -61,7 +59,6 @@ class Plugin
 				$this->answerAdminPage = new StatusAdminPage();
 				$this->reportingAdminPage = new ResultAdminPage();
 				$this->emailSettingsAdminPage = new EmailSettingsAdminPage();
-				$this->answerPostType = new AnswerPostType();
 			} catch (\Exception $e) {
 				error_log('Plugin::init - Failed to initialize services: ' . $e->getMessage());
 				throw new \Exception('Failed to initialize plugin services: ' . $e->getMessage());
@@ -100,9 +97,6 @@ class Plugin
 			// Hook admin assets
 			add_action('admin_enqueue_scripts', [$this->adminAssetService, 'enqueueScripts']);
 
-			// Post type and field group registration
-			$this->answerPostType->init();
-
 			// Shortcode hooks
 			add_action('init', [$this->shortcodeService, 'registerShortcodes']);
 
@@ -113,6 +107,9 @@ class Plugin
 
 			// REST API hooks
 			add_action('rest_api_init', [$this->answerAPI, 'registerRoutes']);
+
+			// Register Confur parent menu
+			add_action('admin_menu', [$this, 'registerConfurMenu'], 5);
 
 			// Admin page hooks
 			try {
@@ -130,40 +127,40 @@ class Plugin
 			// Divi compatibility - disable custom shortcodes when Visual Builder is active
 			add_action('init', [$this, 'maybeDisableShortcodesForDivi'], 20);
 
-			// Hide edit answer admin menu
-			add_action('admin_menu', function() {
-				try {
-					remove_submenu_page('edit.php?post_type=answer', 'post-new.php?post_type=answer');
-				} catch (\Exception $e) {
-					error_log('Plugin::registerHooks - Failed to remove submenu page: ' . $e->getMessage());
-				}
-			}, 999);
-
-			// Hide the admin menu items if not an administrator.
-			add_action('admin_menu', function() {
-				try {
-					$current_user = wp_get_current_user();
-
-					// If NOT an administrator, remove submenu items
-					if (!empty($current_user) && !in_array('administrator', (array) $current_user->roles)) {
-						// Hide "All Items" submenu
-						remove_submenu_page('edit.php?post_type=answer', 'edit.php?post_type=answer');
-
-						// Hide "Add New" submenu
-						remove_submenu_page('edit.php?post_type=answer', 'post-new.php?post_type=answer');
-
-						// Add any other submenus you want to hide (categories, tags, etc.)
-					}
-				} catch (\Exception $e) {
-					error_log('Plugin::registerHooks - Failed to hide admin menu items: ' . $e->getMessage());
-				}
-			}, 999);
-
 		} catch (\Exception $e) {
 			error_log('Plugin::registerHooks - Failed to register hooks: ' . $e->getMessage());
 			error_log('Plugin::registerHooks - Stack trace: ' . $e->getTraceAsString());
 			throw $e;
 		}
+	}
+
+	/**
+	 * Register the Confur parent admin menu
+	 */
+	public function registerConfurMenu(): void
+	{
+		add_menu_page(
+			'Confur',                    // Page title
+			'Confur',                    // Menu title
+			'read',                      // Capability
+			'confur',                    // Menu slug
+			'__return_null',             // No callback needed
+			'dashicons-forms',           // Icon
+			30                           // Position
+		);
+
+		// Remove the auto-created "Confur" submenu that duplicates the parent
+		add_action('admin_menu', function() {
+			global $submenu;
+			if (isset($submenu['confur'])) {
+				foreach ($submenu['confur'] as $key => $item) {
+					if (isset($item[2]) && $item[2] === 'confur') {
+						unset($submenu['confur'][$key]);
+						break;
+					}
+				}
+			}
+		}, 999);
 	}
 
 	/**
@@ -239,6 +236,40 @@ class Plugin
 		} catch (\Exception $e) {
 			error_log('Plugin::maybeDisableShortcodesForDivi - Failed to disable shortcodes: ' . $e->getMessage());
 			// Don't throw - this is not critical for functionality
+		}
+	}
+
+	/**
+	 * Run on plugin activation
+	 *
+	 * Register this with: register_activation_hook(__FILE__, [Plugin::class, 'activate']);
+	 */
+	public static function activate(): void
+	{
+		$admin = get_role('administrator');
+		if (!$admin) {
+			return;
+		}
+
+		$capabilities = [
+			'edit_answer',
+			'read_answer',
+			'delete_answer',
+			'edit_answers',
+			'edit_others_answers',
+			'publish_answers',
+			'read_private_answers',
+			'delete_answers',
+			'delete_private_answers',
+			'delete_published_answers',
+			'delete_others_answers',
+			'edit_private_answers',
+			'edit_published_answers',
+			'create_answers',
+		];
+
+		foreach ($capabilities as $cap) {
+			$admin->add_cap($cap);
 		}
 	}
 }
