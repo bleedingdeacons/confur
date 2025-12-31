@@ -92,24 +92,24 @@ class AnswerRepository
 			// Add primary meeting if it exists
 			if (!empty($meetingId)) {
 				$registered[] = [
-					'answers' => $postId,
-					'meeting' => $meetingId,
-					'fellow_meeting' => $fellowMeetingId,
+					'answersId' => $postId,
+					'meetingId' => $meetingId,
+					'fellowMeetingId' => $fellowMeetingId,
 					'email' => $email,
 					'updated' => $updated,
-					'state' => $status
+					'status' => $status
 				];
 			}
 
 			// Add fellow_meeting as a separate entry if it exists
 			if (!empty($fellowMeetingId)) {
 				$registered[] = [
-					'answers' => $postId,
-					'meeting' => $fellowMeetingId,
-					'fellow_meeting' => null,
+					'answersId' => $postId,
+					'meetingId' => $fellowMeetingId,
+					'fellowMeetingId' => null,
 					'email' => $email,
 					'updated' => $updated,
-					'state' => $status
+					'status' => $status
 				];
 			}
 		}
@@ -232,14 +232,14 @@ class AnswerRepository
 							$resultUrl = get_permalink($postId);
 
 							$groupAnswer = [
-								$meetingId,
-								$fellowMeetingId,
-								$meetingName,
-								$resultUrl,
-								$email,
-								$updated,
-								$answer,
-								$status
+								'meetingId' => $meetingId,
+								'fellowMeetingId' => $fellowMeetingId,
+								'meetingName' => $meetingName,
+								'resultUrl' => $resultUrl,
+								'email' => $email,
+								'updated' => $updated,
+								'answer' => $answer,
+								'status' => $status
 							];
 
 							$answers[$fieldName][] = $groupAnswer;

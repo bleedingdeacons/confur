@@ -318,7 +318,7 @@ class StatusAdminPage
         $registeredLookup = [];
         foreach ($registered as $item) {
             // Get meeting ID - handle if it's an object, array, or scalar
-            $meetingId = $item['meeting'];
+            $meetingId = $item['meetingId'];
             if (is_object($meetingId)) {
                 $meetingId = $meetingId->ID;
             } elseif (is_array($meetingId)) {
@@ -351,9 +351,9 @@ class StatusAdminPage
             if (isset($registeredLookup[$meetingId])) {
                 // Registered meeting(s) - loop through all registrations for this meeting ID
                 foreach ($registeredLookup[$meetingId] as $item) {
-                    $meetingName = get_the_title($item['meeting']);
+                    $meetingName = get_the_title($item['meetingId']);
                     $updated = trim($item['updated']);
-                    $status = isset($item['state']) && !empty($item['state']) ? $item['state'] : 'Not Started';
+                    $status = isset($item['status']) && !empty($item['status']) ? $item['status'] : 'Not Started';
 
                     if (empty($updated)) {
                         $updated = "Not Started";
@@ -375,7 +375,7 @@ class StatusAdminPage
                             'id' => $meetingId,
                             'name' => $meetingName,
                             'is_registered' => true,
-                            'edit_url' => get_edit_post_link($item['answers']),
+                            'edit_url' => get_edit_post_link($item['answersId']),
                             'meeting_url' => $meeting['url'],
                             'status_label' => $statusInfo['label'],
                             'status_class' => $statusInfo['class'],

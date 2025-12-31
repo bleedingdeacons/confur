@@ -207,7 +207,7 @@ class ResultAdminPage
 
         foreach ($questionsByCommittee as $questionNumber => $rows) {
             foreach ($rows as $row) {
-                $status = $row[7];
+                $status = $row['status'];
                 if (Constants::STATUS_DRAFT === $status || Constants::STATUS_COMPLETED === $status) {
                     $html .= $this->renderAnswerGroup($committeeNumber, $questionNumber, $row, $addedAnchors);
                 }
@@ -230,13 +230,13 @@ class ResultAdminPage
      */
     private function renderAnswerGroup(string $committeeNumber, string $questionNumber, array $row, array &$addedAnchors): string
     {
-        $meetingId = $row[0];           // meetingId
-        $fellowMeetingId = $row[1];     // fellowMeetingId
-        $meeting = $row[2];             // meetingName
-        $email = $row[4];               // email
-        $time = $row[5];                // updated
-        $answer = $row[6];              // answer
-        $status = $row[7];              // status
+        $meetingId = $row['meetingId'];
+        $fellowMeetingId = $row['fellowMeetingId'];
+        $meeting = $row['meetingName'];
+        $email = $row['email'];
+        $time = $row['updated'];
+        $answer = $row['answer'];
+        $status = $row['status'];
 
         $anchorKey = "c{$committeeNumber}_a{$questionNumber}";
         $anchorId = "";
@@ -297,7 +297,7 @@ class ResultAdminPage
             $answer = ltrim($answer, "a");
 
             $wordCounts = array_map(function($response) {
-                return str_word_count($response[5]);
+                return str_word_count($response['answer']);
             }, $answers);
 
             $responseCount = count($answers);
