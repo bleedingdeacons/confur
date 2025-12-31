@@ -171,7 +171,7 @@ class AnswerShortcode
 		}
 
 		return sprintf(
-			'<h2>%s Answers</h2>',
+			'<h2>Answers from %s</h2>',
 			esc_html($meetingTitle)
 		);
 	}

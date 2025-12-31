@@ -3,7 +3,7 @@
  * Plugin Name: Confur
  * Plugin URI:
  * Description: Automated collation of answers to questions for conference.
- * Version: 2.4.2
+ * Version: 2.4.9
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Author: The Bleeding Deacons
@@ -15,6 +15,53 @@
 if (!defined('ABSPATH')) {
 	exit;
 }
+
+// Fix AAM permission check for answer post type before it's registered by ACF
+// AAM checks permissions before ACF registers the post type, causing access denied
+add_filter('map_meta_cap', function($caps, $cap, $user_id, $args) {
+	// Only intercept edit_post capability for answer posts
+	if ($cap !== 'edit_post' || empty($args[0])) {
+		return $caps;
+	}
+
+	$post = get_post($args[0]);
+	if (!$post || $post->post_type !== 'answer') {
+		return $caps;
+	}
+
+	// If post type isn't registered yet, manually map the capability
+	if (!post_type_exists('answer')) {
+		// Check if user has the answer capabilities
+		if (user_can($user_id, 'edit_others_answers')) {
+			return ['edit_others_answers'];
+		}
+		if (user_can($user_id, 'edit_answers')) {
+			return ['edit_answers'];
+		}
+	}
+
+	return $caps;
+}, 1, 4);
+
+// Debug - check permissions when accessing answer posts
+add_action('admin_init', function() {
+	if (!isset($_GET['post']) || !isset($_GET['action']) || $_GET['action'] != 'edit') return;
+
+	$post_id = intval($_GET['post']);
+	$post = get_post($post_id);
+	if (!$post || $post->post_type != 'answer') return;
+
+	$user = wp_get_current_user();
+	if (!$user->ID) return;
+
+	error_log('=== CONFUR DEBUG POST ' . $post_id . ' ===');
+	error_log('User: ' . $user->user_login);
+	error_log('Roles: ' . implode(', ', $user->roles));
+	error_log('Post type registered: ' . (post_type_exists('answer') ? 'YES' : 'NO'));
+	error_log('edit_post (' . $post_id . '): ' . (current_user_can('edit_post', $post_id) ? 'YES' : 'NO'));
+	error_log('edit_answer: ' . (current_user_can('edit_answer') ? 'YES' : 'NO'));
+	error_log('edit_others_answers: ' . (current_user_can('edit_others_answers') ? 'YES' : 'NO'));
+}, 0);
 
 // Define plugin constants
 // Get version from plugin header to maintain single source of truth

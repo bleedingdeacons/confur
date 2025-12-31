@@ -33,6 +33,7 @@ class Plugin
 	public function init(): void
 	{
 		try {
+
 			// Load constants
 			try {
 				Constants::init();
@@ -272,4 +273,6 @@ class Plugin
 			$admin->add_cap($cap);
 		}
 	}
+
+
 }

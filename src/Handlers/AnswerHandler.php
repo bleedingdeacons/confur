@@ -12,12 +12,10 @@ use Confur\Repositories\AnswerRepository;
  */
 class AnswerHandler
 {
-	private EmailService $emailService;
 	private AnswerRepository $answerRepository;
 
 	public function __construct()
 	{
-		$this->emailService = new EmailService();
 		$this->answerRepository = new AnswerRepository();
 	}
 
@@ -54,7 +52,7 @@ class AnswerHandler
 			}
 
 			try {
-				$this->emailService->sendBackupEmail(
+					EmailService::sendBackup(
 					EmailSettings::getBackupEmail(),
 					EmailSettings::getSupportEmail(),
 					$subject,
@@ -84,8 +82,6 @@ class AnswerHandler
 
 			error_log("AnswerHandler::handleSubmission - Answers for Post ID: $postId Status: $status");
 
-			$meetingId = get_field(Constants::MEETING_FIELD, $postId);
-			$meetingName = get_the_title($meetingId);
 			$email = get_field(Constants::EMAIL_FIELD, $postId);
 
 			if ($status === Constants::STATUS_COMPLETED) {
@@ -101,7 +97,7 @@ class AnswerHandler
 
 			if ($status === Constants::STATUS_COMPLETED) {
 				try {
-					$this->emailService->sendCompletionEmail($email, $title);
+					EmailService::sendCompletion($email, $title);
 				} catch (\Exception $e) {
 					error_log("AnswerHandler::handleSubmission - Failed to send completion email: " . $e->getMessage());
 					// Continue processing even if email fails
@@ -149,7 +145,7 @@ class AnswerHandler
 				$params = ['content' => $errorBody];
 
 				try {
-					$this->emailService->sendCustomEmail(
+					EmailService::sendCustomEmail(
 						$email,
 						EmailSettings::getSupportEmail(),
 						'Error: Missing Meeting Group',
@@ -184,7 +180,7 @@ class AnswerHandler
 			$url = get_permalink($postId);
 
 			try {
-				$this->emailService->sendRegistrationConfirmation($email, $meetingName, $url);
+				EmailService::sendConfirmation($email, $meetingName, $url);
 			} catch (\Exception $e) {
 				error_log("AnswerHandler::handleRegistration - Failed to send registration confirmation email: " . $e->getMessage());
 				// Continue processing even if email fails
@@ -198,7 +194,7 @@ class AnswerHandler
 				try {
 					$errorBody = '<p>There was an unexpected error during your registration. Please try again or contact support.</p>';
 					$params = ['content' => $errorBody];
-					$this->emailService->sendCustomEmail(
+					EmailService::sendEmail(
 						$email,
 						EmailSettings::getSupportEmail(),
 						'Error: Registration Failed',

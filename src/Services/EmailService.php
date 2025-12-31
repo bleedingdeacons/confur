@@ -10,42 +10,25 @@ use Confur\Config\EmailSettings;
  */
 class EmailService
 {
-	private const EMAIL_TEMPLATE = '
-        <html>
-        <head>
-            <style>
-                body { font-family: Arial, sans-serif; }
-                .email-content { padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
-                .footer { margin-top: 20px; font-size: 12px; color: #777; }
-            </style>
-        </head>
-        <body>
-            {{content}}
-        </body>
-        </html>
-    ';
+	private function __construct() {}
 
 	/**
 	 * Send a custom email
 	 *
-	 * @param string $recipientEmail Recipient email address
+	 * @param string $recipient Recipient email address
 	 * @param string $from From email address
 	 * @param string $subject Email subject
-	 * @param array $params Template parameters
+	 * @param string $body Email body
 	 * @return bool Success status
 	 */
-	public function sendCustomEmail(string $recipientEmail, string $from, string $subject, array $params = []): bool
+	public static function sendEmail(string $recipient, string $from, string $subject, string $body): bool
 	{
-		error_log('EmailService::sendCustomEmail');
-
-		$emailContent = $this->renderTemplate(self::EMAIL_TEMPLATE, $params);
-
 		$headers = [
 			'Content-Type: text/html; charset=UTF-8',
 			'From: ' . $from
 		];
 
-		return wp_mail($recipientEmail, $subject, $emailContent, $headers);
+		return wp_mail($recipient, $subject, $body, $headers);
 	}
 
 	/**
@@ -57,10 +40,8 @@ class EmailService
 	 * @param string $body Email body
 	 * @return bool Success status
 	 */
-	public function sendBackupEmail(string $recipientEmail, string $from, string $subject, string $body): bool
+	public static function sendBackup(string $recipientEmail, string $from, string $subject, string $body): bool
 	{
-		error_log($body);
-
 		$headers = [
 			'Content-Type: text/html; charset=UTF-8',
 			'From: ' . $from
@@ -80,36 +61,27 @@ class EmailService
 	 *
 	 * @param string $recipient Recipient email
 	 * @param string $meetingName Meeting name
-	 * @param string $registeredUrl Registration URL
+	 * @param string $answerUrl Answer URL
 	 * @return bool Success status
 	 */
-	public function sendRegistrationConfirmation(string $recipient, string $meetingName, string $registeredUrl): bool
+	public static function sendConfirmation(string $recipient, string $meetingName, string $answerUrl): bool
 	{
-		// Test EmailSettings
-		error_log('Testing EmailSettings:');
-		error_log('Registration: ' . EmailSettings::getRegistrationReplyEmail());
-		error_log('Support: ' . EmailSettings::getSupportEmail());
-		error_log('Backup: ' . EmailSettings::getBackupEmail());
+		$recipient   = sanitize_email($recipient);
+		$meetingName = sanitize_text_field($meetingName);
+		$answerUrl   = sanitize_url($answerUrl);
 
-
-		error_log('EmailService::sendRegistrationConfirmation');
-
-		$recipient = sanitize_email($recipient);
 		if (!is_email($recipient)) {
 			error_log('EmailService::sendRegistrationConfirmation - Invalid email: ' . esc_html($recipient));
 			return false;
 		}
 
-		$body = sprintf(
-			'<h3>Welcome</h3><p>Hello %s, you are all set to enter your answers.</p><p>To get started <a href="%s" target="_blank" rel="noreferrer noopener">View Questions</a>. You do not need to start entering answers straight away.</p>',
-			esc_html($meetingName),
-			esc_url($registeredUrl)
-		);
+		$params = ["MeetingName" => $meetingName, "Url" => $answerUrl];
 
-		$params = ['content' => $body];
+		$body = self::renderTemplate("RegistrationConfirmation", $params);
+
 		$from = 'Bristol and District <' . EmailSettings::getRegistrationReplyEmail() . '>';
 
-		return $this->sendCustomEmail($recipient, $from, 'Registration Successful', $params);
+		return self::sendEmail($recipient, $from, 'Registration Successful', $body);
 	}
 
 	/**
@@ -119,36 +91,36 @@ class EmailService
 	 * @param string $meetingName Meeting name
 	 * @return bool Success status
 	 */
-	public function sendCompletionEmail(string $recipient, string $meetingName): bool
+	public static function sendCompletion(string $recipient, string $meetingName): bool
 	{
-		error_log('EmailService::sendCompletionThanks');
-
 		$recipient = sanitize_email($recipient);
+		$meetingName = sanitize_text_field($meetingName);
+
 		if (!is_email($recipient)) {
 			error_log('EmailService::sendCompletionThanks - Invalid email: ' . esc_html($recipient));
 			return false;
 		}
 
-		$body = sprintf(
-			'<h3>Complete!</h3><p>Many thanks %s for taking the time to give your feedback, the region reps are very grateful.</p><p>If you have made a mistake or want to change something, you can still make alterations and Save Complete again.</p>',
-			esc_html($meetingName)
-		);
+		$params = ["MeetingName" => $meetingName];
 
-		$params = ['content' => $body];
+		$body = self::renderTemplate("AnswersComplete", $params);
+
 		$from = 'Region Representatives <' . EmailSettings::getRegistrationReplyEmail() . '>';
 
-		return $this->sendCustomEmail($recipient, $from, 'All Questions Completed :)', $params);
+		return self::sendEmail($recipient, $from, 'All Questions Completed :)', $body);
 	}
 
 	/**
 	 * Render email template with parameters
 	 *
-	 * @param string $template Template string
+	 * @param string $name Template name
 	 * @param array $params Template parameters
 	 * @return string Rendered template
 	 */
-	private function renderTemplate(string $template, array $params): string
+	private static function renderTemplate(string $name, array $params): string
 	{
+		$template = file_get_contents(CONFUR_PLUGIN_DIR . "/emails/{$name}.html");
+
 		foreach ($params as $key => $value) {
 			$template = str_replace("{{{$key}}}", $value, $template);
 		}
