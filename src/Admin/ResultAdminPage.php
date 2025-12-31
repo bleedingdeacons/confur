@@ -207,7 +207,8 @@ class ResultAdminPage
 
         foreach ($questionsByCommittee as $questionNumber => $rows) {
             foreach ($rows as $row) {
-                if (Constants::STATUS_CANCELLED != $row[6]) {
+                $status = $row[7];
+                if (Constants::STATUS_DRAFT === $status || Constants::STATUS_COMPLETED === $status) {
                     $html .= $this->renderAnswerGroup($committeeNumber, $questionNumber, $row, $addedAnchors);
                 }
             }
