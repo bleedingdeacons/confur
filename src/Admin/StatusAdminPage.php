@@ -185,10 +185,23 @@ class StatusAdminPage
 
         $allMeetings = $this->getAllMeetingsData();
         $stats = $this->calculateStats($allMeetings);
+        $duplicates = $this->findDuplicateRegistrations($allMeetings);
 
         ?>
         <div class="wrap">
             <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
+
+            <?php if (!empty($duplicates)): ?>
+                <div class="notice notice-warning">
+                    <p><strong><?php _e('Warning: Duplicate registrations detected!', 'confur'); ?></strong></p>
+                    <p><?php _e('The following meetings have multiple active (non-cancelled) registrations:', 'confur'); ?></p>
+                    <ul>
+                        <?php foreach ($duplicates as $meetingId => $info): ?>
+                            <li><?php echo esc_html($info['name']); ?> (<?php echo esc_html($info['count']); ?> registrations)</li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            <?php endif; ?>
 
             <div class="confur-answers-header">
                 <div class="confur-answers-stats">
@@ -301,7 +314,7 @@ class StatusAdminPage
         // Get registered groups
         $registered = $this->answerRepository->getRegisteredGroups();
 
-        // Create lookup for registered meetings
+        // Create lookup for registered meetings (supports multiple registrations per meeting)
         $registeredLookup = [];
         foreach ($registered as $item) {
             // Get meeting ID - handle if it's an object, array, or scalar
@@ -314,7 +327,12 @@ class StatusAdminPage
 
             // Only add if we have a valid ID
             if ($meetingId && is_numeric($meetingId)) {
-                $registeredLookup[(int)$meetingId] = $item;
+                $meetingIdInt = (int)$meetingId;
+                // Store as array to support multiple registrations per meeting
+                if (!isset($registeredLookup[$meetingIdInt])) {
+                    $registeredLookup[$meetingIdInt] = [];
+                }
+                $registeredLookup[$meetingIdInt][] = $item;
             }
         }
 
@@ -331,44 +349,45 @@ class StatusAdminPage
             $dayName = $this->getDayName($meeting['day']);
 
             if (isset($registeredLookup[$meetingId])) {
-                // Registered meeting
-                $item = $registeredLookup[$meetingId];
-                $meetingName = get_the_title($item['meeting']);
-                $updated = trim($item['updated']);
-                $status = isset($item['state']) && !empty($item['state']) ? $item['state'] : 'Not Started';
+                // Registered meeting(s) - loop through all registrations for this meeting ID
+                foreach ($registeredLookup[$meetingId] as $item) {
+                    $meetingName = get_the_title($item['meeting']);
+                    $updated = trim($item['updated']);
+                    $status = isset($item['state']) && !empty($item['state']) ? $item['state'] : 'Not Started';
 
-                if (empty($updated)) {
-                    $updated = "Not Started";
+                    if (empty($updated)) {
+                        $updated = "Not Started";
+                    }
+
+                    // Get status information
+                    $statusInfo = $this->getStatusInfo($status);
+
+                    // Create email link
+                    $emailHtml = !empty($item['email'])
+                            ? HtmlHelper::createLink(
+                                    HtmlHelper::createEmailToAddress($item['email'], "Questions for Conference"),
+                                    '',
+                                    $item['email']
+                            )
+                            : '-';
+
+                    $allMeetings[] = [
+                            'id' => $meetingId,
+                            'name' => $meetingName,
+                            'is_registered' => true,
+                            'edit_url' => get_edit_post_link($item['answers']),
+                            'meeting_url' => $meeting['url'],
+                            'status_label' => $statusInfo['label'],
+                            'status_class' => $statusInfo['class'],
+                            'email_html' => $emailHtml,
+                            'contact1_html' => $contact1Html,
+                            'contact2_html' => $contact2Html,
+                            'day' => $dayName,
+                            'time' => $meeting['time'],
+                            'last_saved' => $updated,
+                            'row_class' => 'registered-row'
+                    ];
                 }
-
-                // Get status information
-                $statusInfo = $this->getStatusInfo($status);
-
-                // Create email link
-                $emailHtml = !empty($item['email'])
-                        ? HtmlHelper::createLink(
-                                HtmlHelper::createEmailToAddress($item['email'], "Questions for Conference"),
-                                '',
-                                $item['email']
-                        )
-                        : '-';
-
-                $allMeetings[] = [
-                        'id' => $meetingId,
-                        'name' => $meetingName,
-                        'is_registered' => true,
-                        'edit_url' => get_edit_post_link($item['answers']),
-                        'meeting_url' => $meeting['url'],
-                        'status_label' => $statusInfo['label'],
-                        'status_class' => $statusInfo['class'],
-                        'email_html' => $emailHtml,
-                        'contact1_html' => $contact1Html,
-                        'contact2_html' => $contact2Html,
-                        'day' => $dayName,
-                        'time' => $meeting['time'],
-                        'last_saved' => $updated,
-                        'row_class' => 'registered-row'
-                ];
             } else {
                 // Unregistered meeting
                 $allMeetings[] = [
@@ -501,7 +520,7 @@ class StatusAdminPage
     private function calculateStats(array $allMeetings): array
     {
         $stats = [
-                'total' => count($allMeetings),
+                'total' => 0,
                 'registered' => 0,
                 'unregistered' => 0,
                 'completed' => 0,
@@ -510,10 +529,21 @@ class StatusAdminPage
                 'cancelled' => 0
         ];
 
-        foreach ($allMeetings as $meeting) {
-            if ($meeting['is_registered']) {
-                $stats['registered']++;
+        // Track distinct meeting IDs
+        $distinctMeetingIds = [];
+        $registeredMeetingIds = [];
 
+        foreach ($allMeetings as $meeting) {
+            $meetingId = $meeting['id'];
+
+            // Track all distinct meetings
+            $distinctMeetingIds[$meetingId] = true;
+
+            if ($meeting['is_registered']) {
+                // Track distinct registered meetings
+                $registeredMeetingIds[$meetingId] = true;
+
+                // Count statuses (these can be multiple per meeting)
                 switch ($meeting['status_class']) {
                     case 'completed':
                         $stats['completed']++;
@@ -528,11 +558,44 @@ class StatusAdminPage
                         $stats['cancelled']++;
                         break;
                 }
-            } else {
-                $stats['unregistered']++;
             }
         }
 
+        // Set distinct counts
+        $stats['total'] = count($distinctMeetingIds);
+        $stats['registered'] = count($registeredMeetingIds);
+        $stats['unregistered'] = $stats['total'] - $stats['registered'];
+
         return $stats;
+    }
+
+    /**
+     * Find meetings with duplicate active (non-cancelled) registrations
+     *
+     * @param array $allMeetings Meeting data
+     * @return array Duplicates with meeting ID as key and info (name, count) as value
+     */
+    private function findDuplicateRegistrations(array $allMeetings): array
+    {
+        $activeCounts = [];
+
+        foreach ($allMeetings as $meeting) {
+            // Only count registered meetings that are not cancelled
+            if ($meeting['is_registered'] && $meeting['status_class'] !== 'cancelled') {
+                $meetingId = $meeting['id'];
+                if (!isset($activeCounts[$meetingId])) {
+                    $activeCounts[$meetingId] = [
+                            'name' => $meeting['name'],
+                            'count' => 0
+                    ];
+                }
+                $activeCounts[$meetingId]['count']++;
+            }
+        }
+
+        // Filter to only return those with more than one active registration
+        return array_filter($activeCounts, function($info) {
+            return $info['count'] > 1;
+        });
     }
 }
