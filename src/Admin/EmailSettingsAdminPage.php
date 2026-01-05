@@ -143,13 +143,13 @@ class EmailSettingsAdminPage
         if (isset($_POST['reset_to_defaults'])) {
             if (EmailSettings::resetToDefaults()) {
                 $redirect_url = add_query_arg(
-                        ['page' => 'confur-email-settings', 'updated' => 'reset'],
-                        admin_url('edit.php?post_type=answer')
+                        ['page' => 'confur-email-settings', 'updated' => '1'],
+                        admin_url('admin.php')
                 );
             } else {
                 $redirect_url = add_query_arg(
                         ['page' => 'confur-email-settings', 'error' => '1'],
-                        admin_url('edit.php?post_type=answer')
+                        admin_url('admin.php')
                 );
             }
         } else {
@@ -171,12 +171,12 @@ class EmailSettingsAdminPage
             if (EmailSettings::updateAll($settings)) {
                 $redirect_url = add_query_arg(
                         ['page' => 'confur-email-settings', 'updated' => '1'],
-                        admin_url('edit.php?post_type=answer')
+                        admin_url('admin.php')
                 );
             } else {
                 $redirect_url = add_query_arg(
                         ['page' => 'confur-email-settings', 'error' => '1'],
-                        admin_url('edit.php?post_type=answer')
+                        admin_url('admin.php')
                 );
             }
         }
