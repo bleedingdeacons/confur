@@ -79,7 +79,7 @@ class EmailService
 
 		$body = self::renderTemplate("RegistrationConfirmation", $params);
 
-		$from = 'Bristol and District <' . EmailSettings::getRegistrationReplyEmail() . '>';
+		$from = EmailSettings::getRegistrationReplyEmail();
 
 		return self::sendEmail($recipient, $from, 'Registration Successful', $body);
 	}

@@ -51,6 +51,9 @@ class AnswerAPI
 	 */
 	public function getAnswerPostStatus($request)
 	{
+
+		error_log('[AnswerAPI::getAnswerPostStatus');
+
 		try {
 			$postName = sanitize_text_field($request['name']);
 

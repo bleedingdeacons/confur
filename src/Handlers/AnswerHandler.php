@@ -25,6 +25,9 @@ class AnswerHandler
 	public function handleSubmission(): void
 	{
 		try {
+
+			error_log('AnswerHandler::handleSubmission');
+
 			if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['submit_answers'])) {
 				error_log('AnswerHandler::handleSubmission - Invalid request method or missing submit_answers field');
 				wp_send_json_error(['message' => 'Unrecognized Action.'], 400);
