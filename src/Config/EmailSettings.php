@@ -11,6 +11,9 @@ class EmailSettings
     // Option name for storing email settings
     private const OPTION_NAME = 'confur_email_settings';
 
+    // Option name for storing email blocklist
+    private const BLOCKLIST_OPTION_NAME = 'confur_email_blocklist';
+
     // Default email addresses
     private const DEFAULTS = [
         'registration_reply' => 'conference@aa-bristol.org',
@@ -167,5 +170,116 @@ class EmailSettings
     public static function getDefaults(): array
     {
         return self::DEFAULTS;
+    }
+
+    /**
+     * Get the email blocklist
+     *
+     * @return array Array of blocked email addresses
+     */
+    public static function getBlocklist(): array
+    {
+        $blocklist = get_option(self::BLOCKLIST_OPTION_NAME, []);
+
+        if (!is_array($blocklist)) {
+            return [];
+        }
+
+        return $blocklist;
+    }
+
+    /**
+     * Update the email blocklist
+     *
+     * @param array $emails Array of email addresses to block
+     * @return bool True on success, false on failure
+     */
+    public static function updateBlocklist(array $emails): bool
+    {
+        // Sanitize and validate each email
+        $sanitized = [];
+        foreach ($emails as $email) {
+            $email = sanitize_email(trim($email));
+            if (!empty($email) && is_email($email)) {
+                $sanitized[] = strtolower($email);
+            }
+        }
+
+        // Remove duplicates
+        $sanitized = array_unique($sanitized);
+
+        // Sort alphabetically for easier viewing
+        sort($sanitized);
+
+        return update_option(self::BLOCKLIST_OPTION_NAME, $sanitized);
+    }
+
+    /**
+     * Add an email to the blocklist
+     *
+     * @param string $email Email address to add
+     * @return bool True on success, false on failure
+     */
+    public static function addToBlocklist(string $email): bool
+    {
+        $email = sanitize_email(trim($email));
+
+        if (empty($email) || !is_email($email)) {
+            return false;
+        }
+
+        $blocklist = self::getBlocklist();
+        $email = strtolower($email);
+
+        if (!in_array($email, $blocklist)) {
+            $blocklist[] = $email;
+            return self::updateBlocklist($blocklist);
+        }
+
+        return true; // Already exists
+    }
+
+    /**
+     * Remove an email from the blocklist
+     *
+     * @param string $email Email address to remove
+     * @return bool True on success, false on failure
+     */
+    public static function removeFromBlocklist(string $email): bool
+    {
+        $email = strtolower(sanitize_email(trim($email)));
+        $blocklist = self::getBlocklist();
+
+        $key = array_search($email, $blocklist);
+        if ($key !== false) {
+            unset($blocklist[$key]);
+            return self::updateBlocklist(array_values($blocklist));
+        }
+
+        return true; // Already not in list
+    }
+
+    /**
+     * Check if an email is blocked
+     *
+     * @param string $email Email address to check
+     * @return bool True if blocked, false otherwise
+     */
+    public static function isBlocked(string $email): bool
+    {
+        $email = strtolower(sanitize_email(trim($email)));
+        $blocklist = self::getBlocklist();
+
+        return in_array($email, $blocklist);
+    }
+
+    /**
+     * Clear the entire blocklist
+     *
+     * @return bool True on success, false on failure
+     */
+    public static function clearBlocklist(): bool
+    {
+        return update_option(self::BLOCKLIST_OPTION_NAME, []);
     }
 }

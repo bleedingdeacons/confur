@@ -111,6 +111,28 @@ class EmailService
 	}
 
 	/**
+	 * Send registration blocked email (for blacklisted emails)
+	 *
+	 * @param string $recipient Recipient email
+	 * @return bool Success status
+	 */
+	public static function sendRegistrationBlocked(string $recipient): bool
+	{
+		$recipient = sanitize_email($recipient);
+
+		if (!is_email($recipient)) {
+			error_log('EmailService::sendRegistrationBlocked - Invalid email: ' . esc_html($recipient));
+			return false;
+		}
+
+		$body = self::renderTemplate("RegistrationBlocked", []);
+
+		$from = EmailSettings::getSupportEmail();
+
+		return self::sendEmail($recipient, $from, 'Registration Could Not Be Completed', $body);
+	}
+
+	/**
 	 * Render email template with parameters
 	 *
 	 * @param string $name Template name

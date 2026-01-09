@@ -118,6 +118,32 @@ class EmailSettingsAdminPage
                 font-size: 13px;
                 color: #646970;
             }
+            .confur-blocklist-section {
+                margin-top: 30px;
+                padding-top: 20px;
+                border-top: 1px solid #e0e0e0;
+            }
+            .confur-blocklist-section h2 {
+                margin-bottom: 15px;
+            }
+            .confur-blocklist-textarea {
+                width: 100%;
+                max-width: 600px;
+                min-height: 150px;
+                font-family: monospace;
+                font-size: 13px;
+            }
+            .confur-blocklist-count {
+                margin-top: 10px;
+                font-size: 13px;
+                color: #646970;
+            }
+            .confur-blocklist-warning {
+                background: #fff3cd;
+                border-left: 4px solid #ffc107;
+                padding: 12px;
+                margin: 15px 0;
+            }
         ";
         wp_add_inline_style('wp-admin', $custom_css);
     }
@@ -135,7 +161,7 @@ class EmailSettingsAdminPage
 
         // Verify nonce
         if (!isset($_POST['confur_email_settings_nonce']) ||
-            !wp_verify_nonce($_POST['confur_email_settings_nonce'], 'confur_email_settings_action')) {
+                !wp_verify_nonce($_POST['confur_email_settings_nonce'], 'confur_email_settings_action')) {
             wp_die(__('Security check failed.'));
         }
 
@@ -149,6 +175,19 @@ class EmailSettingsAdminPage
             } else {
                 $redirect_url = add_query_arg(
                         ['page' => 'confur-email-settings', 'error' => '1'],
+                        admin_url('admin.php')
+                );
+            }
+        } elseif (isset($_POST['clear_blocklist'])) {
+            // Handle clear blocklist button
+            if (EmailSettings::clearBlocklist()) {
+                $redirect_url = add_query_arg(
+                        ['page' => 'confur-email-settings', 'updated' => 'blocklist_cleared'],
+                        admin_url('admin.php')
+                );
+            } else {
+                $redirect_url = add_query_arg(
+                        ['page' => 'confur-email-settings', 'error' => 'blocklist'],
                         admin_url('admin.php')
                 );
             }
@@ -168,7 +207,14 @@ class EmailSettingsAdminPage
             error_log('EmailSettings - POST data: registration_reply_email=' . $registration_reply . ', support_email=' . $support . ', backup_email=' . $backup);
             error_log('EmailSettings - Settings array: ' . print_r($settings, true));
 
-            if (EmailSettings::updateAll($settings)) {
+            $settingsUpdated = EmailSettings::updateAll($settings);
+
+            // Process blocklist
+            $blocklistRaw = isset($_POST['email_blocklist']) ? sanitize_textarea_field($_POST['email_blocklist']) : '';
+            $blocklistEmails = array_filter(array_map('trim', explode("\n", $blocklistRaw)));
+            $blocklistUpdated = EmailSettings::updateBlocklist($blocklistEmails);
+
+            if ($settingsUpdated || $blocklistUpdated) {
                 $redirect_url = add_query_arg(
                         ['page' => 'confur-email-settings', 'updated' => '1'],
                         admin_url('admin.php')
@@ -196,6 +242,9 @@ class EmailSettingsAdminPage
 
         $settings = EmailSettings::getAll();
         $defaults = EmailSettings::getDefaults();
+        $blocklist = EmailSettings::getBlocklist();
+        $blocklistText = implode("\n", $blocklist);
+        $blocklistCount = count($blocklist);
 
         ?>
         <div class="wrap">
@@ -210,6 +259,12 @@ class EmailSettingsAdminPage
             <?php if (isset($_GET['updated']) && $_GET['updated'] === 'reset'): ?>
                 <div class="confur-notice">
                     <p><strong>Email settings reset to defaults successfully.</strong></p>
+                </div>
+            <?php endif; ?>
+
+            <?php if (isset($_GET['updated']) && $_GET['updated'] === 'blocklist_cleared'): ?>
+                <div class="confur-notice">
+                    <p><strong>Email blocked list cleared successfully.</strong></p>
                 </div>
             <?php endif; ?>
 
@@ -283,9 +338,37 @@ class EmailSettingsAdminPage
                         </tbody>
                     </table>
 
+                    <div class="confur-blocklist-section">
+                        <h2>Email Blocked List</h2>
+                        <p class="description">
+                            Enter email addresses that should be blocked from registration, one per line.
+                            Users with blocked emails will receive a different error message during registration.
+                        </p>
+
+                        <?php if ($blocklistCount > 0): ?>
+                            <div class="confur-blocklist-warning">
+                                <strong>Note:</strong> There are currently <strong><?php echo esc_html($blocklistCount); ?></strong> blocked email address(es).
+                            </div>
+                        <?php endif; ?>
+
+                        <textarea
+                                id="email_blocklist"
+                                name="email_blocklist"
+                                class="confur-blocklist-textarea"
+                                placeholder="example@domain.com&#10;another@domain.com"
+                        ><?php echo esc_textarea($blocklistText); ?></textarea>
+
+                        <p class="confur-blocklist-count">
+                            Currently <?php echo esc_html($blocklistCount); ?> email(s) in blocked list.
+                        </p>
+                    </div>
+
                     <div class="confur-form-actions">
                         <?php submit_button('Save Email Settings', 'primary', 'submit', false); ?>
                         <?php submit_button('Reset to Defaults', 'secondary', 'reset_to_defaults', false); ?>
+                        <?php if ($blocklistCount > 0): ?>
+                            <?php submit_button('Clear Blocked List', 'delete', 'clear_blocklist', false, ['onclick' => 'return confirm("Are you sure you want to clear the entire blocked list?");']); ?>
+                        <?php endif; ?>
                     </div>
                 </form>
 
