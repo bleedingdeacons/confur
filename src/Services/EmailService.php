@@ -141,10 +141,32 @@ class EmailService
 	 */
 	private static function renderTemplate(string $name, array $params): string
 	{
-		$template = file_get_contents(CONFUR_PLUGIN_DIR . "/emails/{$name}.html");
+		// Sanitize template name to prevent path traversal
+		$name = sanitize_file_name($name);
+		
+		// Only allow alphanumeric characters and hyphens/underscores
+		if (!preg_match('/^[a-zA-Z0-9_-]+$/', $name)) {
+			error_log('EmailService::renderTemplate - Invalid template name: ' . $name);
+			return '';
+		}
+		
+		$templatePath = CONFUR_PLUGIN_DIR . "/emails/{$name}.html";
+		
+		// Verify the file exists and is within the emails directory
+		$realPath = realpath($templatePath);
+		$emailsDir = realpath(CONFUR_PLUGIN_DIR . "/emails");
+		
+		if ($realPath === false || strpos($realPath, $emailsDir) !== 0) {
+			error_log('EmailService::renderTemplate - Template not found or path traversal attempt: ' . $name);
+			return '';
+		}
+		
+		$template = file_get_contents($realPath);
 
 		foreach ($params as $key => $value) {
-			$template = str_replace("{{{$key}}}", $value, $template);
+			// Escape values to prevent XSS in emails
+			$safeValue = esc_html($value);
+			$template = str_replace("{{{$key}}}", $safeValue, $template);
 		}
 
 		return $template;

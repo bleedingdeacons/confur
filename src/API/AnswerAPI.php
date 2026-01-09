@@ -25,15 +25,17 @@ class AnswerAPI
 	public function registerRoutes(): void
 	{
 		try {
-			register_rest_route('answer/v1', '/status/(?P<name>[a-zA-Z0-9_-]+)', [
+			register_rest_route('answer/v1', '/status/(?P<n>[a-zA-Z0-9_-]+)', [
 				'methods' => 'GET',
 				'callback' => [$this, 'getAnswerPostStatus'],
+				'permission_callback' => '__return_true', // Public endpoint - status is non-sensitive
 				'args' => [
-					'name' => [
+					'n' => [
 						'required' => true,
 						'validate_callback' => function ($param) {
 							return is_string($param) && preg_match('/^[a-zA-Z0-9_-]+$/', $param);
 						},
+						'sanitize_callback' => 'sanitize_text_field',
 					],
 				],
 			]);
@@ -55,7 +57,7 @@ class AnswerAPI
 		error_log('[AnswerAPI::getAnswerPostStatus');
 
 		try {
-			$postName = sanitize_text_field($request['name']);
+			$postName = sanitize_text_field($request['n']);
 
 			if (empty($postName)) {
 				error_log('[AnswerAPI::getAnswerPostStatus] Empty post name received');
