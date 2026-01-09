@@ -46,7 +46,7 @@ class AnswerRepository
 		}
 
 		return [
-			'id' => $postId,
+//			'id' => $postId,
 			'state' => $status,
 			'updated' => $updated
 		];

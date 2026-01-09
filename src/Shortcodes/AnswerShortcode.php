@@ -186,17 +186,18 @@ class AnswerShortcode
 	{
 		error_log('Action: ' . $atts['action']);
 
-		$hidden = sprintf(
-			'<input type="hidden" name="post_id" value="%d"/>',
-			get_the_ID()
-		);
+//		$hidden = sprintf(
+//			'<input type="hidden" name="post_id" value="%d"/>',
+//			get_the_ID()
+//		);
 
 		$action = sprintf(
 			'<input type="hidden" name="action" value="%s">',
 			esc_attr($atts['action'])
 		);
 
-		return $hidden . $action;
+//		return $hidden . $action;
+        return $action;
 	}
 
 	/**
