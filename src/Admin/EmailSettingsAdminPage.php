@@ -196,11 +196,13 @@ class EmailSettingsAdminPage
             $registration_reply = isset($_POST['registration_reply_email']) ? sanitize_text_field($_POST['registration_reply_email']) : '';
             $support = isset($_POST['support_email']) ? sanitize_text_field($_POST['support_email']) : '';
             $backup = isset($_POST['backup_email']) ? sanitize_text_field($_POST['backup_email']) : '';
+            $delete_blocked_posts = isset($_POST['delete_blocked_posts']) ? true : false;
 
             $settings = [
                     'registration_reply' => $registration_reply,
                     'support' => $support,
                     'backup' => $backup,
+                    'delete_blocked_posts' => $delete_blocked_posts,
             ];
 
             // Log what we're trying to save for debugging
@@ -360,6 +362,23 @@ class EmailSettingsAdminPage
 
                         <p class="confur-blocklist-count">
                             Currently <?php echo esc_html($blocklistCount); ?> email(s) in blocked list.
+                        </p>
+
+                        <p style="margin-top: 15px;">
+                            <label for="delete_blocked_posts">
+                                <input
+                                        type="checkbox"
+                                        id="delete_blocked_posts"
+                                        name="delete_blocked_posts"
+                                        value="1"
+                                        <?php checked($settings['delete_blocked_posts'] ?? false); ?>
+                                />
+                                Delete registration posts from blocked email addresses
+                            </label>
+                        </p>
+                        <p class="description">
+                            When enabled, registration attempts from blocked emails will have their posts permanently deleted.
+                            When disabled, the posts will remain but the registration will not proceed.
                         </p>
                     </div>
 

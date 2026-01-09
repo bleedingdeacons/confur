@@ -146,8 +146,11 @@ class AnswerHandler
             if (EmailSettings::isBlocked($email)) {
                 error_log("AnswerHandler::handleRegistration - Email is blocked: $email for post ID: $postId");
 
-                // Delete the post since this registration should not proceed
-                // wp_delete_post($postId, true);
+                // Delete the post if the setting is enabled
+                if (EmailSettings::shouldDeleteBlockedPosts()) {
+                    wp_delete_post($postId, true);
+                    error_log("AnswerHandler::handleRegistration - Deleted post ID: $postId for blocked email");
+                }
 
                 // Send a generic error response to the blocked user using template
                 try {

@@ -19,6 +19,7 @@ class EmailSettings
         'registration_reply' => 'conference@aa-bristol.org',
         'support' => 'support@aa-bristol.org',
         'backup' => 'backup@aa-bristol.org',
+        'delete_blocked_posts' => false,
     ];
 
     /**
@@ -94,6 +95,17 @@ class EmailSettings
     }
 
     /**
+     * Check if blocked posts should be deleted
+     *
+     * @return bool True if blocked posts should be deleted, false otherwise
+     */
+    public static function shouldDeleteBlockedPosts(): bool
+    {
+        $settings = self::getAll();
+        return !empty($settings['delete_blocked_posts']);
+    }
+
+    /**
      * Update all email settings
      *
      * @param array $settings Email settings to update
@@ -106,6 +118,7 @@ class EmailSettings
             'registration_reply' => sanitize_email(trim($settings['registration_reply'] ?? '')),
             'support' => sanitize_email(trim($settings['support'] ?? '')),
             'backup' => sanitize_email(trim($settings['backup'] ?? '')),
+            'delete_blocked_posts' => !empty($settings['delete_blocked_posts']),
         ];
 
         // Log sanitized values
