@@ -12,24 +12,24 @@ class EmailTemplateAdminPage
 
     // Default templates - these mirror the HTML files in /emails directory
     private const DEFAULT_TEMPLATES = [
-        'RegistrationConfirmation' => [
-            'name' => 'Registration Confirmation',
-            'subject' => 'Registration Successful',
-            'description' => 'Sent when a user successfully registers. Available placeholders: {{MeetingName}}, {{Url}}',
-            'placeholders' => ['{{MeetingName}}', '{{Url}}'],
-        ],
-        'AnswersComplete' => [
-            'name' => 'Answers Complete',
-            'subject' => 'All Questions Completed :)',
-            'description' => 'Sent when a user completes all their answers. Available placeholders: {{MeetingName}}',
-            'placeholders' => ['{{MeetingName}}'],
-        ],
-        'RegistrationBlocked' => [
-            'name' => 'Registration Blocked',
-            'subject' => 'Registration Could Not Be Completed',
-            'description' => 'Sent when a blocked email address attempts to register. No placeholders available.',
-            'placeholders' => [],
-        ],
+            'RegistrationConfirmation' => [
+                    'name' => 'Registration Confirmation',
+                    'subject' => 'Registration Successful',
+                    'description' => 'Sent when a user successfully registers. Available placeholders: {{MeetingName}}, {{Url}}',
+                    'placeholders' => ['{{MeetingName}}', '{{Url}}'],
+            ],
+            'AnswersComplete' => [
+                    'name' => 'Answers Complete',
+                    'subject' => 'All Questions Completed :)',
+                    'description' => 'Sent when a user completes all their answers. Available placeholders: {{MeetingName}}',
+                    'placeholders' => ['{{MeetingName}}'],
+            ],
+            'RegistrationBlocked' => [
+                    'name' => 'Registration Blocked',
+                    'subject' => 'Registration Could Not Be Completed',
+                    'description' => 'Sent when a blocked email address attempts to register. No placeholders available.',
+                    'placeholders' => [],
+            ],
     ];
 
     /**
@@ -53,12 +53,12 @@ class EmailTemplateAdminPage
     public function addAdminMenu(): void
     {
         add_submenu_page(
-            'confur',                           // Parent slug (Confur menu)
-            'Email Templates',                   // Page title
-            'Email Templates',                   // Menu title
-            'manage_options',                    // Capability (admin only)
-            'confur-email-templates',            // Menu slug
-            [$this, 'renderAdminPage']          // Callback
+                'confur',                           // Parent slug (Confur menu)
+                'Email Templates',                   // Page title
+                'Email Templates',                   // Menu title
+                'manage_options',                    // Capability (admin only)
+                'confur-email-templates',            // Menu slug
+                [$this, 'renderAdminPage']          // Callback
         );
     }
 
@@ -183,11 +183,11 @@ class EmailTemplateAdminPage
 
         foreach (self::DEFAULT_TEMPLATES as $key => $defaults) {
             $templates[$key] = [
-                'name' => $defaults['name'],
-                'subject' => $saved[$key]['subject'] ?? $defaults['subject'],
-                'body' => $saved[$key]['body'] ?? self::getDefaultBody($key),
-                'description' => $defaults['description'],
-                'placeholders' => $defaults['placeholders'],
+                    'name' => $defaults['name'],
+                    'subject' => $saved[$key]['subject'] ?? $defaults['subject'],
+                    'body' => $saved[$key]['body'] ?? self::getDefaultBody($key),
+                    'description' => $defaults['description'],
+                    'placeholders' => $defaults['placeholders'],
             ];
         }
 
@@ -240,19 +240,19 @@ class EmailTemplateAdminPage
     {
         // Sanitize key to prevent path traversal
         $key = sanitize_file_name($key);
-        
+
         if (!preg_match('/^[a-zA-Z0-9_-]+$/', $key)) {
             return '';
         }
 
         $templatePath = CONFUR_PLUGIN_DIR . "/emails/{$key}.html";
-        
+
         if (!file_exists($templatePath)) {
             return '';
         }
 
         $content = file_get_contents($templatePath);
-        
+
         // Extract just the body content (between <body> tags)
         if (preg_match('/<body[^>]*>(.*?)<\/body>/is', $content, $matches)) {
             return trim($matches[1]);
@@ -278,8 +278,8 @@ class EmailTemplateAdminPage
             }
 
             $sanitized[$key] = [
-                'subject' => sanitize_text_field($data['subject'] ?? ''),
-                'body' => wp_kses_post($data['body'] ?? ''),
+                    'subject' => sanitize_text_field($data['subject'] ?? ''),
+                    'body' => wp_kses_post($data['body'] ?? ''),
             ];
         }
 
@@ -293,7 +293,9 @@ class EmailTemplateAdminPage
      */
     public static function resetToDefaults(): bool
     {
-        return delete_option(self::OPTION_NAME);
+        // delete_option returns false if option doesn't exist, but that's fine
+        delete_option(self::OPTION_NAME);
+        return true;
     }
 
     /**
@@ -309,12 +311,12 @@ class EmailTemplateAdminPage
         }
 
         $saved = get_option(self::OPTION_NAME, []);
-        
+
         // If the key doesn't exist in saved options, it's already at default
         if (!isset($saved[$key])) {
             return true;
         }
-        
+
         unset($saved[$key]);
 
         if (empty($saved)) {
@@ -346,13 +348,13 @@ class EmailTemplateAdminPage
         if (isset($_POST['reset_all_defaults'])) {
             if (self::resetToDefaults()) {
                 $redirect_url = add_query_arg(
-                    ['page' => 'confur-email-templates', 'updated' => 'reset_all'],
-                    admin_url('admin.php')
+                        ['page' => 'confur-email-templates', 'updated' => 'reset_all'],
+                        admin_url('admin.php')
                 );
             } else {
                 $redirect_url = add_query_arg(
-                    ['page' => 'confur-email-templates', 'error' => '1'],
-                    admin_url('admin.php')
+                        ['page' => 'confur-email-templates', 'error' => '1'],
+                        admin_url('admin.php')
                 );
             }
             wp_redirect($redirect_url);
@@ -364,13 +366,13 @@ class EmailTemplateAdminPage
             $templateKey = sanitize_text_field($_POST['reset_template']);
             if (self::resetTemplate($templateKey)) {
                 $redirect_url = add_query_arg(
-                    ['page' => 'confur-email-templates', 'updated' => 'reset_single'],
-                    admin_url('admin.php')
+                        ['page' => 'confur-email-templates', 'updated' => 'reset_single'],
+                        admin_url('admin.php')
                 );
             } else {
                 $redirect_url = add_query_arg(
-                    ['page' => 'confur-email-templates', 'error' => '1'],
-                    admin_url('admin.php')
+                        ['page' => 'confur-email-templates', 'error' => '1'],
+                        admin_url('admin.php')
                 );
             }
             wp_redirect($redirect_url);
@@ -381,20 +383,20 @@ class EmailTemplateAdminPage
         $templates = [];
         foreach (array_keys(self::DEFAULT_TEMPLATES) as $key) {
             $templates[$key] = [
-                'subject' => $_POST["template_{$key}_subject"] ?? '',
-                'body' => $_POST["template_{$key}_body"] ?? '',
+                    'subject' => $_POST["template_{$key}_subject"] ?? '',
+                    'body' => $_POST["template_{$key}_body"] ?? '',
             ];
         }
 
         if (self::update($templates)) {
             $redirect_url = add_query_arg(
-                ['page' => 'confur-email-templates', 'updated' => '1'],
-                admin_url('admin.php')
+                    ['page' => 'confur-email-templates', 'updated' => '1'],
+                    admin_url('admin.php')
             );
         } else {
             $redirect_url = add_query_arg(
-                ['page' => 'confur-email-templates', 'error' => '1'],
-                admin_url('admin.php')
+                    ['page' => 'confur-email-templates', 'error' => '1'],
+                    admin_url('admin.php')
             );
         }
 
@@ -452,7 +454,7 @@ class EmailTemplateAdminPage
                                 <?php echo esc_html($template['name']); ?>
                                 <span class="confur-template-badge"><?php echo esc_html($key); ?></span>
                             </h2>
-                            
+
                             <div class="template-description">
                                 <?php echo esc_html($template['description']); ?>
                                 <?php if (!empty($template['placeholders'])): ?>
@@ -467,11 +469,11 @@ class EmailTemplateAdminPage
                             <div class="confur-template-field">
                                 <label for="template_<?php echo esc_attr($key); ?>_subject">Subject Line</label>
                                 <input
-                                    type="text"
-                                    id="template_<?php echo esc_attr($key); ?>_subject"
-                                    name="template_<?php echo esc_attr($key); ?>_subject"
-                                    value="<?php echo esc_attr($template['subject']); ?>"
-                                    class="regular-text"
+                                        type="text"
+                                        id="template_<?php echo esc_attr($key); ?>_subject"
+                                        name="template_<?php echo esc_attr($key); ?>_subject"
+                                        value="<?php echo esc_attr($template['subject']); ?>"
+                                        class="regular-text"
                                 />
                             </div>
 
@@ -480,16 +482,16 @@ class EmailTemplateAdminPage
                                 <?php
                                 $editor_id = 'template_' . $key . '_body';
                                 $editor_settings = [
-                                    'textarea_name' => $editor_id,
-                                    'textarea_rows' => 12,
-                                    'media_buttons' => false,
-                                    'teeny' => false,
-                                    'quicktags' => true,
-                                    'tinymce' => [
-                                        'toolbar1' => 'formatselect,bold,italic,underline,strikethrough,|,bullist,numlist,|,link,unlink,|,undo,redo',
-                                        'toolbar2' => '',
-                                        'block_formats' => 'Paragraph=p;Heading 3=h3;Heading 4=h4',
-                                    ],
+                                        'textarea_name' => $editor_id,
+                                        'textarea_rows' => 12,
+                                        'media_buttons' => false,
+                                        'teeny' => false,
+                                        'quicktags' => true,
+                                        'tinymce' => [
+                                                'toolbar1' => 'formatselect,bold,italic,underline,strikethrough,|,bullist,numlist,|,link,unlink,|,undo,redo',
+                                                'toolbar2' => '',
+                                                'block_formats' => 'Paragraph=p;Heading 3=h3;Heading 4=h4',
+                                        ],
                                 ];
                                 wp_editor($template['body'], $editor_id, $editor_settings);
                                 ?>
@@ -513,7 +515,7 @@ class EmailTemplateAdminPage
                 </form>
 
                 <div class="confur-reset-warning" style="margin-top: 20px;">
-                    <strong>Note:</strong> The default templates are stored in the <code>/emails</code> directory of the plugin. 
+                    <strong>Note:</strong> The default templates are stored in the <code>/emails</code> directory of the plugin.
                     Custom changes are stored in the database and will override the file-based templates.
                 </div>
             </div>
