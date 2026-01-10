@@ -3,7 +3,7 @@
 namespace Confur\Handlers;
 
 use Confur\Config\Constants;
-use Confur\Config\EmailSettings;
+use Confur\Config\ConfurSettings;
 use Confur\Services\EmailService;
 use Confur\Repositories\AnswerRepository;
 
@@ -22,101 +22,115 @@ class AnswerHandler
 	/**
 	 * Handle answer submission
 	 */
-	public function handleSubmission(): void
-	{
-		try {
-			if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['submit_answers'])) {
-				error_log('AnswerHandler::handleSubmission - Invalid request method or missing submit_answers field');
-				wp_send_json_error(['message' => 'Unrecognized Action.'], 400);
-				return;
-			}
+    public function handleSubmission(): void
+    {
+        try {
+            error_log('AnswerHandler::handleSubmission');
 
-			if (!isset($_POST['post_id']) || !is_numeric($_POST['post_id'])) {
-				error_log('AnswerHandler::handleSubmission - Invalid or missing post ID');
-				wp_send_json_error(['message' => 'Invalid Post ID.'], 400);
-				return;
-			}
+//            // Only allow HTTPS
+//            if (!isset($_SERVER['HTTPS']) || $_SERVER['HTTPS'] !== 'on') {
+//                error_log('AnswerHandler::handleSubmission - HTTPS required');
+//                wp_send_json_error(['message' => 'HTTPS required.'], 403);
+//                return;
+//            }
 
-			$postId = (int) $_POST['post_id'];
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['submit_answers'])) {
+                error_log('AnswerHandler::handleSubmission - Invalid request method or missing submit_answers field');
+                wp_send_json_error(['message' => 'Unrecognized Action.'], 400);
+                return;
+            }
 
-			if (get_post_status($postId) === false) {
-				error_log("AnswerHandler::handleSubmission - Post ID: $postId does not exist");
-				wp_send_json_error(['message' => 'Post does not exist.'], 404);
-				return;
-			}
+            // Verify nonce for CSRF protection (unless disabled in settings)
+            if (!ConfurSettings::isNonceVerificationDisabled()) {
+                if (!isset($_POST['answer_submission_nonce']) || 
+                    !wp_verify_nonce($_POST['answer_submission_nonce'], 'answer_submission_action')) {
+                    error_log('AnswerHandler::handleSubmission - Nonce verification failed');
+                    wp_send_json_error(['message' => 'Security check failed.'], 403);
+                    return;
+                }
+            }
 
-			// Send backup email
-			$subject = 'POST';
-			if (isset($_SERVER['REQUEST_URI'])) {
-				$subject = get_permalink($postId);
-			}
+            $referer = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '';
+            $postId = url_to_postid($referer);
 
-			try {
-					EmailService::sendBackup(
-					EmailSettings::getBackupEmail(),
-					EmailSettings::getSupportEmail(),
-					$subject,
-					json_encode($_POST)
-				);
-			} catch (\Exception $e) {
-				error_log("AnswerHandler::handleSubmission - Failed to send backup email: " . $e->getMessage());
-				// Continue processing even if backup email fails
-			}
+            if ($postId === 0) {
+                error_log("AnswerHandler::handleSubmission - Could not determine post ID from URI: $referer");
+                wp_send_json_error(['message' => 'Invalid referer URL.'], 400);
+                return;
+            }
 
-			error_log("AnswerHandler::handleSubmission - Processing answers for Post ID: $postId");
+            if (get_post_status($postId) === false) {
+                error_log("AnswerHandler::handleSubmission - Post ID: $postId does not exist");
+                wp_send_json_error(['message' => 'Post does not exist.'], 404);
+                return;
+            }
 
-			// Update answer fields
-			$this->updateAnswerFields($postId, $_POST);
+            // Send backup email (sanitize POST data before logging)
+            $subject = get_permalink($postId);
 
-			// Update status
+            try {
+                EmailService::sendBackup(
+                    ConfurSettings::getBackupEmail(),
+                    ConfurSettings::getSupportEmail(),
+                    $subject,
+                    json_encode($_POST)
+                );
+            } catch (\Exception $e) {
+                error_log("AnswerHandler::handleSubmission - Failed to send backup email: " . $e->getMessage());
+            }
 
-			$validStatuses = [Constants::STATUS_DRAFT, Constants::STATUS_COMPLETED];
-			$status = isset($_POST['submit_answers']) && in_array($_POST['submit_answers'], $validStatuses)
-				? sanitize_text_field($_POST['submit_answers'])
-				: Constants::STATUS_DRAFT;
+            error_log("AnswerHandler::handleSubmission - Processing answers for Post ID: $postId");
 
-			$updated = current_time('l, Y-m-d h:i:s A');
+            // Update answer fields
+            $this->updateAnswerFields($postId, $_POST);
 
-			update_field(Constants::UPDATED_FIELD, esc_html($updated), $postId);
-			update_field(Constants::STATUS_FIELD, esc_html($status), $postId);
+            // Update status
+            $validStatuses = [Constants::STATUS_DRAFT, Constants::STATUS_COMPLETED];
+            $status = isset($_POST['submit_answers']) && in_array($_POST['submit_answers'], $validStatuses)
+                ? sanitize_text_field($_POST['submit_answers'])
+                : Constants::STATUS_DRAFT;
 
-			error_log("AnswerHandler::handleSubmission - Answers for Post ID: $postId Status: $status");
+            $updated = current_time('l, Y-m-d h:i:s A');
 
-			$email = get_field(Constants::EMAIL_FIELD, $postId);
+            update_field(Constants::UPDATED_FIELD, esc_html($updated), $postId);
+            update_field(Constants::STATUS_FIELD, esc_html($status), $postId);
 
-			if ($status === Constants::STATUS_COMPLETED) {
-				update_field(Constants::COMPLETION_FIELD, esc_html($updated), $postId);
-			} else {
-				update_field(Constants::COMPLETION_FIELD, "", $postId);
-			}
+            error_log("AnswerHandler::handleSubmission - Answers for Post ID: $postId Status: $status");
 
-			acf_save_post();
-			wp_publish_post($postId);
+            $email = get_field(Constants::EMAIL_FIELD, $postId);
 
-			$title = get_the_title($postId);
+            if ($status === Constants::STATUS_COMPLETED) {
+                update_field(Constants::COMPLETION_FIELD, esc_html($updated), $postId);
+            } else {
+                update_field(Constants::COMPLETION_FIELD, "", $postId);
+            }
 
-			if ($status === Constants::STATUS_COMPLETED) {
-				try {
-					EmailService::sendCompletion($email, $title);
-				} catch (\Exception $e) {
-					error_log("AnswerHandler::handleSubmission - Failed to send completion email: " . $e->getMessage());
-					// Continue processing even if email fails
-				}
-			}
+            acf_save_post();
+            wp_publish_post($postId);
 
-			wp_send_json_success([
-				'message' => "Answers Saved as $status",
-				'updated' => $updated,
-				'state' => $status
-			]);
-		} catch (\Exception $e) {
-			error_log("AnswerHandler::handleSubmission - Unexpected error: " . $e->getMessage());
-			error_log("AnswerHandler::handleSubmission - Stack trace: " . $e->getTraceAsString());
-			wp_send_json_error([
-				'message' => 'An error occurred while processing your submission. Please try again.'
-			], 500);
-		}
-	}
+            $title = get_the_title($postId);
+
+            if ($status === Constants::STATUS_COMPLETED) {
+                try {
+                    EmailService::sendCompletion($email, $title);
+                } catch (\Exception $e) {
+                    error_log("AnswerHandler::handleSubmission - Failed to send completion email: " . $e->getMessage());
+                }
+            }
+
+            wp_send_json_success([
+                'message' => "Answers Saved as $status",
+                'updated' => $updated,
+                'state' => $status
+            ]);
+        } catch (\Exception $e) {
+            error_log("AnswerHandler::handleSubmission - Unexpected error: " . $e->getMessage());
+            error_log("AnswerHandler::handleSubmission - Stack trace: " . $e->getTraceAsString());
+            wp_send_json_error([
+                'message' => 'An error occurred while processing your submission. Please try again.'
+            ], 500);
+        }
+    }
 
 	/**
 	 * Handle after insert post
@@ -138,6 +152,26 @@ class AnswerHandler
 			$fellow_meetingId = get_field(Constants::FELLOW_MEETING_FIELD, $postId);
 			$email = get_field(Constants::REGISTRATION_RECIPIENT_EMAIL, $postId);
 
+			// Check if email is blocked
+			if (ConfurSettings::isBlocked($email)) {
+				error_log("AnswerHandler::handleRegistration - Email is blocked: $email for post ID: $postId");
+
+				// Delete the post if the setting is enabled
+				if (ConfurSettings::shouldDeleteBlockedPosts()) {
+					wp_delete_post($postId, true);
+					error_log("AnswerHandler::handleRegistration - Deleted post ID: $postId for blocked email");
+				}
+
+				// Send a generic error response to the blocked user using template
+				try {
+					EmailService::sendRegistrationBlocked($email);
+				} catch (\Exception $e) {
+					error_log("AnswerHandler::handleRegistration - Failed to send blocked notification email: " . $e->getMessage());
+				}
+
+				return;
+			}
+
 			if (empty($meetingId)) {
 				error_log("Error: No meeting group set for post ID: $postId");
 
@@ -147,7 +181,7 @@ class AnswerHandler
 				try {
 					EmailService::sendCustomEmail(
 						$email,
-						EmailSettings::getSupportEmail(),
+						ConfurSettings::getSupportEmail(),
 						'Error: Missing Meeting Group',
 						$params
 					);
@@ -196,7 +230,7 @@ class AnswerHandler
 					$params = ['content' => $errorBody];
 					EmailService::sendEmail(
 						$email,
-						EmailSettings::getSupportEmail(),
+						ConfurSettings::getSupportEmail(),
 						'Error: Registration Failed',
 						$params
 					);

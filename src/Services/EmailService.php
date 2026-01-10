@@ -3,7 +3,7 @@
 namespace Confur\Services;
 
 use Confur\Config\Constants;
-use Confur\Config\EmailSettings;
+use Confur\Config\ConfurSettings;
 
 /**
  * Handles email sending functionality
@@ -79,7 +79,7 @@ class EmailService
 
 		$body = self::renderTemplate("RegistrationConfirmation", $params);
 
-		$from = 'Bristol and District <' . EmailSettings::getRegistrationReplyEmail() . '>';
+		$from = ConfurSettings::getRegistrationReplyEmail();
 
 		return self::sendEmail($recipient, $from, 'Registration Successful', $body);
 	}
@@ -105,9 +105,31 @@ class EmailService
 
 		$body = self::renderTemplate("AnswersComplete", $params);
 
-		$from = 'Region Representatives <' . EmailSettings::getRegistrationReplyEmail() . '>';
+		$from = 'Region Representatives <' . ConfurSettings::getRegistrationReplyEmail() . '>';
 
 		return self::sendEmail($recipient, $from, 'All Questions Completed :)', $body);
+	}
+
+	/**
+	 * Send registration blocked email (for blacklisted emails)
+	 *
+	 * @param string $recipient Recipient email
+	 * @return bool Success status
+	 */
+	public static function sendRegistrationBlocked(string $recipient): bool
+	{
+		$recipient = sanitize_email($recipient);
+
+		if (!is_email($recipient)) {
+			error_log('EmailService::sendRegistrationBlocked - Invalid email: ' . esc_html($recipient));
+			return false;
+		}
+
+		$body = self::renderTemplate("RegistrationBlocked", []);
+
+		$from = ConfurSettings::getSupportEmail();
+
+		return self::sendEmail($recipient, $from, 'Registration Could Not Be Completed', $body);
 	}
 
 	/**
@@ -119,10 +141,32 @@ class EmailService
 	 */
 	private static function renderTemplate(string $name, array $params): string
 	{
-		$template = file_get_contents(CONFUR_PLUGIN_DIR . "/emails/{$name}.html");
+		// Sanitize template name to prevent path traversal
+		$name = sanitize_file_name($name);
+		
+		// Only allow alphanumeric characters and hyphens/underscores
+		if (!preg_match('/^[a-zA-Z0-9_-]+$/', $name)) {
+			error_log('EmailService::renderTemplate - Invalid template name: ' . $name);
+			return '';
+		}
+		
+		$templatePath = CONFUR_PLUGIN_DIR . "/emails/{$name}.html";
+		
+		// Verify the file exists and is within the emails directory
+		$realPath = realpath($templatePath);
+		$emailsDir = realpath(CONFUR_PLUGIN_DIR . "/emails");
+		
+		if ($realPath === false || strpos($realPath, $emailsDir) !== 0) {
+			error_log('EmailService::renderTemplate - Template not found or path traversal attempt: ' . $name);
+			return '';
+		}
+		
+		$template = file_get_contents($realPath);
 
 		foreach ($params as $key => $value) {
-			$template = str_replace("{{{$key}}}", $value, $template);
+			// Escape values to prevent XSS in emails
+			$safeValue = esc_html($value);
+			$template = str_replace("{{{$key}}}", $safeValue, $template);
 		}
 
 		return $template;

@@ -284,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 .catch(error => {
                     hideProgress();
                     console.error('Error submitting form:', error);
-                    alert('Failed to Save Answers. Please try again! Contact Support support@aa-bristol.org');
+                    alert('Failed to Save Answers. Please try again! Contact Support');
                 });
         };
 

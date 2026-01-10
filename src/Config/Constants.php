@@ -19,7 +19,7 @@ class Constants
 	public const DEFAULT_STATUS = self::STATUS_DRAFT;
 	public const TOKEN = 'answer_submission_token';
 	public const ACTION = 'answer_submission';
-	public const ANSWER_CUSTOM_TYPE = 'Answer';
+	public const ANSWER_CUSTOM_TYPE = 'answer';
 	public const MEETING_FIELD = 'meeting';
 	public const FELLOW_MEETING_FIELD = 'fellow_meeting';
 	public const UPDATED_FIELD = 'updated';

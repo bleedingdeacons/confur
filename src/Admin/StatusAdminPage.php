@@ -33,6 +33,9 @@ class StatusAdminPage
 
         add_action('admin_menu', [$this, 'addAdminMenu']);
         add_action('admin_enqueue_scripts', [$this, 'enqueueAdminAssets']);
+
+        // Register AJAX handler for cancelling duplicates (for logged-in users)
+        add_action('wp_ajax_confur_cancel_duplicate', [$this, 'handleCancelDuplicate']);
     }
 
     /**
@@ -48,6 +51,47 @@ class StatusAdminPage
                 'confur-answer-submissions',    // Menu slug
                 [$this, 'renderAdminPage']     // Callback
         );
+    }
+
+    /**
+     * Handle AJAX request to cancel a duplicate registration
+     */
+    public function handleCancelDuplicate(): void
+    {
+        // Verify nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'confur_cancel_duplicate')) {
+            wp_send_json_error(['message' => 'Invalid security token']);
+            return;
+        }
+
+        // Check permissions
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => 'Insufficient permissions']);
+            return;
+        }
+
+        // Get and validate answer ID
+        $answerId = isset($_POST['answer_id']) ? intval($_POST['answer_id']) : 0;
+        if ($answerId <= 0) {
+            wp_send_json_error(['message' => 'Invalid answer ID']);
+            return;
+        }
+
+        // Verify the post exists and is an answer type
+        $post = get_post($answerId);
+        if (!$post || $post->post_type !== Constants::ANSWER_CUSTOM_TYPE) {
+            wp_send_json_error(['message' => 'Answer not found']);
+            return;
+        }
+
+        // Update the status to cancelled
+        $result = update_field(Constants::STATUS_FIELD, Constants::STATUS_CANCELLED, $answerId);
+
+        if ($result) {
+            wp_send_json_success(['message' => 'Registration cancelled successfully']);
+        } else {
+            wp_send_json_error(['message' => 'Failed to cancel registration']);
+        }
     }
 
     /**
@@ -95,6 +139,12 @@ class StatusAdminPage
 			.confur-answers-table tr.unregistered-row:hover {
 				background-color: #ffcdd2;
 			}
+			.confur-answers-table tr.duplicate-row {
+				background-color: #fff3e0;
+			}
+			.confur-answers-table tr.duplicate-row:hover {
+				background-color: #ffe0b2;
+			}
 			.status-badge {
 				display: inline-block;
 				padding: 4px 12px;
@@ -120,8 +170,14 @@ class StatusAdminPage
 				color: #721c24;
 			}
 			.status-cancelled {
-				background: #e2e3e5;
-				color: #383d41;
+				background: #6c757d;
+				color: #ffffff;
+			}
+			.confur-answers-table tr.cancelled-row {
+				background-color: #f5f5f5;
+			}
+			.confur-answers-table tr.cancelled-row:hover {
+				background-color: #e0e0e0;
 			}
 			.answer-name a {
 				color: #2271b1;
@@ -170,8 +226,103 @@ class StatusAdminPage
 			.contact-info a:hover {
 				text-decoration: underline;
 			}
+			.cancel-duplicate-btn {
+				background: #dc3545;
+				color: #fff;
+				border: none;
+				padding: 4px 10px;
+				border-radius: 4px;
+				font-size: 11px;
+				cursor: pointer;
+				margin-left: 8px;
+				transition: background-color 0.2s;
+			}
+			.cancel-duplicate-btn:hover {
+				background: #c82333;
+			}
+			.cancel-duplicate-btn:disabled {
+				background: #6c757d;
+				cursor: not-allowed;
+			}
+			.cancel-duplicate-btn .spinner {
+				display: none;
+				width: 12px;
+				height: 12px;
+				margin-left: 4px;
+			}
+			.cancel-duplicate-btn.loading .spinner {
+				display: inline-block;
+			}
+			.duplicate-indicator {
+				display: inline-block;
+				background: #ff9800;
+				color: #fff;
+				font-size: 10px;
+				padding: 2px 6px;
+				border-radius: 3px;
+				margin-left: 6px;
+				font-weight: 600;
+			}
 		";
         wp_add_inline_style('wp-admin', $custom_css);
+
+        // Inline JavaScript for cancel button
+        $custom_js = "
+		jQuery(document).ready(function($) {
+			$('.cancel-duplicate-btn').on('click', function(e) {
+				e.preventDefault();
+				
+				var button = $(this);
+				var answerId = button.data('answer-id');
+				var meetingName = button.data('meeting-name');
+				var row = button.closest('tr');
+				
+				if (!confirm('Are you sure you want to cancel this duplicate registration for \"' + meetingName + '\"?')) {
+					return;
+				}
+				
+				button.prop('disabled', true).addClass('loading');
+				button.find('.btn-text').text('Cancelling...');
+				
+				$.ajax({
+					url: ajaxurl,
+					type: 'POST',
+					data: {
+						action: 'confur_cancel_duplicate',
+						answer_id: answerId,
+						nonce: '" . wp_create_nonce('confur_cancel_duplicate') . "'
+					},
+					success: function(response) {
+						if (response.success) {
+							// Update the row to show cancelled status
+							row.removeClass('duplicate-row registered-row').addClass('cancelled-row');
+							row.find('.status-badge')
+								.removeClass('status-completed status-draft status-not-started')
+								.addClass('status-cancelled')
+								.text('Cancelled');
+							button.remove();
+							row.find('.duplicate-indicator').remove();
+							
+							// Show success message
+							var notice = $('<div class=\"notice notice-success is-dismissible\"><p>Registration cancelled successfully.</p></div>');
+							$('.wrap h1').after(notice);
+							setTimeout(function() { notice.fadeOut(); }, 3000);
+						} else {
+							alert('Error: ' + (response.data.message || 'Failed to cancel registration'));
+							button.prop('disabled', false).removeClass('loading');
+							button.find('.btn-text').text('Cancel');
+						}
+					},
+					error: function() {
+						alert('An error occurred while cancelling the registration.');
+						button.prop('disabled', false).removeClass('loading');
+						button.find('.btn-text').text('Cancel');
+					}
+				});
+			});
+		});
+		";
+        wp_add_inline_script('jquery', $custom_js);
     }
 
     /**
@@ -187,6 +338,9 @@ class StatusAdminPage
         $stats = $this->calculateStats($allMeetings);
         $duplicates = $this->findDuplicateRegistrations($allMeetings);
 
+        // Create a set of meeting IDs that have duplicates for easy lookup
+        $duplicateMeetingIds = array_keys($duplicates);
+
         ?>
         <div class="wrap">
             <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
@@ -194,7 +348,7 @@ class StatusAdminPage
             <?php if (!empty($duplicates)): ?>
                 <div class="notice notice-warning">
                     <p><strong><?php _e('Warning: Duplicate registrations detected!', 'confur'); ?></strong></p>
-                    <p><?php _e('The following meetings have multiple active (non-cancelled) registrations:', 'confur'); ?></p>
+                    <p><?php _e('The following meetings have multiple active (non-cancelled) registrations. Use the "Cancel" button to cancel duplicate entries:', 'confur'); ?></p>
                     <ul>
                         <?php foreach ($duplicates as $meetingId => $info): ?>
                             <li><?php echo esc_html($info['name']); ?> (<?php echo esc_html($info['count']); ?> registrations)</li>
@@ -248,16 +402,26 @@ class StatusAdminPage
                         <th>Meeting Day</th>
                         <th>Meeting Time</th>
                         <th>Last Saved</th>
+                        <th>Actions</th>
                     </tr>
                     </thead>
                     <tbody>
-                    <?php foreach ($allMeetings as $meeting): ?>
-                        <tr class="<?php echo esc_attr($meeting['row_class']); ?>">
+                    <?php foreach ($allMeetings as $meeting):
+                        // Check if this meeting is part of a duplicate set (and not cancelled)
+                        $isDuplicate = in_array($meeting['id'], $duplicateMeetingIds)
+                                       && $meeting['is_registered']
+                                       && $meeting['status_class'] !== 'cancelled';
+                        $rowClass = $isDuplicate ? 'duplicate-row' : $meeting['row_class'];
+                        ?>
+                        <tr class="<?php echo esc_attr($rowClass); ?>">
                             <td class="answer-name">
                                 <?php if ($meeting['is_registered']): ?>
                                     <a href="<?php echo esc_url($meeting['edit_url']); ?>">
                                         <?php echo esc_html($meeting['name']); ?>
                                     </a>
+                                    <?php if ($isDuplicate): ?>
+                                        <span class="duplicate-indicator">DUPLICATE</span>
+                                    <?php endif; ?>
                                 <?php else: ?>
                                     <a href="<?php echo esc_url($meeting['meeting_url']); ?>" target="_blank">
                                         <?php echo esc_html($meeting['name']); ?>
@@ -290,6 +454,19 @@ class StatusAdminPage
                             <td><?php echo esc_html($meeting['day']); ?></td>
                             <td><?php echo esc_html($meeting['time']); ?></td>
                             <td><?php echo esc_html($meeting['last_saved']); ?></td>
+                            <td>
+                                <?php if ($isDuplicate && !empty($meeting['answer_id'])): ?>
+                                    <button type="button"
+                                            class="cancel-duplicate-btn"
+                                            data-answer-id="<?php echo esc_attr($meeting['answer_id']); ?>"
+                                            data-meeting-name="<?php echo esc_attr($meeting['name']); ?>">
+                                        <span class="btn-text">Cancel</span>
+                                        <span class="spinner"></span>
+                                    </button>
+                                <?php else: ?>
+                                    -
+                                <?php endif; ?>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
@@ -318,7 +495,7 @@ class StatusAdminPage
         $registeredLookup = [];
         foreach ($registered as $item) {
             // Get meeting ID - handle if it's an object, array, or scalar
-            $meetingId = $item['meeting'];
+            $meetingId = $item['meetingId'];
             if (is_object($meetingId)) {
                 $meetingId = $meetingId->ID;
             } elseif (is_array($meetingId)) {
@@ -351,9 +528,9 @@ class StatusAdminPage
             if (isset($registeredLookup[$meetingId])) {
                 // Registered meeting(s) - loop through all registrations for this meeting ID
                 foreach ($registeredLookup[$meetingId] as $item) {
-                    $meetingName = get_the_title($item['meeting']);
+                    $meetingName = get_the_title($item['meetingId']);
                     $updated = trim($item['updated']);
-                    $status = isset($item['state']) && !empty($item['state']) ? $item['state'] : 'Not Started';
+                    $status = isset($item['status']) && !empty($item['status']) ? $item['status'] : 'Not Started';
 
                     if (empty($updated)) {
                         $updated = "Not Started";
@@ -373,9 +550,10 @@ class StatusAdminPage
 
                     $allMeetings[] = [
                             'id' => $meetingId,
+                            'answer_id' => $item['answersId'],  // Added answer ID for cancel button
                             'name' => $meetingName,
                             'is_registered' => true,
-                            'edit_url' => get_edit_post_link($item['answers']),
+                            'edit_url' => get_edit_post_link($item['answersId']),
                             'meeting_url' => $meeting['url'],
                             'status_label' => $statusInfo['label'],
                             'status_class' => $statusInfo['class'],
@@ -385,13 +563,14 @@ class StatusAdminPage
                             'day' => $dayName,
                             'time' => $meeting['time'],
                             'last_saved' => $updated,
-                            'row_class' => 'registered-row'
+                            'row_class' => $statusInfo['class'] === 'cancelled' ? 'cancelled-row' : 'registered-row'
                     ];
                 }
             } else {
                 // Unregistered meeting
                 $allMeetings[] = [
                         'id' => $meetingId,
+                        'answer_id' => null,
                         'name' => $meeting['name'],
                         'is_registered' => false,
                         'edit_url' => '',
