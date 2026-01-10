@@ -487,6 +487,7 @@ class EmailTemplateAdminPage
                                         'media_buttons' => false,
                                         'teeny' => false,
                                         'quicktags' => true,
+                                        'default_editor' => 'tinymce',
                                         'tinymce' => [
                                                 'toolbar1' => 'formatselect,bold,italic,underline,strikethrough,|,bullist,numlist,|,link,unlink,|,undo,redo',
                                                 'toolbar2' => '',
