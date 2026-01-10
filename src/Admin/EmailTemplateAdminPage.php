@@ -309,10 +309,18 @@ class EmailTemplateAdminPage
         }
 
         $saved = get_option(self::OPTION_NAME, []);
+        
+        // If the key doesn't exist in saved options, it's already at default
+        if (!isset($saved[$key])) {
+            return true;
+        }
+        
         unset($saved[$key]);
 
         if (empty($saved)) {
-            return delete_option(self::OPTION_NAME);
+            // delete_option returns false if option doesn't exist, but that's fine
+            delete_option(self::OPTION_NAME);
+            return true;
         }
 
         return update_option(self::OPTION_NAME, $saved);
