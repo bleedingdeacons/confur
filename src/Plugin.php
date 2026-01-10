@@ -3,7 +3,7 @@
 namespace Confur;
 
 use Confur\Config\Constants;
-use Confur\Config\EmailSettings;
+use Confur\Config\ConfurSettings;
 use Confur\Services\AdminAssetService;
 use Confur\Services\AssetService;
 use Confur\Services\ShortcodeService;
@@ -11,7 +11,8 @@ use Confur\Handlers\AnswerHandler;
 use Confur\API\AnswerAPI;
 use Confur\Admin\StatusAdminPage;
 use Confur\Admin\ResultAdminPage;
-use Confur\Admin\EmailSettingsAdminPage;
+use Confur\Admin\ConfurSettingsAdminPage;
+use Confur\Admin\AnswerAdmin;
 
 /**
  * Main plugin class
@@ -25,7 +26,8 @@ class Plugin
 	private AnswerAPI $answerAPI;
 	private StatusAdminPage $answerAdminPage;
 	private ResultAdminPage $reportingAdminPage;
-	private EmailSettingsAdminPage $emailSettingsAdminPage;
+	private ConfurSettingsAdminPage $confurSettingsAdminPage;
+	private AnswerAdmin $answerAdmin;
 
 	/**
 	 * Initialize the plugin
@@ -44,7 +46,7 @@ class Plugin
 
 			// Initialize email settings with defaults
 			try {
-				EmailSettings::initialize();
+				ConfurSettings::initialize();
 			} catch (\Exception $e) {
 				error_log('Plugin::init - Failed to initialize email settings: ' . $e->getMessage());
 				// Continue execution - email settings are not critical for basic functionality
@@ -59,7 +61,8 @@ class Plugin
 				$this->answerAPI = new AnswerAPI();
 				$this->answerAdminPage = new StatusAdminPage();
 				$this->reportingAdminPage = new ResultAdminPage();
-				$this->emailSettingsAdminPage = new EmailSettingsAdminPage();
+				$this->confurSettingsAdminPage = new ConfurSettingsAdminPage();
+				$this->answerAdmin = new AnswerAdmin();
 			} catch (\Exception $e) {
 				error_log('Plugin::init - Failed to initialize services: ' . $e->getMessage());
 				throw new \Exception('Failed to initialize plugin services: ' . $e->getMessage());
@@ -116,7 +119,7 @@ class Plugin
 			try {
 				$this->answerAdminPage->init();
 				$this->reportingAdminPage->init();
-				$this->emailSettingsAdminPage->init();
+				$this->confurSettingsAdminPage->init();
 			} catch (\Exception $e) {
 				error_log('Plugin::registerHooks - Failed to initialize admin pages: ' . $e->getMessage());
 				// Continue - admin pages are not critical for front-end functionality

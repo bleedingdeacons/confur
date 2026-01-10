@@ -3,7 +3,7 @@
 namespace Confur\Services;
 
 use Confur\Config\Constants;
-use Confur\Config\EmailSettings;
+use Confur\Config\ConfurSettings;
 
 /**
  * Handles email sending functionality
@@ -79,7 +79,7 @@ class EmailService
 
 		$body = self::renderTemplate("RegistrationConfirmation", $params);
 
-		$from = EmailSettings::getRegistrationReplyEmail();
+		$from = ConfurSettings::getRegistrationReplyEmail();
 
 		return self::sendEmail($recipient, $from, 'Registration Successful', $body);
 	}
@@ -105,7 +105,7 @@ class EmailService
 
 		$body = self::renderTemplate("AnswersComplete", $params);
 
-		$from = 'Region Representatives <' . EmailSettings::getRegistrationReplyEmail() . '>';
+		$from = 'Region Representatives <' . ConfurSettings::getRegistrationReplyEmail() . '>';
 
 		return self::sendEmail($recipient, $from, 'All Questions Completed :)', $body);
 	}
@@ -127,7 +127,7 @@ class EmailService
 
 		$body = self::renderTemplate("RegistrationBlocked", []);
 
-		$from = EmailSettings::getSupportEmail();
+		$from = ConfurSettings::getSupportEmail();
 
 		return self::sendEmail($recipient, $from, 'Registration Could Not Be Completed', $body);
 	}

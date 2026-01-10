@@ -3,10 +3,10 @@
 namespace Confur\Config;
 
 /**
- * Email Settings Manager
- * Handles storage and retrieval of email addresses using WordPress options
+ * Confur Settings Manager
+ * Handles storage and retrieval of plugin settings using WordPress options
  */
-class EmailSettings
+class ConfurSettings
 {
     // Option name for storing email settings
     private const OPTION_NAME = 'confur_email_settings';
@@ -20,6 +20,7 @@ class EmailSettings
         'support' => 'support@aa-bristol.org',
         'backup' => 'backup@aa-bristol.org',
         'delete_blocked_posts' => false,
+        'disable_nonce_verification' => true,
     ];
 
     /**
@@ -106,6 +107,17 @@ class EmailSettings
     }
 
     /**
+     * Check if nonce verification is disabled for answer submissions
+     *
+     * @return bool True if nonce verification is disabled, false otherwise
+     */
+    public static function isNonceVerificationDisabled(): bool
+    {
+        $settings = self::getAll();
+        return !empty($settings['disable_nonce_verification']);
+    }
+
+    /**
      * Update all email settings
      *
      * @param array $settings Email settings to update
@@ -119,6 +131,7 @@ class EmailSettings
             'support' => sanitize_email(trim($settings['support'] ?? '')),
             'backup' => sanitize_email(trim($settings['backup'] ?? '')),
             'delete_blocked_posts' => !empty($settings['delete_blocked_posts']),
+            'disable_nonce_verification' => !empty($settings['disable_nonce_verification']),
         ];
 
         // Log sanitized values

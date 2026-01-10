@@ -2,12 +2,12 @@
 
 namespace Confur\Admin;
 
-use Confur\Config\EmailSettings;
+use Confur\Config\ConfurSettings;
 
 /**
- * Admin page for managing email settings
+ * Admin page for managing Confur settings
  */
-class EmailSettingsAdminPage
+class ConfurSettingsAdminPage
 {
     /**
      * Initialize the admin page
@@ -20,7 +20,7 @@ class EmailSettingsAdminPage
         }
 
         add_action('admin_menu', [$this, 'addAdminMenu']);
-        add_action('admin_post_confur_update_email_settings', [$this, 'handleFormSubmission']);
+        add_action('admin_post_confur_update_settings', [$this, 'handleFormSubmission']);
         add_action('admin_enqueue_scripts', [$this, 'enqueueAdminAssets']);
     }
 
@@ -31,10 +31,10 @@ class EmailSettingsAdminPage
     {
         add_submenu_page(
                 'confur',                        // Parent slug (Confur menu)
-                'Email Settings',                // Page title
-                'Email Settings',                // Menu title
+                'Confur Settings',               // Page title
+                'Settings',                      // Menu title
                 'manage_options',                // Capability (admin only)
-                'confur-email-settings',         // Menu slug
+                'confur-settings',               // Menu slug
                 [$this, 'renderAdminPage']      // Callback
         );
     }
@@ -45,13 +45,13 @@ class EmailSettingsAdminPage
     public function enqueueAdminAssets($hook): void
     {
         // Only load on our admin page
-        if ($hook !== 'questions-for-conference_page_confur-email-settings') {
+        if ($hook !== 'questions-for-conference_page_confur-settings') {
             return;
         }
 
         // Inline CSS for the admin page
         $custom_css = "
-            .confur-email-settings-form {
+            .confur-settings-form {
                 max-width: 800px;
                 background: #fff;
                 padding: 20px;
@@ -144,6 +144,14 @@ class EmailSettingsAdminPage
                 padding: 12px;
                 margin: 15px 0;
             }
+            .confur-security-section {
+                margin-top: 30px;
+                padding-top: 20px;
+                border-top: 1px solid #e0e0e0;
+            }
+            .confur-security-section h2 {
+                margin-bottom: 15px;
+            }
         ";
         wp_add_inline_style('wp-admin', $custom_css);
     }
@@ -160,34 +168,34 @@ class EmailSettingsAdminPage
         }
 
         // Verify nonce
-        if (!isset($_POST['confur_email_settings_nonce']) ||
-                !wp_verify_nonce($_POST['confur_email_settings_nonce'], 'confur_email_settings_action')) {
+        if (!isset($_POST['confur_settings_nonce']) ||
+            !wp_verify_nonce($_POST['confur_settings_nonce'], 'confur_settings_action')) {
             wp_die(__('Security check failed.'));
         }
 
         // Check if reset button was clicked
         if (isset($_POST['reset_to_defaults'])) {
-            if (EmailSettings::resetToDefaults()) {
+            if (ConfurSettings::resetToDefaults()) {
                 $redirect_url = add_query_arg(
-                        ['page' => 'confur-email-settings', 'updated' => '1'],
+                        ['page' => 'confur-settings', 'updated' => '1'],
                         admin_url('admin.php')
                 );
             } else {
                 $redirect_url = add_query_arg(
-                        ['page' => 'confur-email-settings', 'error' => '1'],
+                        ['page' => 'confur-settings', 'error' => '1'],
                         admin_url('admin.php')
                 );
             }
         } elseif (isset($_POST['clear_blocklist'])) {
             // Handle clear blocklist button
-            if (EmailSettings::clearBlocklist()) {
+            if (ConfurSettings::clearBlocklist()) {
                 $redirect_url = add_query_arg(
-                        ['page' => 'confur-email-settings', 'updated' => 'blocklist_cleared'],
+                        ['page' => 'confur-settings', 'updated' => 'blocklist_cleared'],
                         admin_url('admin.php')
                 );
             } else {
                 $redirect_url = add_query_arg(
-                        ['page' => 'confur-email-settings', 'error' => 'blocklist'],
+                        ['page' => 'confur-settings', 'error' => 'blocklist'],
                         admin_url('admin.php')
                 );
             }
@@ -197,33 +205,35 @@ class EmailSettingsAdminPage
             $support = isset($_POST['support_email']) ? sanitize_text_field($_POST['support_email']) : '';
             $backup = isset($_POST['backup_email']) ? sanitize_text_field($_POST['backup_email']) : '';
             $delete_blocked_posts = isset($_POST['delete_blocked_posts']) ? true : false;
+            $disable_nonce_verification = isset($_POST['disable_nonce_verification']) ? true : false;
 
             $settings = [
                     'registration_reply' => $registration_reply,
                     'support' => $support,
                     'backup' => $backup,
                     'delete_blocked_posts' => $delete_blocked_posts,
+                    'disable_nonce_verification' => $disable_nonce_verification,
             ];
 
             // Log what we're trying to save for debugging
-            error_log('EmailSettings - POST data: registration_reply_email=' . $registration_reply . ', support_email=' . $support . ', backup_email=' . $backup);
-            error_log('EmailSettings - Settings array: ' . print_r($settings, true));
+            error_log('ConfurSettings - POST data: registration_reply_email=' . $registration_reply . ', support_email=' . $support . ', backup_email=' . $backup);
+            error_log('ConfurSettings - Settings array: ' . print_r($settings, true));
 
-            $settingsUpdated = EmailSettings::updateAll($settings);
+            $settingsUpdated = ConfurSettings::updateAll($settings);
 
             // Process blocklist
             $blocklistRaw = isset($_POST['email_blocklist']) ? sanitize_textarea_field($_POST['email_blocklist']) : '';
             $blocklistEmails = array_filter(array_map('trim', explode("\n", $blocklistRaw)));
-            $blocklistUpdated = EmailSettings::updateBlocklist($blocklistEmails);
+            $blocklistUpdated = ConfurSettings::updateBlocklist($blocklistEmails);
 
             if ($settingsUpdated || $blocklistUpdated) {
                 $redirect_url = add_query_arg(
-                        ['page' => 'confur-email-settings', 'updated' => '1'],
+                        ['page' => 'confur-settings', 'updated' => '1'],
                         admin_url('admin.php')
                 );
             } else {
                 $redirect_url = add_query_arg(
-                        ['page' => 'confur-email-settings', 'error' => '1'],
+                        ['page' => 'confur-settings', 'error' => '1'],
                         admin_url('admin.php')
                 );
             }
@@ -242,9 +252,9 @@ class EmailSettingsAdminPage
             wp_die(__('You do not have sufficient permissions to access this page.'));
         }
 
-        $settings = EmailSettings::getAll();
-        $defaults = EmailSettings::getDefaults();
-        $blocklist = EmailSettings::getBlocklist();
+        $settings = ConfurSettings::getAll();
+        $defaults = ConfurSettings::getDefaults();
+        $blocklist = ConfurSettings::getBlocklist();
         $blocklistText = implode("\n", $blocklist);
         $blocklistCount = count($blocklist);
 
@@ -254,13 +264,13 @@ class EmailSettingsAdminPage
 
             <?php if (isset($_GET['updated']) && $_GET['updated'] === '1'): ?>
                 <div class="confur-notice">
-                    <p><strong>Email settings updated successfully.</strong></p>
+                    <p><strong>Settings updated successfully.</strong></p>
                 </div>
             <?php endif; ?>
 
             <?php if (isset($_GET['updated']) && $_GET['updated'] === 'reset'): ?>
                 <div class="confur-notice">
-                    <p><strong>Email settings reset to defaults successfully.</strong></p>
+                    <p><strong>Settings reset to defaults successfully.</strong></p>
                 </div>
             <?php endif; ?>
 
@@ -272,14 +282,14 @@ class EmailSettingsAdminPage
 
             <?php if (isset($_GET['error'])): ?>
                 <div class="confur-notice error">
-                    <p><strong>Error:</strong> Failed to update email settings. Please ensure all email addresses are valid.</p>
+                    <p><strong>Error:</strong> Failed to update settings. Please ensure all email addresses are valid.</p>
                 </div>
             <?php endif; ?>
 
-            <div class="confur-email-settings-form">
+            <div class="confur-settings-form">
                 <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
-                    <?php wp_nonce_field('confur_email_settings_action', 'confur_email_settings_nonce'); ?>
-                    <input type="hidden" name="action" value="confur_update_email_settings">
+                    <?php wp_nonce_field('confur_settings_action', 'confur_settings_nonce'); ?>
+                    <input type="hidden" name="action" value="confur_update_settings">
 
                     <table class="confur-form-table">
                         <tbody>
@@ -382,8 +392,30 @@ class EmailSettingsAdminPage
                         </p>
                     </div>
 
+                    <div class="confur-security-section">
+                        <h2>Security Settings</h2>
+                        
+                        <p style="margin-top: 15px;">
+                            <label for="disable_nonce_verification">
+                                <input
+                                        type="checkbox"
+                                        id="disable_nonce_verification"
+                                        name="disable_nonce_verification"
+                                        value="1"
+                                        <?php checked($settings['disable_nonce_verification'] ?? false); ?>
+                                />
+                                Disable nonce verification for answer submissions
+                            </label>
+                        </p>
+                        <p class="description" style="color: #d63638;">
+                            <strong>⚠️ Not recommended.</strong> Nonce verification protects against Cross-Site Request Forgery (CSRF) attacks. 
+                            Only disable this if you are experiencing issues with form submissions and understand the security implications.
+                            When disabled, the nonce field will still be included in the form but will not be validated on submission.
+                        </p>
+                    </div>
+
                     <div class="confur-form-actions">
-                        <?php submit_button('Save Email Settings', 'primary', 'submit', false); ?>
+                        <?php submit_button('Save Settings', 'primary', 'submit', false); ?>
                         <?php submit_button('Reset to Defaults', 'secondary', 'reset_to_defaults', false); ?>
                         <?php if ($blocklistCount > 0): ?>
                             <?php submit_button('Clear Blocked List', 'delete', 'clear_blocklist', false, ['onclick' => 'return confirm("Are you sure you want to clear the entire blocked list?");']); ?>
@@ -392,7 +424,7 @@ class EmailSettingsAdminPage
                 </form>
 
                 <div class="confur-defaults-box">
-                    <h3>Default Email Addresses</h3>
+                    <h3>Default Values</h3>
                     <ul>
                         <li><strong>Registration Reply:</strong> <?php echo esc_html($defaults['registration_reply']); ?></li>
                         <li><strong>Support:</strong> <?php echo esc_html($defaults['support']); ?></li>

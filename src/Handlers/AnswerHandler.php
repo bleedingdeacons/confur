@@ -3,7 +3,7 @@
 namespace Confur\Handlers;
 
 use Confur\Config\Constants;
-use Confur\Config\EmailSettings;
+use Confur\Config\ConfurSettings;
 use Confur\Services\EmailService;
 use Confur\Repositories\AnswerRepository;
 
@@ -40,12 +40,14 @@ class AnswerHandler
                 return;
             }
 
-            // Verify nonce for CSRF protection
-            if (!isset($_POST['answer_submission_nonce']) || 
-                !wp_verify_nonce($_POST['answer_submission_nonce'], 'answer_submission_action')) {
-                error_log('AnswerHandler::handleSubmission - Nonce verification failed');
-                wp_send_json_error(['message' => 'Security check failed.'], 403);
-                return;
+            // Verify nonce for CSRF protection (unless disabled in settings)
+            if (!ConfurSettings::isNonceVerificationDisabled()) {
+                if (!isset($_POST['answer_submission_nonce']) || 
+                    !wp_verify_nonce($_POST['answer_submission_nonce'], 'answer_submission_action')) {
+                    error_log('AnswerHandler::handleSubmission - Nonce verification failed');
+                    wp_send_json_error(['message' => 'Security check failed.'], 403);
+                    return;
+                }
             }
 
             $referer = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '';
@@ -68,8 +70,8 @@ class AnswerHandler
 
             try {
                 EmailService::sendBackup(
-                    EmailSettings::getBackupEmail(),
-                    EmailSettings::getSupportEmail(),
+                    ConfurSettings::getBackupEmail(),
+                    ConfurSettings::getSupportEmail(),
                     $subject,
                     json_encode($_POST)
                 );
@@ -151,11 +153,11 @@ class AnswerHandler
 			$email = get_field(Constants::REGISTRATION_RECIPIENT_EMAIL, $postId);
 
 			// Check if email is blocked
-			if (EmailSettings::isBlocked($email)) {
+			if (ConfurSettings::isBlocked($email)) {
 				error_log("AnswerHandler::handleRegistration - Email is blocked: $email for post ID: $postId");
 
 				// Delete the post if the setting is enabled
-				if (EmailSettings::shouldDeleteBlockedPosts()) {
+				if (ConfurSettings::shouldDeleteBlockedPosts()) {
 					wp_delete_post($postId, true);
 					error_log("AnswerHandler::handleRegistration - Deleted post ID: $postId for blocked email");
 				}
@@ -179,7 +181,7 @@ class AnswerHandler
 				try {
 					EmailService::sendCustomEmail(
 						$email,
-						EmailSettings::getSupportEmail(),
+						ConfurSettings::getSupportEmail(),
 						'Error: Missing Meeting Group',
 						$params
 					);
@@ -228,7 +230,7 @@ class AnswerHandler
 					$params = ['content' => $errorBody];
 					EmailService::sendEmail(
 						$email,
-						EmailSettings::getSupportEmail(),
+						ConfurSettings::getSupportEmail(),
 						'Error: Registration Failed',
 						$params
 					);
