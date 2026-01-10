@@ -5,14 +5,32 @@
     <meta charset="UTF-8">
     <title>Questions for Conference Registration Successful</title>
 </head>
-<body>
-<h3>Welcome</h3>
-<p>Hello {{MeetingName}}, you are all set to enter your answers.</p>
-<p>To review this years questions <a href="{{Url}}" target="_blank" rel="noreferrer noopener">View Questions</a></p>
-<em>Important</em>
-<strong>Only register once</strong> (registering for the whole of your group).
-<strong>Only one member should enter answers</strong> (for whole group).
-<strong>Save this email </strong> (it contains the unique link to your groups answers).
-<strong>Please do not share the link</strong> (this is for your group only).
+<body style="font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5; color: #333;">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+    <tr>
+        <td style="padding: 30px;">
+            <h3 style="color: #2c3e50; margin-top: 0; font-size: 24px; border-bottom: 2px solid #3498db; padding-bottom: 10px;">Welcome</h3>
+            <p style="font-size: 16px;">Hello {{MeetingName}}.</p>
+
+            <p style="font-size: 16px;">Below is the link to your groups copy of this year's questions for conference.</p>
+            <p style="text-align: center; margin: 25px 0;">
+                <a href="{{Url}}" target="_blank" rel="noreferrer noopener" style="background-color: #3498db; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">View Questions</a>
+            </p>
+            <p style="text-align: center; margin-top: -10px;"><em style="color: #777; font-size: 14px;">includes background information</em></p>
+            <p>Please feel free to distribute amongst your group.</p>
+            <strong style="display: block; margin-top: 30px; font-size: 18px; color: #2c3e50;">Notes</strong>
+            <ul style="padding-left: 20px; margin-top: 15px;">
+                <li style="margin-bottom: 20px;"><strong style="color: #2c3e50;">"Only one member should enter answers (for whole group)"</strong><br>
+                    <p style="margin: 8px 0 0 0; color: #555;">When it's time to submit answers, designate one person to type them in. This avoids confusion or duplicate/conflicting submissions.</p></li>
+
+                <li style="margin-bottom: 20px;"><strong style="color: #2c3e50;">"Save this email"</strong><br>
+                    <p style="margin: 8px 0 0 0; color: #555;">The email contains a unique link that connects to your group's answers. If you lose it, you may not be able to access or edit your responses later.</p></li>
+
+                <li style="margin-bottom: 20px;"><strong style="color: #2c3e50;">"Please do not share the link"</strong><br>
+                    <p style="margin: 8px 0 0 0; color: #555;">The link is unique to your group.</p></li>
+            </ul>
+        </td>
+    </tr>
+</table>
 </body>
 </html>
