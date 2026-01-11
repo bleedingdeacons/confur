@@ -8,8 +8,6 @@
  * Requires PHP: 7.4
  * Author: The Bleeding Deacons
  * Author URI: thebleedingdeacons@gmail.com
- *
- *
  * License: MIT (Modified)
  */
 
