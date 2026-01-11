@@ -613,13 +613,15 @@ class StatusAdminPage
                                             <span class="spinner"></span>
                                         </button>
                                     <?php endif; ?>
-                                    <button type="button"
-                                            class="resend-confirmation-btn"
-                                            data-answer-id="<?php echo esc_attr($meeting['answer_id']); ?>"
-                                            data-meeting-name="<?php echo esc_attr($meeting['name']); ?>">
-                                        <span class="btn-text">Resend Email</span>
-                                        <span class="spinner"></span>
-                                    </button>
+                                    <?php if ($meeting['status_class'] !== 'cancelled'): ?>
+                                        <button type="button"
+                                                class="resend-confirmation-btn"
+                                                data-answer-id="<?php echo esc_attr($meeting['answer_id']); ?>"
+                                                data-meeting-name="<?php echo esc_attr($meeting['name']); ?>">
+                                            <span class="btn-text">Resend Email</span>
+                                            <span class="spinner"></span>
+                                        </button>
+                                    <?php endif; ?>
                                 <?php else: ?>
                                     -
                                 <?php endif; ?>
