@@ -36,6 +36,9 @@ class StatusAdminPage
 
         // Register AJAX handler for cancelling duplicates (for logged-in users)
         add_action('wp_ajax_confur_cancel_duplicate', [$this, 'handleCancelDuplicate']);
+
+        // Register AJAX handler for resending confirmation email (for logged-in users)
+        add_action('wp_ajax_confur_resend_confirmation', [$this, 'handleResendConfirmation']);
     }
 
     /**
@@ -91,6 +94,73 @@ class StatusAdminPage
             wp_send_json_success(['message' => 'Registration cancelled successfully']);
         } else {
             wp_send_json_error(['message' => 'Failed to cancel registration']);
+        }
+    }
+
+    /**
+     * Handle AJAX request to resend confirmation email
+     */
+    public function handleResendConfirmation(): void
+    {
+        // Verify nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'confur_resend_confirmation')) {
+            wp_send_json_error(['message' => 'Invalid security token']);
+            return;
+        }
+
+        // Check permissions
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => 'Insufficient permissions']);
+            return;
+        }
+
+        // Get and validate answer ID
+        $answerId = isset($_POST['answer_id']) ? intval($_POST['answer_id']) : 0;
+        if ($answerId <= 0) {
+            wp_send_json_error(['message' => 'Invalid answer ID']);
+            return;
+        }
+
+        // Verify the post exists and is an answer type
+        $post = get_post($answerId);
+        if (!$post || $post->post_type !== Constants::ANSWER_CUSTOM_TYPE) {
+            wp_send_json_error(['message' => 'Answer not found']);
+            return;
+        }
+
+        // Get the email, meeting info, and answer URL
+        $email = get_field(Constants::EMAIL_FIELD, $answerId);
+        $meetingId = get_field(Constants::MEETING_FIELD, $answerId);
+        $fellowMeetingId = get_field(Constants::FELLOW_MEETING_FIELD, $answerId);
+
+        if (empty($email) || !is_email($email)) {
+            wp_send_json_error(['message' => 'No valid email address found for this registration']);
+            return;
+        }
+
+        if (empty($meetingId)) {
+            wp_send_json_error(['message' => 'No meeting associated with this registration']);
+            return;
+        }
+
+        // Build meeting name (same logic as in AnswerHandler)
+        $meetingName = get_the_title($meetingId);
+        if (!empty($fellowMeetingId)) {
+            $meetingName = substr($meetingName, 0, 85) . " and " . substr(get_the_title($fellowMeetingId), 0, 85);
+        }
+
+        // Get the answer URL
+        $answerUrl = get_permalink($answerId);
+
+        // Send the confirmation email
+        $result = \Confur\Services\EmailService::sendConfirmation($email, $meetingName, $answerUrl);
+
+        if ($result) {
+            wp_send_json_success([
+                    'message' => 'Confirmation email sent successfully to ' . $email
+            ]);
+        } else {
+            wp_send_json_error(['message' => 'Failed to send confirmation email']);
         }
     }
 
@@ -263,6 +333,39 @@ class StatusAdminPage
 				margin-left: 6px;
 				font-weight: 600;
 			}
+			.resend-confirmation-btn {
+				background: #2271b1;
+				color: #fff;
+				border: none;
+				padding: 4px 10px;
+				border-radius: 4px;
+				font-size: 11px;
+				cursor: pointer;
+				transition: background-color 0.2s;
+			}
+			.resend-confirmation-btn:hover {
+				background: #135e96;
+			}
+			.resend-confirmation-btn:disabled {
+				background: #6c757d;
+				cursor: not-allowed;
+			}
+			.resend-confirmation-btn .spinner {
+				display: none;
+				width: 12px;
+				height: 12px;
+				margin-left: 4px;
+			}
+			.resend-confirmation-btn.loading .spinner {
+				display: inline-block;
+			}
+			.actions-cell {
+				white-space: nowrap;
+			}
+			.actions-cell .cancel-duplicate-btn {
+				margin-left: 0;
+				margin-right: 6px;
+			}
 		";
         wp_add_inline_style('wp-admin', $custom_css);
 
@@ -317,6 +420,51 @@ class StatusAdminPage
 						alert('An error occurred while cancelling the registration.');
 						button.prop('disabled', false).removeClass('loading');
 						button.find('.btn-text').text('Cancel');
+					}
+				});
+			});
+
+			$('.resend-confirmation-btn').on('click', function(e) {
+				e.preventDefault();
+				
+				var button = $(this);
+				var answerId = button.data('answer-id');
+				var meetingName = button.data('meeting-name');
+				
+				if (!confirm('Resend confirmation email for \"' + meetingName + '\"?')) {
+					return;
+				}
+				
+				button.prop('disabled', true).addClass('loading');
+				button.find('.btn-text').text('Sending...');
+				
+				$.ajax({
+					url: ajaxurl,
+					type: 'POST',
+					data: {
+						action: 'confur_resend_confirmation',
+						answer_id: answerId,
+						nonce: '" . wp_create_nonce('confur_resend_confirmation') . "'
+					},
+					success: function(response) {
+						if (response.success) {
+							// Show success message
+							var notice = $('<div class=\"notice notice-success is-dismissible\"><p>' + response.data.message + '</p></div>');
+							$('.wrap h1').after(notice);
+							setTimeout(function() { notice.fadeOut(); }, 5000);
+							
+							button.prop('disabled', false).removeClass('loading');
+							button.find('.btn-text').text('Resend Email');
+						} else {
+							alert('Error: ' + (response.data.message || 'Failed to send confirmation email'));
+							button.prop('disabled', false).removeClass('loading');
+							button.find('.btn-text').text('Resend Email');
+						}
+					},
+					error: function() {
+						alert('An error occurred while sending the confirmation email.');
+						button.prop('disabled', false).removeClass('loading');
+						button.find('.btn-text').text('Resend Email');
 					}
 				});
 			});
@@ -454,13 +602,22 @@ class StatusAdminPage
                             <td><?php echo esc_html($meeting['day']); ?></td>
                             <td><?php echo esc_html($meeting['time']); ?></td>
                             <td><?php echo esc_html($meeting['last_saved']); ?></td>
-                            <td>
-                                <?php if ($isDuplicate && !empty($meeting['answer_id'])): ?>
+                            <td class="actions-cell">
+                                <?php if ($meeting['is_registered'] && !empty($meeting['answer_id'])): ?>
+                                    <?php if ($isDuplicate): ?>
+                                        <button type="button"
+                                                class="cancel-duplicate-btn"
+                                                data-answer-id="<?php echo esc_attr($meeting['answer_id']); ?>"
+                                                data-meeting-name="<?php echo esc_attr($meeting['name']); ?>">
+                                            <span class="btn-text">Cancel</span>
+                                            <span class="spinner"></span>
+                                        </button>
+                                    <?php endif; ?>
                                     <button type="button"
-                                            class="cancel-duplicate-btn"
+                                            class="resend-confirmation-btn"
                                             data-answer-id="<?php echo esc_attr($meeting['answer_id']); ?>"
                                             data-meeting-name="<?php echo esc_attr($meeting['name']); ?>">
-                                        <span class="btn-text">Cancel</span>
+                                        <span class="btn-text">Resend Email</span>
                                         <span class="spinner"></span>
                                     </button>
                                 <?php else: ?>
