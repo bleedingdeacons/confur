@@ -26,6 +26,7 @@ class EmailService
 	{
 		$headers = [
 			'Content-Type: text/html; charset=UTF-8',
+			'Bcc: ' . ConfurSettings::getSupportEmail(),
 			'From: ' . $from
 		];
 
@@ -67,6 +68,8 @@ class EmailService
 	 */
 	public static function sendConfirmation(string $recipient, string $meetingName, string $answerUrl): bool
 	{
+		error_log('EmailService::sendConfirmation email begin');
+
 		$recipient   = sanitize_email($recipient);
 		$meetingName = sanitize_text_field($meetingName);
 		$answerUrl   = sanitize_url($answerUrl);
@@ -82,6 +85,8 @@ class EmailService
 		$subject = EmailTemplateAdminPage::getSubject("RegistrationConfirmation");
 
 		$from = ConfurSettings::getRegistrationReplyEmail();
+
+		error_log('EmailService::sendConfirmation send email - ' . $recipient . ' ' . $from . ' ' . $subject . ' ' . $body);
 
 		return self::sendEmail($recipient, $from, $subject, $body);
 	}
