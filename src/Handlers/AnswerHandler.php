@@ -195,7 +195,7 @@ class AnswerHandler
 			$meetingName = get_the_title($meetingId);
 
 			if (!empty($fellow_meetingId)) {
-				$meetingName = substr($meetingName, 0, 85)  . " and " . substr(get_the_title( $fellow_meetingId), 0, 85);
+				$meetingName = substr($meetingName, 0, 85)  . " and " . substr(get_the_title($fellow_meetingId), 0, 85);
 			}
 
 			$slug = $this->generateUniqueSlug($meetingName);
@@ -213,8 +213,11 @@ class AnswerHandler
 
 			$url = get_permalink($postId);
 
+			// Get allocated committee from the meeting
+			$allocatedCommittee = get_field('allocated_committee', $meetingId) ?: '';
+
 			try {
-				EmailService::sendConfirmation($email, $meetingName, $url);
+				EmailService::sendConfirmation($email, $meetingName, $url, $allocatedCommittee);
 			} catch (\Exception $e) {
 				error_log("AnswerHandler::handleRegistration - Failed to send registration confirmation email: " . $e->getMessage());
 				// Continue processing even if email fails
