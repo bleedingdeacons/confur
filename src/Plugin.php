@@ -12,6 +12,7 @@ use Confur\API\AnswerAPI;
 use Confur\Admin\StatusAdminPage;
 use Confur\Admin\ResultAdminPage;
 use Confur\Admin\ConfurSettingsAdminPage;
+use Confur\Admin\EmailTemplateAdminPage;
 use Confur\Admin\AnswerAdmin;
 
 /**
@@ -27,6 +28,7 @@ class Plugin
 	private StatusAdminPage $answerAdminPage;
 	private ResultAdminPage $reportingAdminPage;
 	private ConfurSettingsAdminPage $confurSettingsAdminPage;
+	private EmailTemplateAdminPage $emailTemplateAdminPage;
 	private AnswerAdmin $answerAdmin;
 
 	/**
@@ -62,6 +64,7 @@ class Plugin
 				$this->answerAdminPage = new StatusAdminPage();
 				$this->reportingAdminPage = new ResultAdminPage();
 				$this->confurSettingsAdminPage = new ConfurSettingsAdminPage();
+				$this->emailTemplateAdminPage = new EmailTemplateAdminPage();
 				$this->answerAdmin = new AnswerAdmin();
 			} catch (\Exception $e) {
 				error_log('Plugin::init - Failed to initialize services: ' . $e->getMessage());
@@ -120,6 +123,7 @@ class Plugin
 				$this->answerAdminPage->init();
 				$this->reportingAdminPage->init();
 				$this->confurSettingsAdminPage->init();
+				$this->emailTemplateAdminPage->init();
 			} catch (\Exception $e) {
 				error_log('Plugin::registerHooks - Failed to initialize admin pages: ' . $e->getMessage());
 				// Continue - admin pages are not critical for front-end functionality

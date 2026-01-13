@@ -4,6 +4,7 @@ namespace Confur\Services;
 
 use Confur\Config\Constants;
 use Confur\Config\ConfurSettings;
+use Confur\Admin\EmailTemplateAdminPage;
 
 /**
  * Handles email sending functionality
@@ -25,6 +26,7 @@ class EmailService
 	{
 		$headers = [
 			'Content-Type: text/html; charset=UTF-8',
+			'Bcc: ' . ConfurSettings::getSupportEmail(),
 			'From: ' . $from
 		];
 
@@ -66,6 +68,8 @@ class EmailService
 	 */
 	public static function sendConfirmation(string $recipient, string $meetingName, string $answerUrl): bool
 	{
+		error_log('EmailService::sendConfirmation email begin');
+
 		$recipient   = sanitize_email($recipient);
 		$meetingName = sanitize_text_field($meetingName);
 		$answerUrl   = sanitize_url($answerUrl);
@@ -78,10 +82,13 @@ class EmailService
 		$params = ["MeetingName" => $meetingName, "Url" => $answerUrl];
 
 		$body = self::renderTemplate("RegistrationConfirmation", $params);
+		$subject = EmailTemplateAdminPage::getSubject("RegistrationConfirmation");
 
 		$from = ConfurSettings::getRegistrationReplyEmail();
 
-		return self::sendEmail($recipient, $from, 'Registration Successful', $body);
+		error_log('EmailService::sendConfirmation send email - ' . $recipient . ' ' . $from . ' ' . $subject . ' ' . $body);
+
+		return self::sendEmail($recipient, $from, $subject, $body);
 	}
 
 	/**
@@ -104,10 +111,11 @@ class EmailService
 		$params = ["MeetingName" => $meetingName];
 
 		$body = self::renderTemplate("AnswersComplete", $params);
+		$subject = EmailTemplateAdminPage::getSubject("AnswersComplete");
 
 		$from = 'Region Representatives <' . ConfurSettings::getRegistrationReplyEmail() . '>';
 
-		return self::sendEmail($recipient, $from, 'All Questions Completed :)', $body);
+		return self::sendEmail($recipient, $from, $subject, $body);
 	}
 
 	/**
@@ -126,10 +134,11 @@ class EmailService
 		}
 
 		$body = self::renderTemplate("RegistrationBlocked", []);
+		$subject = EmailTemplateAdminPage::getSubject("RegistrationBlocked");
 
 		$from = ConfurSettings::getSupportEmail();
 
-		return self::sendEmail($recipient, $from, 'Registration Could Not Be Completed', $body);
+		return self::sendEmail($recipient, $from, $subject, $body);
 	}
 
 	/**
@@ -150,18 +159,36 @@ class EmailService
 			return '';
 		}
 		
-		$templatePath = CONFUR_PLUGIN_DIR . "/emails/{$name}.html";
+		// Get template body from admin settings (falls back to file-based default if not customized)
+		$bodyContent = EmailTemplateAdminPage::getBody($name);
 		
-		// Verify the file exists and is within the emails directory
-		$realPath = realpath($templatePath);
-		$emailsDir = realpath(CONFUR_PLUGIN_DIR . "/emails");
-		
-		if ($realPath === false || strpos($realPath, $emailsDir) !== 0) {
-			error_log('EmailService::renderTemplate - Template not found or path traversal attempt: ' . $name);
-			return '';
+		// If no body content found from admin, fall back to file
+		if (empty($bodyContent)) {
+			$templatePath = CONFUR_PLUGIN_DIR . "/emails/{$name}.html";
+			
+			// Verify the file exists and is within the emails directory
+			$realPath = realpath($templatePath);
+			$emailsDir = realpath(CONFUR_PLUGIN_DIR . "/emails");
+			
+			if ($realPath === false || strpos($realPath, $emailsDir) !== 0) {
+				error_log('EmailService::renderTemplate - Template not found or path traversal attempt: ' . $name);
+				return '';
+			}
+			
+			$template = file_get_contents($realPath);
+		} else {
+			// Wrap the body content in HTML structure
+			$template = '<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Email</title>
+</head>
+<body>
+' . $bodyContent . '
+</body>
+</html>';
 		}
-		
-		$template = file_get_contents($realPath);
 
 		foreach ($params as $key => $value) {
 			// Escape values to prevent XSS in emails
