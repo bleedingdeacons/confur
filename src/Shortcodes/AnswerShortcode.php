@@ -194,7 +194,7 @@ class AnswerShortcode
 		// Add nonce field for CSRF protection
 		$nonce = wp_nonce_field('answer_submission_action', 'answer_submission_nonce', true, false);
 
-        return $action . $nonce;
+		return $action . $nonce;
 	}
 
 	/**
@@ -232,7 +232,7 @@ class AnswerShortcode
 		$count = 7;
 		$html .= sprintf(
 			'<tr><td><a href="#g_c%1$d" class="status-link"><strong>All Committees</a></strong></td><td class="value" id="s_c%1$d">Not Started</td></tr>',
-			 $count);
+			$count);
 
 		$html .= '</tbody></table></div>';
 
@@ -265,5 +265,38 @@ class AnswerShortcode
 		return $html;
 	}
 
+	/**
+	 * Generate allocated committee display
+	 *
+	 * Displays "Allocated Committee (Number)" if the associated meeting
+	 * has a populated allocation field.
+	 *
+	 * @param array $atts Shortcode attributes
+	 * @return string Rendered HTML or empty string if no allocation
+	 */
+	public function generateAllocatedCommittee(array $atts = []): string
+	{
+		// Get the meeting ID from the current answer post
+		$meetingId = $this->get_field(Constants::MEETING_FIELD);
 
+		if (empty($meetingId)) {
+			return '';
+		}
+
+		// Get the allocation field from the meeting
+		// Assumes Constants::ALLOCATION_FIELD exists, adjust field name as needed
+		$allocation = $this->get_field(Constants::ALLOCATION_FIELD, $meetingId);
+
+		if (empty($allocation)) {
+			return '';
+		}
+
+		// Sanitize and format the allocation number
+		$committeeNumber = is_numeric($allocation) ? intval($allocation) : sanitize_text_field($allocation);
+
+		return sprintf(
+			'<p class="allocated-committee">Allocated Committee (%s)</p>',
+			esc_html($committeeNumber)
+		);
+	}
 }

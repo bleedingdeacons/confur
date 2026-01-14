@@ -51,7 +51,7 @@ class ShortcodeService
 		add_shortcode('status', [$this->answerShortcode, 'generateStatus']);
 		add_shortcode('progress_table', [$this->answerShortcode, 'generateProgressTable']);
 		add_shortcode('control', [$this->answerShortcode, 'generateControl']);
-
+		add_shortcode('allocated_committee', [$this->answerShortcode, 'generateAllocatedCommittee']);
 
 	}
 }

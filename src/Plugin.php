@@ -217,7 +217,7 @@ class Plugin
 				'progress_table',
 				'control',
 				'days_remaining',
-
+				'allocated_committee',
 				// General shortcodes
 				'open_blank',
 				'link_email',
