@@ -269,7 +269,7 @@ class AnswerShortcode
 	 * Generate allocated committee display
 	 *
 	 * Displays "Allocated Committee (Number)" if the associated meeting
-	 * has a populated allocation field.
+	 * has a populated allocation field. Committee 7 displays as "Final Committee".
 	 *
 	 * @param array $atts Shortcode attributes
 	 * @return string Rendered HTML or empty string if no allocation
@@ -291,12 +291,20 @@ class AnswerShortcode
 			return '';
 		}
 
-		// Sanitize and format the allocation number
+		// Sanitize the allocation value
 		$committeeNumber = is_numeric($allocation) ? intval($allocation) : sanitize_text_field($allocation);
 
+		// Committee 7 is displayed as "Last Question"
+		if ($committeeNumber === 7) {
+			return sprintf(
+				'<p class="allocated-committee">To start, your group has been allocated: <a href="#g_c%1$d" class="status-link">Last Question</a> (Under All Committee\'s)</p>',
+				$committeeNumber
+			);
+		}
+
 		return sprintf(
-			'<p class="allocated-committee">Allocated Committee (%s)</p>',
-			esc_html($committeeNumber)
+			'<p class="allocated-committee">To start, your group has been allocated: <a href="#g_c%1$d" class="status-link">Committee %1$d</a></p>',
+			$committeeNumber
 		);
 	}
 }

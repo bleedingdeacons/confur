@@ -64,7 +64,7 @@ class EmailService
 	 * @param string $recipient Recipient email
 	 * @param string $meetingName Meeting name
 	 * @param string $answerUrl Answer URL
-	 * @param string $allocatedCommittee Allocated committee name (optional)
+	 * @param string $allocatedCommittee Allocated committee number (optional)
 	 * @return bool Success status
 	 */
 	public static function sendConfirmation(string $recipient, string $meetingName, string $answerUrl, string $allocatedCommittee = ''): bool
@@ -83,9 +83,15 @@ class EmailService
 
 		$allocationHtml = '';
 		if (!empty($allocatedCommittee)) {
+			if ($allocatedCommittee === '7') {
+				$allocationText = "To start, your group has been allocated the Last Question (under All Committee's)";
+			} else {
+				$allocationText = 'To start, your group has been allocated Committee: ' . esc_html($allocatedCommittee);
+			}
+
 			$allocationHtml = '<div style="background-color: #e8f4fd; border-left: 4px solid #3498db; padding: 15px; margin: 20px 0; border-radius: 4px;">
-				<p style="margin: 0; font-size: 16px; color: #2c3e50;"><strong>You have been allocated Committee:</strong> ' . esc_html($allocatedCommittee) . '</p>
-			</div>';
+            <p style="margin: 0; font-size: 16px; color: #2c3e50;"><strong>' . $allocationText . '</strong></p>
+        </div>';
 		}
 
 		$params = [
@@ -103,7 +109,6 @@ class EmailService
 
 		return self::sendEmail($recipient, $from, $subject, $body);
 	}
-
 	/**
 	 * Send completion thanks email
 	 *
