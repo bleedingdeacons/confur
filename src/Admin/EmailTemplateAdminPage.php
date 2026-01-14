@@ -15,8 +15,8 @@ class EmailTemplateAdminPage
             'RegistrationConfirmation' => [
                     'name' => 'Registration Confirmation',
                     'subject' => 'Registration Successful',
-                    'description' => 'Sent when a user successfully registers. Available placeholders: {{MeetingName}}, {{Url}}',
-                    'placeholders' => ['{{MeetingName}}', '{{Url}}'],
+                    'description' => 'Sent when a user successfully registers. Available placeholders: {{MeetingName}}, {{Url}}, {{AllocationNotice}}',
+                    'placeholders' => ['{{MeetingName}}', '{{Url}}', '{{AllocationNotice}}'],
             ],
             'AnswersComplete' => [
                     'name' => 'Answers Complete',
