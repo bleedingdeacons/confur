@@ -38,7 +38,8 @@ class MeetingRepository
 				'day' => $meetingMeta['day'][0] ?? '',
 				'time' => $meetingMeta['time'][0] ?? '',
 				'end_time' => $meetingMeta['end_time'][0] ?? '',
-				'online' => $this->isOnline($types)
+				'online' => $this->isOnline($types),
+				'allocated' => get_field('allocated_committee', $post->ID) ?: '',
 			];
 		}
 

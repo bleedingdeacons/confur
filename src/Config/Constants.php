@@ -24,6 +24,7 @@ class Constants
 	public const FELLOW_MEETING_FIELD = 'fellow_meeting';
 	public const UPDATED_FIELD = 'updated';
 	public const EMAIL_FIELD = 'email';
+	public const ALLOCATION_FIELD = 'allocated_committee';
 
 	/**
 	 * Initialize constants (for backward compatibility if needed)

@@ -206,6 +206,11 @@ class AnswerRepository
 		$all = $this->getAllAnswers();
 
 		foreach ($all as $postId) {
+			// Skip posts that are in the trash
+			if (get_post_status($postId) === 'trash') {
+				continue;
+			}
+
 			$meeting = get_field(Constants::MEETING_FIELD, $postId);
 			$fellow_meeting = get_field(Constants::FELLOW_MEETING_FIELD, $postId);
 			$email = get_field(Constants::EMAIL_FIELD, $postId);
