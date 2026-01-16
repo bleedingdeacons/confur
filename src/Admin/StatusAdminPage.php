@@ -397,14 +397,49 @@ class StatusAdminPage
 					},
 					success: function(response) {
 						if (response.success) {
+							// Determine the old status before updating
+							var statusBadge = row.find('.status-badge');
+							var oldStatus = '';
+							if (statusBadge.hasClass('status-completed')) {
+								oldStatus = 'completed';
+							} else if (statusBadge.hasClass('status-draft')) {
+								oldStatus = 'draft';
+							} else if (statusBadge.hasClass('status-not-started')) {
+								oldStatus = 'not-started';
+							}
+							
 							// Update the row to show cancelled status
 							row.removeClass('duplicate-row registered-row').addClass('cancelled-row');
-							row.find('.status-badge')
+							statusBadge
 								.removeClass('status-completed status-draft status-not-started')
 								.addClass('status-cancelled')
 								.text('Cancelled');
 							button.remove();
 							row.find('.duplicate-indicator').remove();
+							
+							// Update the statistics counters
+							var cancelledStat = $('.stat-box').eq(6).find('.stat-number');
+							if (cancelledStat.length) {
+								cancelledStat.text(parseInt(cancelledStat.text()) + 1);
+							}
+							
+							// Decrement the old status counter
+							if (oldStatus === 'completed') {
+								var completedStat = $('.stat-box').eq(3).find('.stat-number');
+								if (completedStat.length) {
+									completedStat.text(parseInt(completedStat.text()) - 1);
+								}
+							} else if (oldStatus === 'draft') {
+								var draftStat = $('.stat-box').eq(4).find('.stat-number');
+								if (draftStat.length) {
+									draftStat.text(parseInt(draftStat.text()) - 1);
+								}
+							} else if (oldStatus === 'not-started') {
+								var notStartedStat = $('.stat-box').eq(5).find('.stat-number');
+								if (notStartedStat.length) {
+									notStartedStat.text(parseInt(notStartedStat.text()) - 1);
+								}
+							}
 							
 							// Show success message
 							var notice = $('<div class=\"notice notice-success is-dismissible\"><p>Registration cancelled successfully.</p></div>');
