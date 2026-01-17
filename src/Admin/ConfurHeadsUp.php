@@ -159,6 +159,24 @@ class ConfurHeadsUp
                 font-size: 13px;
                 color: #2271b1;
                 margin-bottom: 8px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                user-select: none;
+            }
+            .confur-committee-title:hover {
+                color: #135e96;
+            }
+            .confur-committee-toggle {
+                display: inline-block;
+                transition: transform 0.2s;
+            }
+            .confur-committee-item.collapsed .confur-committee-toggle {
+                transform: rotate(-90deg);
+            }
+            .confur-committee-item.collapsed .confur-questions-list {
+                display: none;
             }
             .confur-questions-list {
                 list-style: none;
@@ -235,6 +253,41 @@ class ConfurHeadsUp
 
 		echo '<script>
         jQuery(document).ready(function($) {
+            // Load saved collapse state from user meta
+            function loadCollapseState() {
+                var state = localStorage.getItem("confur_headsup_collapse_" + ' . get_current_user_id() . ');
+                if (state) {
+                    try {
+                        var collapsed = JSON.parse(state);
+                        collapsed.forEach(function(committeeNum) {
+                            $(".confur-committee-item[data-committee=\"" + committeeNum + "\"]").addClass("collapsed");
+                        });
+                    } catch(e) {
+                        console.error("Failed to parse collapse state", e);
+                    }
+                }
+            }
+            
+            // Save collapse state
+            function saveCollapseState() {
+                var collapsed = [];
+                $(".confur-committee-item.collapsed").each(function() {
+                    collapsed.push($(this).data("committee"));
+                });
+                localStorage.setItem("confur_headsup_collapse_" + ' . get_current_user_id() . ', JSON.stringify(collapsed));
+            }
+            
+            // Toggle committee collapse
+            $(document).on("click", ".confur-committee-title", function(e) {
+                e.preventDefault();
+                $(this).closest(".confur-committee-item").toggleClass("collapsed");
+                saveCollapseState();
+            });
+            
+            // Load state on page load
+            loadCollapseState();
+            
+            // Handle refresh button
             $("#confur-refresh-btn").on("click", function() {
                 var $btn = $(this);
                 var $content = $("#confur-headsup-content");
@@ -258,6 +311,9 @@ class ConfurHeadsUp
                     success: function(response) {
                         if (response.success) {
                             $content.html(response.data.content);
+                            
+                            // Restore collapse state after refresh
+                            loadCollapseState();
                             
                             // Update timestamp
                             var date = new Date(response.data.updated);
@@ -363,8 +419,11 @@ class ConfurHeadsUp
 		echo '<ul class="confur-updates-list">';
 
 		foreach ($updates as $committeeNum => $questions) {
-			echo '<li class="confur-committee-item">';
-			echo '<div class="confur-committee-title">Committee ' . esc_html($committeeNum) . '</div>';
+			echo '<li class="confur-committee-item" data-committee="' . esc_attr($committeeNum) . '">';
+			echo '<div class="confur-committee-title">';
+			echo '<span class="confur-committee-toggle">▼</span>';
+			echo 'Committee ' . esc_html($committeeNum);
+			echo '</div>';
 
 			echo '<ul class="confur-questions-list">';
 
