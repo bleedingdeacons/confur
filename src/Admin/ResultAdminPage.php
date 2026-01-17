@@ -14,7 +14,7 @@ class ResultAdminPage
     private const PAGE_SLUG = 'confur-reporting';
     private const CAPABILITY = 'read';
     private const MENU_TITLE = 'Results';
-    private const PAGE_TITLE = 'Current Results';
+    private const PAGE_TITLE = 'Result Report';
 
     private AnswerRepository $answerRepository;
 
@@ -106,12 +106,6 @@ class ResultAdminPage
                 // We output it directly since it's from our own trusted source
                 echo $reportContent; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
                 ?>
-            </div>
-
-            <div class="confur-reporting-footer">
-                <p class="description">
-                    Report generated on: <strong><?php echo esc_html(current_time('F j, Y g:i a')); ?></strong>
-                </p>
             </div>
         </div>
         <?php
@@ -439,10 +433,9 @@ class ResultAdminPage
             <span class="dashicons dashicons-update"></span>
             Refresh
         </button>
-        <button type="button" class="button" onclick="confurReportingExportCSV();">
-            <span class="dashicons dashicons-download"></span>
-            Export CSV
-        </button>
+        <span style="margin-left: 15px; line-height: 28px;">
+            Report generated: <strong><?php echo esc_html(current_time('F j, Y g:i a')); ?></strong>
+        </span>
         <?php
     }
 

@@ -67,8 +67,8 @@ class StatusAdminPage
             return;
         }
 
-        // Check permissions
-        if (!current_user_can('edit_posts')) {
+        // Check permissions - user must be able to edit answers
+        if (!current_user_can('edit_answers')) {
             wp_send_json_error(['message' => 'Insufficient permissions']);
             return;
         }
@@ -108,8 +108,8 @@ class StatusAdminPage
             return;
         }
 
-        // Check permissions
-        if (!current_user_can('edit_posts')) {
+        // Check permissions - user must be able to edit answers
+        if (!current_user_can('edit_answers')) {
             wp_send_json_error(['message' => 'Insufficient permissions']);
             return;
         }

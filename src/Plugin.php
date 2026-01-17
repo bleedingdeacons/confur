@@ -157,6 +157,15 @@ class Plugin
 			30                                             // Position
 		);
 
+		// Add "List Answers" submenu item
+		add_submenu_page(
+			'confur',                                      // Parent slug
+			'List Answers',                                // Page title
+			'List Answers',                                // Menu title
+			'edit_answers',                                // Capability
+			'edit.php?post_type=answer'                    // Menu slug (URL)
+		);
+
 		// Remove the auto-created "Confur" submenu that duplicates the parent
 		add_action('admin_menu', function() {
 			global $submenu;
