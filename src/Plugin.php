@@ -14,6 +14,7 @@ use Confur\Admin\ResultAdminPage;
 use Confur\Admin\ConfurSettingsAdminPage;
 use Confur\Admin\EmailTemplateAdminPage;
 use Confur\Admin\AnswerAdmin;
+use Confur\Admin\ConfurHeadsUp;
 
 /**
  * Main plugin class
@@ -30,6 +31,7 @@ class Plugin
 	private ConfurSettingsAdminPage $confurSettingsAdminPage;
 	private EmailTemplateAdminPage $emailTemplateAdminPage;
 	private AnswerAdmin $answerAdmin;
+	private ConfurHeadsUp $confurHeadsUp;
 
 	/**
 	 * Initialize the plugin
@@ -61,6 +63,7 @@ class Plugin
 				$this->shortcodeService = new ShortcodeService();
 				$this->answerHandler = new AnswerHandler();
 				$this->answerAPI = new AnswerAPI();
+				$this->confurHeadsUp = new ConfurHeadsUp();
 				$this->answerAdminPage = new StatusAdminPage();
 				$this->reportingAdminPage = new ResultAdminPage();
 				$this->confurSettingsAdminPage = new ConfurSettingsAdminPage();
@@ -120,6 +123,7 @@ class Plugin
 
 			// Admin page hooks
 			try {
+				$this->confurHeadsUp->init();
 				$this->answerAdminPage->init();
 				$this->reportingAdminPage->init();
 				$this->confurSettingsAdminPage->init();
