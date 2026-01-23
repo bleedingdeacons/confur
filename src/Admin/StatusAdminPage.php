@@ -417,6 +417,20 @@ class StatusAdminPage
 							button.remove();
 							row.find('.duplicate-indicator').remove();
 							
+							// Check if only one active (non-cancelled) registration remains for this meeting
+							// Find all rows with cancel buttons for the same meeting name
+							var remainingDuplicateButtons = $('.cancel-duplicate-btn').filter(function() {
+								return $(this).data('meeting-name') === meetingName;
+							});
+							
+							// If only one cancel button remains, remove it and its duplicate indicator
+							if (remainingDuplicateButtons.length === 1) {
+								var lastRow = remainingDuplicateButtons.closest('tr');
+								remainingDuplicateButtons.remove();
+								lastRow.find('.duplicate-indicator').remove();
+								lastRow.removeClass('duplicate-row').addClass('registered-row');
+							}
+							
 							// Update the statistics counters
 							var cancelledStat = $('.stat-box').eq(6).find('.stat-number');
 							if (cancelledStat.length) {
