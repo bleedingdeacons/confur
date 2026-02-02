@@ -65,9 +65,10 @@ class EmailService
 	 * @param string $meetingName Meeting name
 	 * @param string $answerUrl Answer URL
 	 * @param string $allocatedCommittee Allocated committee number (optional)
+	 * @param bool $isDuplicate Whether this is a duplicate registration notification
 	 * @return bool Success status
 	 */
-	public static function sendConfirmation(string $recipient, string $meetingName, string $answerUrl, string $allocatedCommittee = ''): bool
+	public static function sendConfirmation(string $recipient, string $meetingName, string $answerUrl, string $allocatedCommittee = '', bool $isDuplicate = false): bool
 	{
 		error_log('EmailService::sendConfirmation email begin');
 
@@ -94,10 +95,18 @@ class EmailService
         </div>';
 		}
 
+		$registrationStatusHtml = '';
+		if ($isDuplicate) {
+			$registrationStatusHtml = '<div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px;">
+            <p style="margin: 0; font-size: 16px; color: #856404;"><strong>Note:</strong> You have already registered for this meeting. This is a reminder with your existing registration link.</p>
+        </div>';
+		}
+
 		$params = [
 			"MeetingName" => $meetingName,
 			"Url" => $answerUrl,
-			"AllocationNotice" => $allocationHtml
+			"AllocationNotice" => $allocationHtml,
+			"RegistrationStatus" => $registrationStatusHtml
 		];
 
 		$body = self::renderTemplate("RegistrationConfirmation", $params);
@@ -209,8 +218,8 @@ class EmailService
 		}
 
 		foreach ($params as $key => $value) {
-			// Skip HTML content (like AllocationNotice) from escaping
-			if ($key === 'AllocationNotice') {
+			// Skip HTML content (like AllocationNotice, RegistrationStatus) from escaping
+			if ($key === 'AllocationNotice' || $key === 'RegistrationStatus') {
 				$template = str_replace("{{{$key}}}", $value, $template);
 			} else {
 				// Escape values to prevent XSS in emails

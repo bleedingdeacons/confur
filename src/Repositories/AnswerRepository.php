@@ -118,6 +118,98 @@ class AnswerRepository
 	}
 
 	/**
+	 * Find duplicate registration by meeting, fellow_meeting, and email
+	 * Handles both paths - checks if the meeting/fellow_meeting combination matches
+	 * in either order (A+B or B+A)
+	 *
+	 * @param int|null $meetingId Meeting post ID
+	 * @param int|null $fellowMeetingId Fellow meeting post ID (can be null)
+	 * @param string $email Email address
+	 * @param int|null $excludePostId Post ID to exclude from search (the newly created post)
+	 * @return array|null Array with 'post_id' and 'slug' if duplicate found, null otherwise
+	 */
+	public function findDuplicate(?int $meetingId, ?int $fellowMeetingId, string $email, ?int $excludePostId = null): ?array
+	{
+		error_log("AnswerRepository::findDuplicate - Called with meetingId: " . ($meetingId ?? 'null') . ", fellowMeetingId: " . ($fellowMeetingId ?? 'null') . ", email: $email, excludePostId: " . ($excludePostId ?? 'null'));
+
+		if (empty($meetingId) || empty($email)) {
+			error_log("AnswerRepository::findDuplicate - Returning null due to empty meetingId or email");
+			return null;
+		}
+
+		// Get all answer posts and filter in PHP - more reliable with ACF fields
+		$args = [
+			'post_type' => Constants::ANSWER_CUSTOM_TYPE,
+			'posts_per_page' => -1,
+			'post_status' => ['publish', 'draft', 'pending', 'private'],
+			'fields' => 'ids'
+		];
+
+		// Exclude the newly created post from the search
+		if ($excludePostId) {
+			$args['post__not_in'] = [$excludePostId];
+		}
+
+		$allPosts = get_posts($args);
+
+		error_log("AnswerRepository::findDuplicate - Found " . count($allPosts) . " total answer posts to check");
+
+		// Build the set of meeting IDs from the new registration
+		$inputMeetingIds = [$meetingId];
+		if (!empty($fellowMeetingId)) {
+			$inputMeetingIds[] = $fellowMeetingId;
+		}
+		sort($inputMeetingIds);
+
+		foreach ($allPosts as $postId) {
+			// Get ACF fields and normalize them
+			$postMeeting = $this->normalizePostId(get_field(Constants::MEETING_FIELD, $postId));
+			$postFellowMeeting = $this->normalizePostId(get_field(Constants::FELLOW_MEETING_FIELD, $postId));
+			$postEmail = get_field(Constants::EMAIL_FIELD, $postId);
+			$postStatus = get_field(Constants::STATUS_FIELD, $postId);
+
+			error_log("AnswerRepository::findDuplicate - Checking post $postId: meeting=$postMeeting, fellow=$postFellowMeeting, email=$postEmail, status=$postStatus");
+
+			// Skip cancelled registrations
+			if ($postStatus === Constants::STATUS_CANCELLED) {
+				continue;
+			}
+
+			// Check email match (case-insensitive)
+			if (strtolower($postEmail) !== strtolower($email)) {
+				continue;
+			}
+
+			// Build the set of meeting IDs from the existing post
+			$postMeetingIds = [];
+			if (!empty($postMeeting)) {
+				$postMeetingIds[] = $postMeeting;
+			}
+			if (!empty($postFellowMeeting)) {
+				$postMeetingIds[] = $postFellowMeeting;
+			}
+			sort($postMeetingIds);
+
+			// Check if the meeting combinations match (handles swapped order)
+			if ($inputMeetingIds !== $postMeetingIds) {
+				continue;
+			}
+
+			// Found a duplicate!
+			error_log("AnswerRepository::findDuplicate - Found duplicate: post $postId");
+			$post = get_post($postId);
+
+			return [
+				'post_id' => $postId,
+				'slug' => $post->post_name
+			];
+		}
+
+		error_log("AnswerRepository::findDuplicate - No duplicate found");
+		return null;
+	}
+
+	/**
 	 * Normalize post ID from ACF field value
 	 * ACF can return post ID as int, object, or array depending on configuration
 	 *
