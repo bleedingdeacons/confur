@@ -138,10 +138,13 @@ class AnswerRepository
 		}
 
 		// Get all answer posts and filter in PHP - more reliable with ACF fields
+		// Order by date descending to get the latest one first
 		$args = [
 			'post_type' => Constants::ANSWER_CUSTOM_TYPE,
 			'posts_per_page' => -1,
 			'post_status' => ['publish', 'draft', 'pending', 'private'],
+			'orderby' => 'date',
+			'order' => 'DESC',
 			'fields' => 'ids'
 		];
 
@@ -239,53 +242,6 @@ class AnswerRepository
 
 		return null;
 	}
-
-	/**
-	 * Get group answers
-	 *
-	 * @return array Group answers data
-	 */
-//	public function getGroupAnswers(): array
-//	{
-//		$answers = [];
-//		$all = $this->getAllAnswers();
-//
-//		foreach ($all as $postId) {
-//			$meeting = get_field(Constants::MEETING_FIELD, $postId);
-//			$email = get_field(Constants::EMAIL_FIELD, $postId);
-//			$updated = get_field(Constants::UPDATED_FIELD, $postId);
-//			$status = get_field(Constants::STATUS_FIELD, $postId);
-//
-//			if (!empty($updated)) {
-//				$allFields = get_fields($postId);
-//
-//				foreach ($allFields as $fieldName => $fieldValue) {
-//					if (str_starts_with($fieldName, 'c')) {
-//						foreach ($fieldValue as $questionName => $answer) {
-//							if (!empty($answer)) {
-//								$meetingName = get_the_title($meeting);
-//								$resultUrl = get_permalink($postId);
-//
-//								$groupAnswer = [
-//									$meeting,
-//									$meetingName,
-//									$resultUrl,
-//									$email,
-//									$updated,
-//									$answer,
-//									$status
-//								];
-//
-//								$answers[$fieldName . '_' . $questionName][] = $groupAnswer;
-//							}
-//						}
-//					}
-//				}
-//			}
-//		}
-//
-//		return $answers;
-//	}
 
 	/**
 	 * Get group answers
