@@ -62,6 +62,7 @@ class AnswerRepository
 		$all = get_posts([
 			'post_type' => Constants::ANSWER_CUSTOM_TYPE,
 			'posts_per_page' => -1,
+			'post_status' => ['publish', 'draft', 'pending', 'private'],
 			'fields' => 'ids'
 		]);
 
@@ -121,6 +122,8 @@ class AnswerRepository
 	 * Find duplicate registration by meeting, fellow_meeting, and email
 	 * Handles both paths - checks if the meeting/fellow_meeting combination matches
 	 * in either order (A+B or B+A)
+	 * Only compares answers with both meetings against other answers with both meetings
+	 * Returns the latest duplicate based on the 'updated' field if multiple exist
 	 *
 	 * @param int|null $meetingId Meeting post ID
 	 * @param int|null $fellowMeetingId Fellow meeting post ID (can be null)
@@ -137,14 +140,14 @@ class AnswerRepository
 			return null;
 		}
 
+		// Determine if this is a paired registration (has both meetings)
+		$isPairedRegistration = !empty($fellowMeetingId);
+
 		// Get all answer posts and filter in PHP - more reliable with ACF fields
-		// Order by date descending to get the latest one first
 		$args = [
 			'post_type' => Constants::ANSWER_CUSTOM_TYPE,
 			'posts_per_page' => -1,
 			'post_status' => ['publish', 'draft', 'pending', 'private'],
-			'orderby' => 'date',
-			'order' => 'DESC',
 			'fields' => 'ids'
 		];
 
@@ -159,10 +162,13 @@ class AnswerRepository
 
 		// Build the set of meeting IDs from the new registration
 		$inputMeetingIds = [$meetingId];
-		if (!empty($fellowMeetingId)) {
+		if ($isPairedRegistration) {
 			$inputMeetingIds[] = $fellowMeetingId;
 		}
 		sort($inputMeetingIds);
+
+		// Collect all matching duplicates
+		$duplicates = [];
 
 		foreach ($allPosts as $postId) {
 			// Get ACF fields and normalize them
@@ -170,8 +176,9 @@ class AnswerRepository
 			$postFellowMeeting = $this->normalizePostId(get_field(Constants::FELLOW_MEETING_FIELD, $postId));
 			$postEmail = get_field(Constants::EMAIL_FIELD, $postId);
 			$postStatus = get_field(Constants::STATUS_FIELD, $postId);
+			$postUpdated = get_field(Constants::UPDATED_FIELD, $postId);
 
-			error_log("AnswerRepository::findDuplicate - Checking post $postId: meeting=$postMeeting, fellow=$postFellowMeeting, email=$postEmail, status=$postStatus");
+			error_log("AnswerRepository::findDuplicate - Checking post $postId: meeting=$postMeeting, fellow=$postFellowMeeting, email=$postEmail, status=$postStatus, updated=$postUpdated");
 
 			// Skip cancelled registrations
 			if ($postStatus === Constants::STATUS_CANCELLED) {
@@ -180,6 +187,14 @@ class AnswerRepository
 
 			// Check email match (case-insensitive)
 			if (strtolower($postEmail) !== strtolower($email)) {
+				continue;
+			}
+
+			// Determine if existing post is a paired registration
+			$isPostPaired = !empty($postFellowMeeting);
+
+			// Only compare paired with paired, and single with single
+			if ($isPairedRegistration !== $isPostPaired) {
 				continue;
 			}
 
@@ -193,23 +208,57 @@ class AnswerRepository
 			}
 			sort($postMeetingIds);
 
-			// Check if the meeting combinations match (handles swapped order)
+			// Check if the meeting combinations match (handles swapped order for paired)
 			if ($inputMeetingIds !== $postMeetingIds) {
 				continue;
 			}
 
-			// Found a duplicate!
-			error_log("AnswerRepository::findDuplicate - Found duplicate: post $postId");
-			$post = get_post($postId);
-
-			return [
+			// Found a duplicate - add to list
+			$duplicates[] = [
 				'post_id' => $postId,
-				'slug' => $post->post_name
+				'updated' => $postUpdated
 			];
 		}
 
-		error_log("AnswerRepository::findDuplicate - No duplicate found");
-		return null;
+		if (empty($duplicates)) {
+			error_log("AnswerRepository::findDuplicate - No duplicate found");
+			return null;
+		}
+
+		// Sort duplicates by updated date (latest first), fall back to post creation date
+		usort($duplicates, function($a, $b) {
+			// Handle empty/null updated values - fall back to post creation date
+			$aUpdated = !empty($a['updated']) ? strtotime($a['updated']) : 0;
+			$bUpdated = !empty($b['updated']) ? strtotime($b['updated']) : 0;
+
+			// If both have updated dates, compare them
+			if ($aUpdated > 0 && $bUpdated > 0) {
+				return $bUpdated - $aUpdated; // Descending order (latest first)
+			}
+
+			// If only one has updated date, prefer the one with updated date
+			if ($aUpdated > 0) return -1;
+			if ($bUpdated > 0) return 1;
+
+			// If neither has updated date, fall back to post creation date
+			$aPost = get_post($a['post_id']);
+			$bPost = get_post($b['post_id']);
+			$aCreated = strtotime($aPost->post_date);
+			$bCreated = strtotime($bPost->post_date);
+
+			return $bCreated - $aCreated; // Descending order (latest first)
+		});
+
+		// Return the latest duplicate
+		$latestDuplicate = $duplicates[0];
+		$post = get_post($latestDuplicate['post_id']);
+
+		error_log("AnswerRepository::findDuplicate - Found " . count($duplicates) . " duplicate(s), returning latest: post " . $latestDuplicate['post_id']);
+
+		return [
+			'post_id' => $latestDuplicate['post_id'],
+			'slug' => $post->post_name
+		];
 	}
 
 	/**
@@ -242,6 +291,53 @@ class AnswerRepository
 
 		return null;
 	}
+
+	/**
+	 * Get group answers
+	 *
+	 * @return array Group answers data
+	 */
+//	public function getGroupAnswers(): array
+//	{
+//		$answers = [];
+//		$all = $this->getAllAnswers();
+//
+//		foreach ($all as $postId) {
+//			$meeting = get_field(Constants::MEETING_FIELD, $postId);
+//			$email = get_field(Constants::EMAIL_FIELD, $postId);
+//			$updated = get_field(Constants::UPDATED_FIELD, $postId);
+//			$status = get_field(Constants::STATUS_FIELD, $postId);
+//
+//			if (!empty($updated)) {
+//				$allFields = get_fields($postId);
+//
+//				foreach ($allFields as $fieldName => $fieldValue) {
+//					if (str_starts_with($fieldName, 'c')) {
+//						foreach ($fieldValue as $questionName => $answer) {
+//							if (!empty($answer)) {
+//								$meetingName = get_the_title($meeting);
+//								$resultUrl = get_permalink($postId);
+//
+//								$groupAnswer = [
+//									$meeting,
+//									$meetingName,
+//									$resultUrl,
+//									$email,
+//									$updated,
+//									$answer,
+//									$status
+//								];
+//
+//								$answers[$fieldName . '_' . $questionName][] = $groupAnswer;
+//							}
+//						}
+//					}
+//				}
+//			}
+//		}
+//
+//		return $answers;
+//	}
 
 	/**
 	 * Get group answers

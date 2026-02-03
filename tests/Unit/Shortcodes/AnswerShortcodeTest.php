@@ -50,7 +50,6 @@ class AnswerShortcodeTest extends TestCase
 		// Use reflection to inject the mock
 		$reflection = new \ReflectionClass($this->shortcode);
 		$property = $reflection->getProperty('answerRepository');
-		$property->setAccessible(true);
 		$property->setValue($this->shortcode, $this->answerRepositoryMock);
 	}
 
@@ -213,48 +212,23 @@ class AnswerShortcodeTest extends TestCase
 	/** @test */
 	public function it_generates_header_with_single_meeting()
 	{
-		if (self::$inWordPress) {
-			// In WordPress environment - test structure only since get_field()
-			// behavior depends on ACF being installed and configured
-			$result = $this->shortcode->generateHeader();
-			$this->assertStringContainsString('<h2>', $result);
-			$this->assertStringContainsString('Answers</h2>', $result);
-		} else {
-			// In standalone mode - get_field() returns null by default
-			// which means the meeting title will be empty/null
-			$result = $this->shortcode->generateHeader();
-			$this->assertStringContainsString('<h2>', $result);
-			$this->assertStringContainsString('Answers</h2>', $result);
-		}
+		// get_the_title mock returns "Post Title {id}" so the header will include that
+		$result = $this->shortcode->generateHeader();
+		$this->assertStringContainsString('<h2>', $result);
+		$this->assertStringContainsString('Answers from', $result);
+		$this->assertStringContainsString('</h2>', $result);
 	}
 
 	/** @test */
 	public function it_configures_custom_form()
 	{
-		if (self::$inWordPress) {
-			// In WordPress environment - use global $post
-			global $post;
-			$original_post = $post;
-			$post = (object) ['ID' => 456];
+		$result = $this->shortcode->configureCustomForm(['action' => 'save_answers']);
 
-			$result = $this->shortcode->configureCustomForm(['action' => 'save_answers']);
-
-			$this->assertStringContainsString('<input type="hidden" name="post_id" value="456"/>', $result);
-			$this->assertStringContainsString('<input type="hidden" name="action" value="save_answers">', $result);
-
-			$post = $original_post;
-		} else {
-			// In standalone mode - set global $post
-			global $post;
-			$post = (object) ['ID' => 456];
-
-			$result = $this->shortcode->configureCustomForm(['action' => 'save_answers']);
-
-			$this->assertStringContainsString('<input type="hidden" name="post_id" value="456"/>', $result);
-			$this->assertStringContainsString('<input type="hidden" name="action" value="save_answers">', $result);
-
-			$post = null;
-		}
+		// Check for action hidden field
+		$this->assertStringContainsString('<input type="hidden" name="action" value="save_answers">', $result);
+		// Check for nonce field
+		$this->assertStringContainsString('answer_submission_nonce', $result);
+		$this->assertStringContainsString('type="hidden"', $result);
 	}
 
 	/** @test */

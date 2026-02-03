@@ -203,6 +203,19 @@ if ($wordpress_loaded) {
 		}
 	}
 
+	if (!function_exists('wp_nonce_field')) {
+		function wp_nonce_field($action = -1, $name = '_wpnonce', $referer = true, $echo = true) {
+			$nonce_field = '<input type="hidden" id="' . $name . '" name="' . $name . '" value="test_nonce_value" />';
+			if ($referer) {
+				$nonce_field .= '<input type="hidden" name="_wp_http_referer" value="/" />';
+			}
+			if ($echo) {
+				echo $nonce_field;
+			}
+			return $nonce_field;
+		}
+	}
+
 	if (!function_exists('check_ajax_referer')) {
 		function check_ajax_referer($action = -1, $query_arg = false, $die = true) {
 			return 1;

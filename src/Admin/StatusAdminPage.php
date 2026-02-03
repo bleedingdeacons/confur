@@ -736,7 +736,15 @@ class StatusAdminPage
             if (isset($registeredLookup[$meetingId])) {
                 // Registered meeting(s) - loop through all registrations for this meeting ID
                 foreach ($registeredLookup[$meetingId] as $item) {
+                    // Build meeting name - include fellow meeting if present
                     $meetingName = get_the_title($item['meetingId']);
+                    if (!empty($item['fellowMeetingId'])) {
+                        $fellowMeetingName = get_the_title($item['fellowMeetingId']);
+                        if (!empty($fellowMeetingName)) {
+                            $meetingName .= ' and ' . $fellowMeetingName;
+                        }
+                    }
+
                     $updated = trim($item['updated']);
                     $status = isset($item['status']) && !empty($item['status']) ? $item['status'] : 'Not Started';
 

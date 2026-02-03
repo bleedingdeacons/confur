@@ -206,6 +206,7 @@ class ConfurSettingsAdminPage
             $backup = isset($_POST['backup_email']) ? sanitize_text_field($_POST['backup_email']) : '';
             $delete_blocked_posts = isset($_POST['delete_blocked_posts']) ? true : false;
             $disable_nonce_verification = isset($_POST['disable_nonce_verification']) ? true : false;
+            $enable_duplicate_detection = isset($_POST['enable_duplicate_detection']) ? true : false;
 
             $settings = [
                     'registration_reply' => $registration_reply,
@@ -213,6 +214,7 @@ class ConfurSettingsAdminPage
                     'backup' => $backup,
                     'delete_blocked_posts' => $delete_blocked_posts,
                     'disable_nonce_verification' => $disable_nonce_verification,
+                    'enable_duplicate_detection' => $enable_duplicate_detection,
             ];
 
             // Log what we're trying to save for debugging
@@ -350,6 +352,15 @@ class ConfurSettingsAdminPage
                         </tbody>
                     </table>
 
+                    <div class="confur-defaults-box">
+                        <h3>Default Values</h3>
+                        <ul>
+                            <li><strong>Registration Reply:</strong> <?php echo esc_html($defaults['registration_reply']); ?></li>
+                            <li><strong>Support:</strong> <?php echo esc_html($defaults['support']); ?></li>
+                            <li><strong>Backup:</strong> <?php echo esc_html($defaults['backup']); ?></li>
+                        </ul>
+                    </div>
+
                     <div class="confur-blocklist-section">
                         <h2>Email Blocked List</h2>
                         <p class="description">
@@ -394,7 +405,7 @@ class ConfurSettingsAdminPage
 
                     <div class="confur-security-section">
                         <h2>Security Settings</h2>
-                        
+
                         <p style="margin-top: 15px;">
                             <label for="disable_nonce_verification">
                                 <input
@@ -408,9 +419,32 @@ class ConfurSettingsAdminPage
                             </label>
                         </p>
                         <p class="description" style="color: #d63638;">
-                            <strong>⚠️ Not recommended.</strong> Nonce verification protects against Cross-Site Request Forgery (CSRF) attacks. 
+                            <strong>⚠️ Not recommended.</strong> Nonce verification protects against Cross-Site Request Forgery (CSRF) attacks.
                             Only disable this if you are experiencing issues with form submissions and understand the security implications.
                             When disabled, the nonce field will still be included in the form but will not be validated on submission.
+                        </p>
+                    </div>
+
+                    <div class="confur-security-section">
+                        <h2>Registration Settings</h2>
+
+                        <p style="margin-top: 15px;">
+                            <label for="enable_duplicate_detection">
+                                <input
+                                        type="checkbox"
+                                        id="enable_duplicate_detection"
+                                        name="enable_duplicate_detection"
+                                        value="1"
+                                        <?php checked($settings['enable_duplicate_detection'] ?? false); ?>
+                                />
+                                Enable duplicate registration detection
+                            </label>
+                        </p>
+                        <p class="description">
+                            When enabled, the system will check for existing registrations with the same email and meeting combination.
+                            If a duplicate is found, the new registration will be moved to trash and the user will receive a reminder email
+                            with a link to their existing registration. Paired registrations (with both meeting and fellow meeting) only match
+                            other paired registrations, and single meeting registrations only match other single registrations.
                         </p>
                     </div>
 
@@ -422,15 +456,6 @@ class ConfurSettingsAdminPage
                         <?php endif; ?>
                     </div>
                 </form>
-
-                <div class="confur-defaults-box">
-                    <h3>Default Values</h3>
-                    <ul>
-                        <li><strong>Registration Reply:</strong> <?php echo esc_html($defaults['registration_reply']); ?></li>
-                        <li><strong>Support:</strong> <?php echo esc_html($defaults['support']); ?></li>
-                        <li><strong>Backup:</strong> <?php echo esc_html($defaults['backup']); ?></li>
-                    </ul>
-                </div>
             </div>
         </div>
         <?php
