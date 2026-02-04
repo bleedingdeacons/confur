@@ -39,6 +39,119 @@ class StatusAdminPage
 
         // Register AJAX handler for resending confirmation email (for logged-in users)
         add_action('wp_ajax_confur_resend_confirmation', [$this, 'handleResendConfirmation']);
+
+        // Add screen options
+        add_action('load-questions-for-conference_page_confur-answer-submissions', [$this, 'addScreenOptions']);
+        
+        // Handle saving screen options via AJAX
+        add_action('wp_ajax_confur_save_screen_option', [$this, 'handleSaveScreenOption']);
+    }
+
+    /**
+     * Add screen options for the status page
+     */
+    public function addScreenOptions(): void
+    {
+        add_filter('screen_settings', [$this, 'renderScreenOptions'], 10, 2);
+    }
+
+    /**
+     * Handle AJAX save of screen option
+     */
+    public function handleSaveScreenOption(): void
+    {
+        check_ajax_referer('confur_screen_options', 'nonce');
+        
+        $show_cancellations = isset($_POST['show_cancellations']) && $_POST['show_cancellations'] === '1' ? 1 : 0;
+        update_user_meta(get_current_user_id(), 'confur_show_cancellations', $show_cancellations);
+        
+        wp_send_json_success(['saved' => true]);
+    }
+
+    /**
+     * Render the screen options
+     */
+    public function renderScreenOptions(string $settings, \WP_Screen $screen): string
+    {
+        if ($screen->id !== 'questions-for-conference_page_confur-answer-submissions') {
+            return $settings;
+        }
+
+        $show_cancellations = get_user_meta(get_current_user_id(), 'confur_show_cancellations', true);
+        // Default to showing cancellations if not set
+        if ($show_cancellations === '') {
+            $show_cancellations = 1;
+        }
+
+        $nonce = wp_create_nonce('confur_screen_options');
+
+        $settings .= '<fieldset class="confur-screen-options" style="margin: 10px 0;">';
+        $settings .= '<legend style="font-weight: bold;">Confur Options</legend>';
+        $settings .= '<label style="display: block; margin: 5px 0;">';
+        $settings .= '<input type="checkbox" id="confur_show_cancellations" value="1" ' . checked($show_cancellations, 1, false) . ' />';
+        $settings .= ' Show Cancellations';
+        $settings .= '</label>';
+        $settings .= '</fieldset>';
+        
+        $settings .= '<script>
+            jQuery(document).ready(function($) {
+                // Create progress indicator element (same as confur-client.js)
+                var progressIndicator = $("<div>").attr("id", "confur-progress-indicator").css({
+                    display: "none",
+                    position: "fixed",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: "100%",
+                    background: "rgba(0, 0, 0, 0.5)",
+                    zIndex: 9999,
+                    justifyContent: "center",
+                    alignItems: "center"
+                }).html(\'<div style="background: white; padding: 30px; border-radius: 8px; text-align: center; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);"><div style="border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: confur-spin 1s linear infinite; margin: 0 auto 15px;"></div><div id="confur-progress-text" style="font-size: 16px; color: #333;">Updating...</div></div>\');
+                
+                $("body").append(progressIndicator);
+                
+                // Add CSS animation for spinner
+                $("<style>").text("@keyframes confur-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }").appendTo("head");
+                
+                $("#confur_show_cancellations").on("change", function() {
+                    var isChecked = $(this).is(":checked") ? "1" : "0";
+                    
+                    // Show progress indicator
+                    $("#confur-progress-indicator").css("display", "flex");
+                    
+                    $.ajax({
+                        url: ajaxurl,
+                        type: "POST",
+                        data: {
+                            action: "confur_save_screen_option",
+                            nonce: "' . $nonce . '",
+                            show_cancellations: isChecked
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                location.reload();
+                            }
+                        }
+                    });
+                });
+            });
+        </script>';
+
+        return $settings;
+    }
+
+    /**
+     * Check if cancellations should be shown
+     */
+    private function shouldShowCancellations(): bool
+    {
+        $show_cancellations = get_user_meta(get_current_user_id(), 'confur_show_cancellations', true);
+        // Default to showing cancellations if not set
+        if ($show_cancellations === '') {
+            return true;
+        }
+        return (bool) $show_cancellations;
     }
 
     /**
@@ -535,6 +648,14 @@ class StatusAdminPage
         $stats = $this->calculateStats($allMeetings);
         $duplicates = $this->findDuplicateRegistrations($allMeetings);
 
+        // Filter out cancelled items if screen option is disabled
+        $showCancellations = $this->shouldShowCancellations();
+        if (!$showCancellations) {
+            $allMeetings = array_filter($allMeetings, function($meeting) {
+                return $meeting['status_class'] !== 'cancelled';
+            });
+        }
+
         // Create a set of meeting IDs that have duplicates for easy lookup
         $duplicateMeetingIds = array_keys($duplicates);
 
@@ -700,6 +821,7 @@ class StatusAdminPage
         $registered = $this->answerRepository->getRegisteredGroups();
 
         // Create lookup for registered meetings (supports multiple registrations per meeting)
+        // For paired registrations, add entry under both meeting IDs
         $registeredLookup = [];
         foreach ($registered as $item) {
             // Get meeting ID - handle if it's an object, array, or scalar
@@ -710,16 +832,35 @@ class StatusAdminPage
                 $meetingId = $meetingId['ID'] ?? null;
             }
 
-            // Only add if we have a valid ID
+            // Get fellow meeting ID
+            $fellowMeetingId = $item['fellowMeetingId'] ?? null;
+            if (is_object($fellowMeetingId)) {
+                $fellowMeetingId = $fellowMeetingId->ID;
+            } elseif (is_array($fellowMeetingId)) {
+                $fellowMeetingId = $fellowMeetingId['ID'] ?? null;
+            }
+
+            // Add under primary meeting ID
             if ($meetingId && is_numeric($meetingId)) {
                 $meetingIdInt = (int)$meetingId;
-                // Store as array to support multiple registrations per meeting
                 if (!isset($registeredLookup[$meetingIdInt])) {
                     $registeredLookup[$meetingIdInt] = [];
                 }
                 $registeredLookup[$meetingIdInt][] = $item;
             }
+
+            // Also add under fellow meeting ID if it exists (for paired registrations)
+            if ($fellowMeetingId && is_numeric($fellowMeetingId)) {
+                $fellowMeetingIdInt = (int)$fellowMeetingId;
+                if (!isset($registeredLookup[$fellowMeetingIdInt])) {
+                    $registeredLookup[$fellowMeetingIdInt] = [];
+                }
+                $registeredLookup[$fellowMeetingIdInt][] = $item;
+            }
         }
+
+        // Track which answer IDs we've already displayed to avoid duplicates
+        $displayedAnswerIds = [];
 
         // Process all meetings
         foreach ($meetings as $meeting) {
@@ -736,6 +877,12 @@ class StatusAdminPage
             if (isset($registeredLookup[$meetingId])) {
                 // Registered meeting(s) - loop through all registrations for this meeting ID
                 foreach ($registeredLookup[$meetingId] as $item) {
+                    // Skip if we've already displayed this answer (for paired registrations)
+                    if (isset($displayedAnswerIds[$item['answersId']])) {
+                        continue;
+                    }
+                    $displayedAnswerIds[$item['answersId']] = true;
+
                     // Build meeting name - include fellow meeting if present
                     $meetingName = get_the_title($item['meetingId']);
                     if (!empty($item['fellowMeetingId'])) {
@@ -972,25 +1119,96 @@ class StatusAdminPage
      */
     private function findDuplicateRegistrations(array $allMeetings): array
     {
-        $activeCounts = [];
-
-        foreach ($allMeetings as $meeting) {
-            // Only count registered meetings that are not cancelled
-            if ($meeting['is_registered'] && $meeting['status_class'] !== 'cancelled') {
-                $meetingId = $meeting['id'];
-                if (!isset($activeCounts[$meetingId])) {
-                    $activeCounts[$meetingId] = [
-                            'name' => $meeting['name'],
-                            'count' => 0
-                    ];
-                }
-                $activeCounts[$meetingId]['count']++;
+        // Get all registered groups with full data
+        $registered = $this->answerRepository->getRegisteredGroups();
+        
+        // Build a list of unique registrations (by answer ID) with their meeting combinations
+        // We need to track the FIRST entry for each answer ID (which has the correct fellowMeetingId)
+        $registrations = [];
+        $answerData = [];
+        
+        // First pass: collect the primary entry for each answer (the one with fellowMeetingId if paired)
+        foreach ($registered as $item) {
+            $answerId = $item['answersId'];
+            
+            // Only keep the first entry for each answer (which has the full meeting data)
+            if (!isset($answerData[$answerId])) {
+                $answerData[$answerId] = $item;
             }
         }
-
-        // Filter to only return those with more than one active registration
-        return array_filter($activeCounts, function($info) {
-            return $info['count'] > 1;
-        });
+        
+        error_log("findDuplicateRegistrations - Found " . count($answerData) . " unique answers");
+        
+        // Second pass: group by email + meeting combination
+        foreach ($answerData as $answerId => $item) {
+            $status = $item['status'] ?? '';
+            
+            // Skip cancelled registrations (check for the exact constant value)
+            if ($status === Constants::STATUS_CANCELLED) {
+                error_log("findDuplicateRegistrations - Skipping cancelled answer $answerId");
+                continue;
+            }
+            
+            $meetingId = $item['meetingId'];
+            $fellowMeetingId = $item['fellowMeetingId'];
+            
+            $email = strtolower(trim($item['email'] ?? ''));
+            
+            if (empty($meetingId) || empty($email)) {
+                error_log("findDuplicateRegistrations - Skipping answer $answerId due to empty meetingId or email");
+                continue;
+            }
+            
+            // Build sorted meeting IDs array for comparison
+            $meetingIds = [(int)$meetingId];
+            $isPaired = !empty($fellowMeetingId);
+            if ($isPaired) {
+                $meetingIds[] = (int)$fellowMeetingId;
+            }
+            sort($meetingIds);
+            
+            // Create a unique key for this meeting combination + email
+            $key = $email . '|' . ($isPaired ? 'paired' : 'single') . '|' . implode('-', $meetingIds);
+            
+            error_log("findDuplicateRegistrations - Answer $answerId: key=$key, status=$status");
+            
+            if (!isset($registrations[$key])) {
+                // Build name for display
+                $name = get_the_title($meetingId);
+                if ($isPaired) {
+                    $name .= ' and ' . get_the_title($fellowMeetingId);
+                }
+                
+                $registrations[$key] = [
+                    'meetingIds' => $meetingIds,
+                    'email' => $email,
+                    'isPaired' => $isPaired,
+                    'count' => 0,
+                    'name' => $name
+                ];
+            }
+            
+            $registrations[$key]['count']++;
+        }
+        
+        error_log("findDuplicateRegistrations - Registration groups: " . print_r($registrations, true));
+        
+        // Filter to only duplicates and reformat for display
+        $duplicates = [];
+        foreach ($registrations as $key => $info) {
+            if ($info['count'] > 1) {
+                // Use first meeting ID as the key for the duplicates array
+                $firstMeetingId = $info['meetingIds'][0];
+                $duplicates[$firstMeetingId] = [
+                    'name' => $info['name'] . ' (' . $info['email'] . ')',
+                    'count' => $info['count']
+                ];
+                error_log("findDuplicateRegistrations - Found duplicate: " . $info['name'] . " count=" . $info['count']);
+            }
+        }
+        
+        error_log("findDuplicateRegistrations - Total duplicates found: " . count($duplicates));
+        
+        return $duplicates;
     }
 }

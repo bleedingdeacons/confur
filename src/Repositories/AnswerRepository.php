@@ -90,24 +90,12 @@ class AnswerRepository
 			$meetingId = $this->normalizePostId($meeting);
 			$fellowMeetingId = $this->normalizePostId($fellow_meeting);
 
-			// Add primary meeting if it exists
+			// Add entry if primary meeting exists (includes fellow_meeting if present)
 			if (!empty($meetingId)) {
 				$registered[] = [
 					'answersId' => $postId,
 					'meetingId' => $meetingId,
 					'fellowMeetingId' => $fellowMeetingId,
-					'email' => $email,
-					'updated' => $updated,
-					'status' => $status
-				];
-			}
-
-			// Add fellow_meeting as a separate entry if it exists
-			if (!empty($fellowMeetingId)) {
-				$registered[] = [
-					'answersId' => $postId,
-					'meetingId' => $fellowMeetingId,
-					'fellowMeetingId' => null,
 					'email' => $email,
 					'updated' => $updated,
 					'status' => $status

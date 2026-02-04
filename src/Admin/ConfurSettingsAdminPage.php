@@ -405,7 +405,7 @@ class ConfurSettingsAdminPage
 
                     <div class="confur-security-section">
                         <h2>Security Settings</h2>
-
+                        
                         <p style="margin-top: 15px;">
                             <label for="disable_nonce_verification">
                                 <input
@@ -419,7 +419,7 @@ class ConfurSettingsAdminPage
                             </label>
                         </p>
                         <p class="description" style="color: #d63638;">
-                            <strong>⚠️ Not recommended.</strong> Nonce verification protects against Cross-Site Request Forgery (CSRF) attacks.
+                            <strong>⚠️ Not recommended.</strong> Nonce verification protects against Cross-Site Request Forgery (CSRF) attacks. 
                             Only disable this if you are experiencing issues with form submissions and understand the security implications.
                             When disabled, the nonce field will still be included in the form but will not be validated on submission.
                         </p>
@@ -427,7 +427,7 @@ class ConfurSettingsAdminPage
 
                     <div class="confur-security-section">
                         <h2>Registration Settings</h2>
-
+                        
                         <p style="margin-top: 15px;">
                             <label for="enable_duplicate_detection">
                                 <input
@@ -442,8 +442,8 @@ class ConfurSettingsAdminPage
                         </p>
                         <p class="description">
                             When enabled, the system will check for existing registrations with the same email and meeting combination.
-                            If a duplicate is found, the new registration will be moved to trash and the user will receive a reminder email
-                            with a link to their existing registration. Paired registrations (with both meeting and fellow meeting) only match
+                            If a duplicate is found, the new registration will be moved to trash and the user will receive a reminder email 
+                            with a link to their existing registration. Paired registrations (with both meeting and fellow meeting) only match 
                             other paired registrations, and single meeting registrations only match other single registrations.
                         </p>
                     </div>
