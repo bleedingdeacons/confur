@@ -13,7 +13,7 @@ function copyCommitteeToClipboard(committeeId, committeeNumber) {
         const questionNumber = answerGroups[i].getAttribute("data-question");
         const meeting = answerGroups[i].getAttribute("data-meeting");
         const status = answerGroups[i].getAttribute("data-status");
-        const answer = answerGroups[i].getAttribute("data-answer");
+        const answer = answerGroups[i].querySelector(".answer")?.textContent || "";
 
         clipboardText += "\nQuestion: " + questionNumber + "\n";
         clipboardText += "Meeting: " + meeting + (status ? " - " + status : "") + "\n";
@@ -46,7 +46,7 @@ function copyAllAnswersToClipboard(committeeNumber, questionNumber) {
         if (currentCommitteeNumber == committeeNumber && currentQuestionNumber == questionNumber) {
             const meeting = answerGroups[i].getAttribute("data-meeting");
             const status = answerGroups[i].getAttribute("data-status");
-            const answer = answerGroups[i].getAttribute("data-answer");
+            const answer = answerGroups[i].querySelector(".answer")?.textContent || "";
             clipboardText += "\nMeeting: " + meeting + (status ? " - " + status : "") + "\n";
             clipboardText += answer + "\n";
             clipboardText += "\n";
