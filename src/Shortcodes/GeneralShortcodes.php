@@ -9,8 +9,13 @@ use Throwable;
 
 /**
  * General purpose shortcodes
+ *
+ * Both Confur and Amber ship this class. The guard below ensures
+ * we don't re-declare the Confur\Shortcodes\GeneralShortcodes class
+ * if (somehow) this file is included twice. The two plugins' copies
+ * live in different namespaces so they never collide with each other.
  */
-if (!class_exists('GeneralShortcodes')) {
+if (!class_exists(__NAMESPACE__ . '\\GeneralShortcodes')) {
     class GeneralShortcodes
     {
         /**

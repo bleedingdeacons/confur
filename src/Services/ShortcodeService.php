@@ -34,11 +34,22 @@ class ShortcodeService
 		add_shortcode('step', [$this->stepShortcode, 'render']);
 		add_shortcode('tradition', [$this->traditionShortcode, 'render']);
 
-		// General shortcodes
-		add_shortcode('open_new_link', [$this->generalShortcodes, 'openBlank']);
-		add_shortcode('open_email', [$this->generalShortcodes, 'linkEmail']);
-		add_shortcode('pdf_link', [$this->generalShortcodes, 'generatePdfLink']);
-		add_shortcode('days_remaining', [$this->generalShortcodes, 'generateDaysRemaining']);
+		// General shortcodes — also shipped by the Amber plugin. Each tag is
+		// guarded by shortcode_exists so whichever plugin loads first wins and
+		// the other no-ops. Both plugins ship the same implementation, so the
+		// resulting behaviour is the same either way.
+		if (!shortcode_exists('open_new_link')) {
+			add_shortcode('open_new_link', [$this->generalShortcodes, 'openBlank']);
+		}
+		if (!shortcode_exists('open_email')) {
+			add_shortcode('open_email', [$this->generalShortcodes, 'linkEmail']);
+		}
+		if (!shortcode_exists('pdf_link')) {
+			add_shortcode('pdf_link', [$this->generalShortcodes, 'generatePdfLink']);
+		}
+		if (!shortcode_exists('days_remaining')) {
+			add_shortcode('days_remaining', [$this->generalShortcodes, 'generateDaysRemaining']);
+		}
 
 		// Answer shortcodes
 		add_shortcode('answer', [$this->answerShortcode, 'generateAnswerField']);
