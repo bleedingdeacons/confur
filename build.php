@@ -151,6 +151,9 @@ class PluginBuilder {
         $archiveName .= '-' . $this->version . '.zip';
 
         // Create ZIP archive
+        // Stamp the build date into the main plugin header
+        $this->syncBuildDate();
+
         $this->createZip($archiveName, $excludes);
 
         // Display file size
@@ -158,6 +161,64 @@ class PluginBuilder {
         $this->log("Archive created successfully: " . basename($archiveName));
         $this->log("File size: {$size}");
         $this->log("Location: {$archiveName}");
+    }
+
+    /**
+     * Update (or insert) the Build date in readme.txt.
+     *
+     * Writes the current date in Y/m/d format (e.g. 2026/01/12). If a
+     * "Build date:" line already exists in readme.txt it is updated;
+     * otherwise a new line is inserted immediately after the "Stable tag:"
+     * line, preserving the file's existing line ending convention.
+     */
+    private function syncBuildDate() {
+        $readmeFile = $this->pluginDir . DIRECTORY_SEPARATOR . 'readme.txt';
+        if (!file_exists($readmeFile)) {
+            $this->log("No readme.txt found — skipping build date sync");
+            return;
+        }
+
+        $content = file_get_contents($readmeFile);
+        if ($content === false) {
+            $this->error("Failed to read readme.txt");
+            return;
+        }
+
+        $buildDate = date('Y/m/d');
+
+        // First, try to update an existing "Build date:" line.
+        $updated = preg_replace(
+            '/^Build date:[ \t]*.+$/mi',
+            'Build date: ' . $buildDate,
+            $content,
+            1,
+            $count
+        );
+
+        if ($count > 0 && $updated !== null) {
+            file_put_contents($readmeFile, $updated);
+            $this->log("Updated readme.txt Build date to {$buildDate}");
+            return;
+        }
+
+        // No existing line — insert one right after the "Stable tag:" line,
+        // preserving the file's line ending convention (\r\n or \n).
+        $updated = preg_replace_callback(
+            '/^(Stable tag:[ \t]*.+)(\r?\n)/mi',
+            function ($m) use ($buildDate) {
+                return $m[1] . $m[2] . 'Build date: ' . $buildDate . $m[2];
+            },
+            $content,
+            1,
+            $count
+        );
+
+        if ($count > 0 && $updated !== null) {
+            file_put_contents($readmeFile, $updated);
+            $this->log("Inserted Build date {$buildDate} into readme.txt");
+        } else {
+            $this->log("No Stable tag line found in readme.txt — skipping build date sync");
+        }
     }
 
     /**
