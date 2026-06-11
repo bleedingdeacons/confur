@@ -32,7 +32,7 @@ class PluginBuilder {
             '.idea',
             'build',
             'tests',
-            'vendor/tests',
+            'vendor',
             'setup',
             'node_modules',
             '.DS_Store',
@@ -96,7 +96,7 @@ class PluginBuilder {
      * Extract version from the main plugin file
      */
     private function getVersionFromPlugin() {
-        $mainFile = $this->pluginDir . DIRECTORY_SEPARATOR . 'Confur.php';
+        $mainFile = $this->pluginDir . DIRECTORY_SEPARATOR . 'confur.php';
         if (file_exists($mainFile)) {
             $content = file_get_contents($mainFile);
             if (preg_match('/Version:\s*([0-9.]+)/', $content, $matches)) {

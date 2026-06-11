@@ -6,6 +6,8 @@
  * Version: 2.11.5
  * Requires at least: 6.0
  * Requires PHP: 7.4
+ * GitHub Plugin URI: https://github.com/thebleedingdeacons/confur
+ * GitHub Branch: main
  * Author: The Bleeding Deacons
  * Author URI: thebleedingdeacons@gmail.com
  * License: MIT (Modified)
