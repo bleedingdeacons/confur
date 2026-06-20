@@ -25,9 +25,15 @@ class MeetingRepository
 		foreach ($posts as $post) {
 			$meetingMeta = get_post_custom($post->ID);
 
-			$types = isset($meetingMeta['types']) && !empty($meetingMeta['types'][0])
-				? unserialize($meetingMeta['types'][0])
-				: [];
+			// The `types` meta is a serialized array of plain string codes
+			// written by 12 Step Meeting List. Decode with allowed_classes
+			// disabled so a tampered/poisoned meta value can't trigger PHP
+			// object injection, and coerce a failed decode back to an array.
+			$types = [];
+			if (isset($meetingMeta['types']) && !empty($meetingMeta['types'][0])) {
+				$decoded = unserialize($meetingMeta['types'][0], ['allowed_classes' => false]);
+				$types = is_array($decoded) ? $decoded : [];
+			}
 
 			$meetings[] = [
 				'id' => $post->ID,
