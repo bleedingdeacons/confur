@@ -11,9 +11,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ci:
-    name: PHP 7.4
+  runtime:
+    name: PHP 7.4 (runtime)
     runs-on: ubuntu-latest
+    # Gates run on the PHP this plugin claims to support. require-dev
+    # pins php >=8.1, so dev dependencies are excluded here and the
+    # check scripts run in the tooling job below instead.
 
     steps:
       - name: Checkout code
@@ -43,16 +46,16 @@ jobs:
             ${{ runner.os }}-php7.4-composer-
 
       # --- Gates -----------------------------------------------------------
-      # These fail the build. Each is verified to pass across the suite today.
+      # These fail the build. Each is verified to pass in this repo today.
 
       - name: Validate composer.json
         # --no-check-lock: composer.lock is untracked in some repos and drifted
         # from composer.json in others. Lock state is reported as advisory
-        # below rather than blocking every PR in the suite.
+        # rather than blocking every PR in the suite.
         run: composer validate --no-check-lock
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress
+        run: composer install --prefer-dist --no-progress --no-dev
 
       - name: Lint PHP syntax
         # Shipped code only: tests/ is covered by the advisory test run, and
@@ -72,6 +75,41 @@ jobs:
       - name: Build production archive
         # The build is what /bump ships, so a broken build must fail the PR.
         run: composer build:production
+
+  tooling:
+    name: PHP 8.1 (tooling)
+    runs-on: ubuntu-latest
+    # require-dev pins php >=8.1; the check scripts cannot run on 7.4.
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.1
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          # zip: build.php assembles the release archive with ZipArchive.
+          extensions: mbstring, intl, json, zip
+          tools: composer:v2
+          coverage: none
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          # Keyed on composer.json: composer.lock is untracked in several of
+          # these repos, so it is not a reliable cache key across the suite.
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-php8.1-composer-${{ hashFiles('**/composer.json') }}
+          restore-keys: |
+            ${{ runner.os }}-php8.1-composer-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
 
       # --- Advisory --------------------------------------------------------
       # Reported but not yet enforced. Promote to a gate once a repo is green.

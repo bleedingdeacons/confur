@@ -86,9 +86,6 @@
       "@phpcs",
       "@phpstan",
       "@test"
-    ],
-    "post-autoload-dump": [
-      "@version"
     ]
   },
   "scripts-descriptions": {
