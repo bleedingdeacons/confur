@@ -15,8 +15,8 @@ jobs:
     name: PHP 7.4 (runtime)
     runs-on: ubuntu-latest
     # Gates run on the PHP this plugin claims to support. require-dev
-    # pins php >=8.1, so dev dependencies are excluded here and the
-    # check scripts run in the tooling job below instead.
+    # pins php >=8.1, so the check scripts run in the tooling job
+    # below instead.
 
     steps:
       - name: Checkout code
@@ -54,8 +54,11 @@ jobs:
         # rather than blocking every PR in the suite.
         run: composer validate --no-check-lock
 
-      - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-dev
+      # No install step: this plugin declares no runtime packages
+      # beyond php itself, and composer's --no-dev still resolves
+      # require-dev (which pins php >=8.1), so installing here
+      # is both impossible and unnecessary. build.php needs no
+      # autoloader, and the lint reads the source directly.
 
       - name: Lint PHP syntax
         # Shipped code only: tests/ is covered by the advisory test run, and
