@@ -17,7 +17,7 @@ Every question/answer field is backed by Advanced Custom Fields, so the question
 ## Requirements
 
 - WordPress 6.0 or higher
-- PHP 7.4 or higher
+- PHP 8.1 or higher
 - [12 Step Meeting List](https://wordpress.org/plugins/12-step-meeting-list/) — meeting metadata
 - [Advanced Custom Fields](https://wordpress.org/plugins/advanced-custom-fields/) — answer field group
 
