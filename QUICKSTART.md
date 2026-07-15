@@ -14,7 +14,7 @@ Your WordPress plugin now has a complete build system with:
 No installation needed! The build system is ready to use.
 
 ### Requirements
-- PHP 7.4 or higher
+- PHP 8.1 or higher
 - PHP ZIP extension
 - Composer (optional, but recommended)
 

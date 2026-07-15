@@ -10,7 +10,7 @@
     }
   ],
   "require": {
-    "php": ">=7.4"
+    "php": ">=8.1"
   },
   "require-dev": {
     "php": ">=8.1",
@@ -49,8 +49,11 @@
     "clean": [
       "php build.php --clean-only"
     ],
+    "build:clean": [
+      "php build.php --clean-only"
+    ],
     "version": [
-      "@php -r \"$f='Confur.php'; if(file_exists($f)){ $c=file_get_contents($f); if(preg_match('/Version:\\s*([0-9.]+)/',$c,$m)){ echo 'Current plugin version: '.$m[1].PHP_EOL; exit(0); }} echo 'Version not found'.PHP_EOL; exit(1);\""
+      "@php -r \"$f='confur.php'; if(file_exists($f)){ $c=file_get_contents($f); if(preg_match('/Version:\\s*([0-9.]+)/',$c,$m)){ echo 'Current plugin version: '.$m[1].PHP_EOL; exit(0); }} echo 'Version not found'.PHP_EOL; exit(1);\""
     ],
     "help": [
       "php build.php --help"
@@ -83,9 +86,6 @@
       "@phpcs",
       "@phpstan",
       "@test"
-    ],
-    "post-autoload-dump": [
-      "@version"
     ]
   },
   "scripts-descriptions": {
@@ -95,6 +95,7 @@
     "compress": "Create production archive without cleaning",
     "compress:dev": "Create development archive without cleaning",
     "clean": "Remove the build directory and all archives",
+    "build:clean": "Remove the build directory and all archives (alias of clean)",
     "version": "Display the current plugin version from main file",
     "help": "Display detailed build script help and usage",
     "test": "Run PHPUnit tests",

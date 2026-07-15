@@ -1,109 +1,105 @@
-# Confur
+# Confur — Conference Question Collation
 
-A WordPress plugin for collating answers to questions for conference submitted online by groups.
+**Version:** 2.11.3
 
-## Description
+Automated collation of answers to conference questions submitted online by groups. Confur provides one place for groups to lodge their answers and one place for region representatives to read them back, organised and ready to discuss.
 
-Confur provides a complete solution for collecting, organizing, and managing questions submitted by groups for conference. The plugin streamlines the process of gathering questions from multiple groups, making it easy for region representative's to review and prepare responses.
+## What it does
 
-## Features
+Conference cycles are messy. Confur cleans the mess up by separating three things that used to be tangled together:
 
-- **Group Question Submission** - Allow groups to submit questions online
-- **Question Management** - Centralized dashboard for reviewing and organizing submitted answers
-- **Custom Fields Integration** - Leverages Advanced Custom Fields for flexible question data structure
-- **Meeting Integration** - Works seamlessly with the 12 Meeting List Plugin for meeting management
+1. **Groups submit answers** through a public-facing form that creates an `Answer` custom post.
+2. **Region reps review** in a centralised admin screen — Status (who's submitted, how complete), Results (the full text, by committee, ready to collate).
+3. **AA programme content** (Steps, Traditions, Responsibility Pledge) is reusable via shortcodes wherever it's needed.
+
+Every question/answer field is backed by Advanced Custom Fields, so the question set itself is editable from the WordPress admin without code changes.
 
 ## Requirements
 
 - WordPress 6.0 or higher
-- PHP 7.4 or higher
-- [12 Meeting List Plugin](https://wordpress.org/plugins/12-step-meeting-list/) (required)
-- [Advanced Custom Fields Plugin](https://wordpress.org/plugins/advanced-custom-fields/) (required)
+- PHP 8.1 or higher
+- [12 Step Meeting List](https://wordpress.org/plugins/12-step-meeting-list/) — meeting metadata
+- [Advanced Custom Fields](https://wordpress.org/plugins/advanced-custom-fields/) — answer field group
+
+Confur is a MIT-licensed plugin published by The Bleeding Deacons.
 
 ## Installation
 
-1. **Install Dependencies First**
-   - Install and activate the [12 Meeting List Plugin](https://wordpress.org/plugins/12-step-meeting-list/)
-   - Install and activate the [Advanced Custom Fields Plugin](https://wordpress.org/plugins/advanced-custom-fields/)
+1. Install and activate **12 Step Meeting List** and **Advanced Custom Fields**.
+2. Upload the `confur` directory to `/wp-content/plugins/`.
+3. Activate Confur through the **Plugins** menu in WordPress.
+4. Import the bundled ACF configuration (`setup/`) — this registers the `Answer` custom post type and its field group.
+5. Create a public registration page containing a form that creates the `Answer` post type.
 
-2. **Install Confur**
-   - Upload the `confur` folder to the `/wp-content/plugins/` directory
-   - Alternatively, install directly from the WordPress plugin repository
-   - Activate the plugin through the 'Plugins' menu in WordPress
+## Administration
 
-## Usage
+Under the **Conference for Question** sidebar menu:
 
-### Setup of Plugin
-
-1. Import the ACF Configuration for Custom Type and Field Group
-2. Create a Registration page containing a form that creates the Answer Custom Post Type
-
-### Administration
-
-**Conference for Question (side menu)**
-
-1. Status shows all the relevant information regarding answer submission
-2. Results displays the latest answers submitted in a collation friendly structure
+| Screen | What it shows |
+|---|---|
+| **Status** | Submission progress per group/committee — who's filed, who hasn't. |
+| **Results** | The latest answers grouped for collation. |
 
 ## Shortcodes
 
-Confur provides several shortcodes to display conference content and manage question submissions:
+### Answer & question management
 
-### Answer & Question Management
-
-```
-[answer_field committee="1" question="1"] - Generate an answer input field
-[question number="1" committee="1"] - Display a question with formatting
-[committee number="1" name="Finance"] - Create a committee section
-[header] - Display conference meeting header
-[progress_table] - Show progress tracking table for all committees
-[control position="top"] - Display save controls (Draft/Complete buttons)
-[status position="top"] - Show unsaved changes notification
-[days_remaining end_date="2024-12-31" extend_by="0"] - Display deadline countdown
+```text
+[answer_field committee="1" question="1"]    Generate an answer input field
+[question number="1" committee="1"]          Render a question with formatting
+[committee number="1" name="Finance"]        Open a committee section
+[header]                                     Conference meeting header
+[progress_table]                             Per-committee progress table
+[control position="top"]                     Save controls (Draft / Complete)
+[status position="top"]                      Unsaved-changes notice
+[days_remaining end_date="2024-12-31" extend_by="0"]   Countdown to deadline
 ```
 
-### AA Program Content
+### AA programme content
 
-```
-[step number="1"] - Display an AA Step with text and PDF link
-[tradition number="1"] - Display an AA Tradition with text and PDF link
-[responsibility_pledge number="1"] - Display the AA Responsibility Pledge
-```
-
-### General Utilities
-
-```
-[open_blank href="url" class="css-class"]Link Text[/open_blank] - Open link in new tab
-[link_email address="email@example.com" subject="Subject"]Text[/link_email] - Create email link
-[pdf_link url="url" name="filename.pdf"]Link Text[/pdf_link] - Generate PDF download link
+```text
+[step number="1"]                            Display an AA Step + PDF link
+[tradition number="1"]                       Display an AA Tradition + PDF link
+[responsibility_pledge number="1"]           Display the Responsibility Pledge
 ```
 
-### Form Configuration
+### General utilities
 
+```text
+[open_blank href="url" class="…"]Link[/open_blank]      Link that opens in a new tab
+[link_email address="x@y" subject="…"]Text[/link_email] Mailto link
+[pdf_link url="…" name="file.pdf"]Link[/pdf_link]       Inline PDF download link
 ```
-[custom_form action="save_answers"] - Configure custom form submission
+
+## Building a release
+
+The plugin ships with a cross-platform `build.php` script that packages a distributable zip:
+
+```bash
+php build.php                       # Production zip (default)
+php build.php build:production      # Production zip
+php build.php build:dev             # Dev zip (keeps tests)
+php build.php clean                 # Remove the build/ directory
+php build.php --version=2.12.0      # Override version on the way out
+php build.php --help                # Show all options
 ```
 
-## Support
+Output lands in `build/confur-production-<version>.zip` (or `-dev-`). On every build the script reads the version from the `Version:` header in `Confur.php`, syncs the `**Version:**` line in this README and the `Stable tag:` line in `readme.txt`, and stamps the build date into `readme.txt` immediately after the `Stable tag:` line.
 
-For support, bug reports, or feature requests, please contact your ELCO (Electronic Literature and Communications Officer).
+## Testing
 
-## Contributing
+PHPUnit is wired up via `phpunit.xml`. Run the suite with:
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+```bash
+# Unix-like
+./run-tests.sh
 
-## Changelog
+# Windows
+run-tests.cmd
+```
 
-### Version 2.1.1
-- Initial release
-- Basic question submission functionality
-- Integration with 12 Meeting List Plugin
-- Advanced Custom Fields support
+Coverage reports drop into `coverage/`.
 
-## Credits
+## Licence
 
-Developed by The Bleeding Deacons
-
----
-
-**Note**: This plugin requires both the 12 Meeting List Plugin and Advanced Custom Fields Plugin to function properly. Please ensure both dependencies are installed and activated before using Confur.
+MIT (Modified). See `LICENSE` for the full text.

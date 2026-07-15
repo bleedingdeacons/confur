@@ -467,7 +467,7 @@ php -i | less
 ## Troubleshooting Checklist
 
 - [ ] PHP is installed (`php --version`)
-- [ ] PHP version is 7.4 or higher
+- [ ] PHP version is 8.1 or higher
 - [ ] ZIP extension is loaded (`php -m | grep zip`)
 - [ ] Composer is installed (optional) (`composer --version`)
 - [ ] Script is executable (`chmod +x build.php`)
