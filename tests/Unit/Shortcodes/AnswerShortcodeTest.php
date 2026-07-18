@@ -226,9 +226,7 @@ class AnswerShortcodeTest extends TestCase
 
 		// Check for action hidden field
 		$this->assertStringContainsString('<input type="hidden" name="action" value="save_answers">', $result);
-		// Check for nonce field
-		$this->assertStringContainsString('answer_submission_nonce', $result);
-		$this->assertStringContainsString('type="hidden"', $result);
+		$this->assertStringNotContainsString('answer_submission_nonce', $result);
 	}
 
 	/** @test */

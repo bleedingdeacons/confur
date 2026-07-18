@@ -20,7 +20,6 @@ class ConfurSettings
         'support' => 'support@aa-bristol.org',
         'backup' => 'backup@aa-bristol.org',
         'delete_blocked_posts' => false,
-        'disable_nonce_verification' => true,
         'enable_duplicate_detection' => false,
     ];
 
@@ -108,17 +107,6 @@ class ConfurSettings
     }
 
     /**
-     * Check if nonce verification is disabled for answer submissions
-     *
-     * @return bool True if nonce verification is disabled, false otherwise
-     */
-    public static function isNonceVerificationDisabled(): bool
-    {
-        $settings = self::getAll();
-        return !empty($settings['disable_nonce_verification']);
-    }
-
-    /**
      * Check if duplicate registration detection is enabled
      *
      * @return bool True if duplicate detection is enabled, false otherwise
@@ -143,7 +131,6 @@ class ConfurSettings
             'support' => sanitize_email(trim($settings['support'] ?? '')),
             'backup' => sanitize_email(trim($settings['backup'] ?? '')),
             'delete_blocked_posts' => !empty($settings['delete_blocked_posts']),
-            'disable_nonce_verification' => !empty($settings['disable_nonce_verification']),
             'enable_duplicate_detection' => !empty($settings['enable_duplicate_detection']),
         ];
 

@@ -186,15 +186,10 @@ class AnswerShortcode
 	{
 		error_log('Action: ' . $atts['action']);
 
-		$action = sprintf(
+		return sprintf(
 			'<input type="hidden" name="action" value="%s">',
 			esc_attr($atts['action'])
 		);
-
-		// Add nonce field for CSRF protection
-		$nonce = wp_nonce_field('answer_submission_action', 'answer_submission_nonce', true, false);
-
-		return $action . $nonce;
 	}
 
 	/**
