@@ -233,6 +233,9 @@ class PluginBuilder {
         // Stamp the build date into the main plugin header
         $this->syncBuildDate();
 
+        // Keep README.md's version badge in step with the plugin header
+        $this->syncReadmeMarkdownVersion();
+
         // Stage a clean production vendor/ (no dev tooling) without touching
         // the working vendor/ used for tests. Dev builds keep it as-is.
         $stagedVendor = $type === 'dev' ? null : $this->stageProductionVendor();
@@ -245,6 +248,63 @@ class PluginBuilder {
         $this->log("Archive created successfully: " . basename($archiveName));
         $this->log("File size: {$size}");
         $this->log("Location: {$archiveName}");
+    }
+
+    /**
+     * Update the version badge in README.md to match the current plugin version.
+     *
+     * The badge is the canonical place the version appears in README.md. The
+     * legacy **Version:** line is still rewritten where one exists, so a repo
+     * that has not been converted keeps working.
+     */
+    private function syncReadmeMarkdownVersion(): void
+    {
+        $readmeFile = $this->pluginDir . DIRECTORY_SEPARATOR . 'README.md';
+        if (!file_exists($readmeFile)) {
+            $this->log("No README.md found — skipping version sync");
+            return;
+        }
+
+        $content = file_get_contents($readmeFile);
+        if ($content === false) {
+            $this->error("Failed to read README.md");
+            return;
+        }
+
+        $updated = preg_replace(
+            '~(img\.shields\.io/badge/version-)[^-\s)]+(-blue)~',
+            '${1}' . $this->version . '${2}',
+            $content,
+            -1,
+            $badgeCount
+        );
+
+        if ($updated === null) {
+            $this->error("Failed to rewrite the version badge in README.md");
+            return;
+        }
+
+        $updated = preg_replace(
+            '/^\*\*Version:\*\*\s*.+$/m',
+            '**Version:** ' . $this->version,
+            $updated,
+            -1,
+            $lineCount
+        );
+
+        if ($updated === null) {
+            $this->error("Failed to rewrite the **Version:** line in README.md");
+            return;
+        }
+
+        $count = $badgeCount + $lineCount;
+
+        if ($count > 0) {
+            file_put_contents($readmeFile, $updated);
+            $this->log("Updated README.md version to {$this->version} ({$badgeCount} badge, {$lineCount} line)");
+        } else {
+            $this->log("No version badge or **Version:** line in README.md — skipping version sync");
+        }
     }
 
     /**
