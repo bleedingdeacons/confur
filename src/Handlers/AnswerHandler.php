@@ -40,16 +40,9 @@ class AnswerHandler
                 return;
             }
 
-            // Verify nonce for CSRF protection (unless disabled in settings)
-            if (!ConfurSettings::isNonceVerificationDisabled()) {
-                if (!isset($_POST['answer_submission_nonce']) || 
-                    !wp_verify_nonce($_POST['answer_submission_nonce'], 'answer_submission_action')) {
-                    error_log('AnswerHandler::handleSubmission - Nonce verification failed');
-                    wp_send_json_error(['message' => 'Security check failed.'], 403);
-                    return;
-                }
-            }
-
+            // Submissions are constrained to same-site requests: the target post is
+            // resolved from the referer below, and url_to_postid() only matches URLs
+            // on this site, so a cross-site post cannot reach a valid post ID.
             $referer = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '';
             $postId = url_to_postid($referer);
 

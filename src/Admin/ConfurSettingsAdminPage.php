@@ -205,7 +205,6 @@ class ConfurSettingsAdminPage
             $support = isset($_POST['support_email']) ? sanitize_text_field($_POST['support_email']) : '';
             $backup = isset($_POST['backup_email']) ? sanitize_text_field($_POST['backup_email']) : '';
             $delete_blocked_posts = isset($_POST['delete_blocked_posts']) ? true : false;
-            $disable_nonce_verification = isset($_POST['disable_nonce_verification']) ? true : false;
             $enable_duplicate_detection = isset($_POST['enable_duplicate_detection']) ? true : false;
 
             $settings = [
@@ -213,7 +212,6 @@ class ConfurSettingsAdminPage
                     'support' => $support,
                     'backup' => $backup,
                     'delete_blocked_posts' => $delete_blocked_posts,
-                    'disable_nonce_verification' => $disable_nonce_verification,
                     'enable_duplicate_detection' => $enable_duplicate_detection,
             ];
 
@@ -400,28 +398,6 @@ class ConfurSettingsAdminPage
                         <p class="description">
                             When enabled, registration attempts from blocked emails will have their posts permanently deleted.
                             When disabled, the posts will remain but the registration will not proceed.
-                        </p>
-                    </div>
-
-                    <div class="confur-security-section">
-                        <h2>Security Settings</h2>
-                        
-                        <p style="margin-top: 15px;">
-                            <label for="disable_nonce_verification">
-                                <input
-                                        type="checkbox"
-                                        id="disable_nonce_verification"
-                                        name="disable_nonce_verification"
-                                        value="1"
-                                        <?php checked($settings['disable_nonce_verification'] ?? false); ?>
-                                />
-                                Disable nonce verification for answer submissions
-                            </label>
-                        </p>
-                        <p class="description" style="color: #d63638;">
-                            <strong>⚠️ Not recommended.</strong> Nonce verification protects against Cross-Site Request Forgery (CSRF) attacks. 
-                            Only disable this if you are experiencing issues with form submissions and understand the security implications.
-                            When disabled, the nonce field will still be included in the form but will not be validated on submission.
                         </p>
                     </div>
 
