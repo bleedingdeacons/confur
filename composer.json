@@ -78,10 +78,10 @@
       "phpcbf --standard=PSR12 src"
     ],
     "phpstan": [
-      "phpstan analyse"
+      "phpstan analyse --memory-limit=1G"
     ],
     "phpstan:baseline": [
-      "phpstan analyse --generate-baseline"
+      "phpstan analyse --memory-limit=1G --generate-baseline"
     ],
     "ci": [
       "@phpcs",
