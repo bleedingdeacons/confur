@@ -37,7 +37,6 @@ class AnswerHandler
             if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['submit_answers'])) {
                 error_log('AnswerHandler::handleSubmission - Invalid request method or missing submit_answers field');
                 wp_send_json_error(['message' => 'Unrecognized Action.'], 400);
-                return;
             }
 
             // Submissions are constrained to same-site requests: the target post is
@@ -49,13 +48,11 @@ class AnswerHandler
             if ($postId === 0) {
                 error_log("AnswerHandler::handleSubmission - Could not determine post ID from URI: $referer");
                 wp_send_json_error(['message' => 'Invalid referer URL.'], 400);
-                return;
             }
 
             if (get_post_status($postId) === false) {
                 error_log("AnswerHandler::handleSubmission - Post ID: $postId does not exist");
                 wp_send_json_error(['message' => 'Post does not exist.'], 404);
-                return;
             }
 
             // Send backup email (sanitize POST data before logging)
@@ -270,12 +267,11 @@ class AnswerHandler
 			if (!empty($email)) {
 				try {
 					$errorBody = '<p>There was an unexpected error during your registration. Please try again or contact support.</p>';
-					$params = ['content' => $errorBody];
 					EmailService::sendEmail(
 						$email,
 						ConfurSettings::getSupportEmail(),
 						'Error: Registration Failed',
-						$params
+						$errorBody
 					);
 				} catch (\Exception $emailException) {
 					error_log("AnswerHandler::handleRegistration - Failed to send error notification email: " . $emailException->getMessage());

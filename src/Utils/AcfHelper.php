@@ -135,7 +135,7 @@ class AcfHelper {
 			error_log("Field updated successfully");
 			return true;
 
-		} catch (Exception $e) {
+		} catch (\Exception $e) {
 			error_log("Error updating ACF field: " . $e->getMessage());
 			unset($_POST['acf']);
 			return false;

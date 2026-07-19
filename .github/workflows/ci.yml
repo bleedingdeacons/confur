@@ -76,9 +76,12 @@ jobs:
       # --- Advisory --------------------------------------------------------
       # Reported but not yet enforced. Promote to a gate once a repo is green.
 
-      - name: PHPStan (advisory)
+      - name: PHPStan
+        # A gate, promoted from advisory now the repo is green. It ran advisory
+        # with no config file at all, so WordPress itself was unknown and the
+        # step reported hundreds of core functions as "not found" — noise no
+        # one could act on, and it failed silently anyway.
         run: composer phpstan
-        continue-on-error: true
 
       - name: PHPCS (advisory)
         run: composer phpcs
