@@ -319,8 +319,8 @@ class ResultAdminPage
 
         foreach ($results as $result) {
             $link = $this->createAnswerLink(
-                    $result['committee'],
-                    $result['answer'],
+                    (int) $result['committee'],
+                    (int) $result['answer'],
                     'Answer ' . $result['answer']
             );
 

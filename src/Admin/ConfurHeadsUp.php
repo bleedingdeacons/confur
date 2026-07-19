@@ -51,7 +51,6 @@ class ConfurHeadsUp
 		// Verify nonce
 		if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'confur_headsup_refresh')) {
 			wp_send_json_error(['message' => 'Invalid security token']);
-			return;
 		}
 
 		// Get the widget content

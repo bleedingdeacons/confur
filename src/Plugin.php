@@ -30,7 +30,6 @@ class Plugin
 	private ResultAdminPage $reportingAdminPage;
 	private ConfurSettingsAdminPage $confurSettingsAdminPage;
 	private EmailTemplateAdminPage $emailTemplateAdminPage;
-	private AnswerAdmin $answerAdmin;
 	private ConfurHeadsUp $confurHeadsUp;
 
 	/**
@@ -68,7 +67,8 @@ class Plugin
 				$this->reportingAdminPage = new ResultAdminPage();
 				$this->confurSettingsAdminPage = new ConfurSettingsAdminPage();
 				$this->emailTemplateAdminPage = new EmailTemplateAdminPage();
-				$this->answerAdmin = new AnswerAdmin();
+				// Registers its own admin hooks in the constructor.
+				new AnswerAdmin();
 			} catch (\Exception $e) {
 				error_log('Plugin::init - Failed to initialize services: ' . $e->getMessage());
 				throw new \Exception('Failed to initialize plugin services: ' . $e->getMessage());

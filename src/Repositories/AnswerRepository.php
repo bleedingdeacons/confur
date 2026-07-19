@@ -156,6 +156,7 @@ class AnswerRepository
 		sort($inputMeetingIds);
 
 		// Collect all matching duplicates
+		/** @var array<int, array{post_id: int, updated: string}> $duplicates */
 		$duplicates = [];
 
 		foreach ($allPosts as $postId) {
@@ -164,7 +165,9 @@ class AnswerRepository
 			$postFellowMeeting = $this->normalizePostId(get_field(Constants::FELLOW_MEETING_FIELD, $postId));
 			$postEmail = get_field(Constants::EMAIL_FIELD, $postId);
 			$postStatus = get_field(Constants::STATUS_FIELD, $postId);
-			$postUpdated = get_field(Constants::UPDATED_FIELD, $postId);
+			// Cast at the source: get_field() is mixed, and the usort below
+			// feeds this straight to strtotime(), which wants a string.
+			$postUpdated = (string) (get_field(Constants::UPDATED_FIELD, $postId) ?? '');
 
 			error_log("AnswerRepository::findDuplicate - Checking post $postId: meeting=$postMeeting, fellow=$postFellowMeeting, email=$postEmail, status=$postStatus, updated=$postUpdated");
 

@@ -159,7 +159,6 @@ class ConfurSettingsAdminPage
     /**
      * Handle form submission
      */
-    #[\NoReturn]
     public function handleFormSubmission(): void
     {
         // Check user capabilities
@@ -368,7 +367,7 @@ class ConfurSettingsAdminPage
 
                         <?php if ($blocklistCount > 0): ?>
                             <div class="confur-blocklist-warning">
-                                <strong>Note:</strong> There are currently <strong><?php echo esc_html($blocklistCount); ?></strong> blocked email address(es).
+                                <strong>Note:</strong> There are currently <strong><?php echo esc_html((string) $blocklistCount); ?></strong> blocked email address(es).
                             </div>
                         <?php endif; ?>
 
@@ -380,7 +379,7 @@ class ConfurSettingsAdminPage
                         ><?php echo esc_textarea($blocklistText); ?></textarea>
 
                         <p class="confur-blocklist-count">
-                            Currently <?php echo esc_html($blocklistCount); ?> email(s) in blocked list.
+                            Currently <?php echo esc_html((string) $blocklistCount); ?> email(s) in blocked list.
                         </p>
 
                         <p style="margin-top: 15px;">

@@ -177,27 +177,23 @@ class StatusAdminPage
         // Verify nonce
         if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'confur_cancel_duplicate')) {
             wp_send_json_error(['message' => 'Invalid security token']);
-            return;
         }
 
         // Check permissions - user must be able to edit answers
         if (!current_user_can('edit_answers')) {
             wp_send_json_error(['message' => 'Insufficient permissions']);
-            return;
         }
 
         // Get and validate answer ID
         $answerId = isset($_POST['answer_id']) ? intval($_POST['answer_id']) : 0;
         if ($answerId <= 0) {
             wp_send_json_error(['message' => 'Invalid answer ID']);
-            return;
         }
 
         // Verify the post exists and is an answer type
         $post = get_post($answerId);
         if (!$post || $post->post_type !== Constants::ANSWER_CUSTOM_TYPE) {
             wp_send_json_error(['message' => 'Answer not found']);
-            return;
         }
 
         // Update the status to cancelled
@@ -218,27 +214,23 @@ class StatusAdminPage
         // Verify nonce
         if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'confur_resend_confirmation')) {
             wp_send_json_error(['message' => 'Invalid security token']);
-            return;
         }
 
         // Check permissions - user must be able to edit answers
         if (!current_user_can('edit_answers')) {
             wp_send_json_error(['message' => 'Insufficient permissions']);
-            return;
         }
 
         // Get and validate answer ID
         $answerId = isset($_POST['answer_id']) ? intval($_POST['answer_id']) : 0;
         if ($answerId <= 0) {
             wp_send_json_error(['message' => 'Invalid answer ID']);
-            return;
         }
 
         // Verify the post exists and is an answer type
         $post = get_post($answerId);
         if (!$post || $post->post_type !== Constants::ANSWER_CUSTOM_TYPE) {
             wp_send_json_error(['message' => 'Answer not found']);
-            return;
         }
 
         // Get the email, meeting info, and answer URL
@@ -248,12 +240,10 @@ class StatusAdminPage
 
         if (empty($email) || !is_email($email)) {
             wp_send_json_error(['message' => 'No valid email address found for this registration']);
-            return;
         }
 
         if (empty($meetingId)) {
             wp_send_json_error(['message' => 'No meeting associated with this registration']);
-            return;
         }
 
         // Build meeting name (same logic as in AnswerHandler)
