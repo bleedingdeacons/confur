@@ -7,7 +7,6 @@
          failOnWarning="false"
          failOnRisky="true"
          beStrictAboutOutputDuringTests="true"
-         beStrictAboutTodoAnnotatedTests="true"
          displayDetailsOnTestsThatTriggerWarnings="true">
 
     <testsuites>
@@ -16,6 +15,15 @@
         </testsuite>
     </testsuites>
 
+    <!--
+        Where coverage is measured from when it is asked for. There is
+        deliberately no <coverage><report> block: declaring report outputs
+        makes PHPUnit collect coverage on every run, which warns "No code
+        coverage driver available" and returns a non-zero exit code on any
+        machine without Xdebug or pcov - including CI, which sets
+        coverage: none. The composer test:coverage script passes the
+        coverage flags when coverage is actually wanted.
+    -->
     <source>
         <include>
             <directory suffix=".php">src</directory>
@@ -26,30 +34,14 @@
         </exclude>
     </source>
 
-    <coverage includeUncoveredFiles="true"
-              pathCoverage="false"
-              ignoreDeprecatedCodeUnits="true"
-              disableCodeCoverageIgnore="false">
-        <report>
-            <html outputDirectory="coverage/html"/>
-            <text outputFile="coverage/coverage.txt"/>
-            <clover outputFile="coverage/clover.xml"/>
-        </report>
-    </coverage>
-
     <php>
         <ini name="display_errors" value="1"/>
         <ini name="error_reporting" value="-1"/>
         <ini name="memory_limit" value="512M"/>
-
         <!-- WordPress Test Environment Variables -->
         <const name="WP_TESTS_DOMAIN" value="example.org"/>
         <const name="WP_TESTS_EMAIL" value="admin@example.org"/>
         <const name="WP_TESTS_TITLE" value="Test Blog"/>
         <const name="WP_DEBUG" value="true"/>
     </php>
-
-    <logging>
-        <junit outputFile="coverage/junit.xml"/>
-    </logging>
 </phpunit>
