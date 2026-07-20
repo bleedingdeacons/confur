@@ -4,7 +4,7 @@ Tags: conference, questions, answers, groups, aa
 Requires at least: 6.0
 Tested up to: 6.9
 Stable tag: 2.11.3
-Build date: 2026/07/19 20:34:51
+Build date: 2026/07/20 16:42:53
 Requires PHP: 7.4
 License: MIT (Modified)
 
