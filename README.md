@@ -103,7 +103,8 @@ PHPUnit is wired up via `phpunit.xml`. Run the suite with:
 run-tests.cmd
 ```
 
-Coverage reports drop into `coverage/`.
+Coverage reports drop into `coverage/`. Line coverage is also reported to
+[Coveralls](https://coveralls.io/github/bleedingdeacons/confur?branch=main) on every CI run.
 
 ## Licence
 
