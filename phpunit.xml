@@ -31,6 +31,14 @@
         <exclude>
             <directory>src/Config</directory>
             <file>src/autoload.php</file>
+            <!--
+                Admin screens: settings/status/result/email-template pages, the
+                answer list-table columns and the heads-up notices. These are
+                WordPress render/callback and menu glue exercised through the
+                admin UI at runtime, not in unit tests — the same exclusion the
+                other suite plugins apply to their src/Admin layers.
+            -->
+            <directory>src/Admin</directory>
         </exclude>
     </source>
 

@@ -224,15 +224,13 @@ if ($wordpress_loaded) {
 
 	if (!function_exists('wp_send_json_success')) {
 		function wp_send_json_success($data = null, $status_code = null) {
-			echo json_encode(['success' => true, 'data' => $data]);
-			exit;
+			throw new \ConfurJsonResponse(true, $data, $status_code);
 		}
 	}
 
 	if (!function_exists('wp_send_json_error')) {
 		function wp_send_json_error($data = null, $status_code = null) {
-			echo json_encode(['success' => false, 'data' => $data]);
-			exit;
+			throw new \ConfurJsonResponse(false, $data, $status_code);
 		}
 	}
 
@@ -285,7 +283,8 @@ if ($wordpress_loaded) {
 
 	if (!function_exists('get_post_meta')) {
 		function get_post_meta($post_id, $key = '', $single = false) {
-			// Mock implementation - returns empty
+			$store = $GLOBALS['confur_postmeta'][$post_id][$key] ?? null;
+			if ($store !== null) { return $store; }
 			return $single ? '' : [];
 		}
 	}
@@ -311,6 +310,11 @@ if ($wordpress_loaded) {
 
 	if (!function_exists('get_the_title')) {
 		function get_the_title($post = 0) {
+			if (is_object($post) && isset($post->ID)) { $post = $post->ID; }
+			if (is_array($post) && isset($post['ID'])) { $post = $post['ID']; }
+			if (isset($GLOBALS['confur_titles'][$post])) {
+				return $GLOBALS['confur_titles'][$post];
+			}
 			if (is_numeric($post)) {
 				return "Post Title {$post}";
 			}
@@ -324,8 +328,10 @@ if ($wordpress_loaded) {
 		 * Returns null by default, can be overridden in tests
 		 */
 		function get_field($selector, $post_id = false, $format_value = true) {
-			// Return null by default - tests can override via filters or globals
-			return null;
+			if (is_object($post_id) && isset($post_id->ID)) { $post_id = $post_id->ID; }
+			if (is_array($post_id) && isset($post_id['ID'])) { $post_id = $post_id['ID']; }
+			$pid = ($post_id === false || $post_id === null) ? 0 : $post_id;
+			return $GLOBALS['confur_fields'][$pid][$selector] ?? null;
 		}
 	}
 
@@ -348,6 +354,9 @@ ob_start();
 // Load namespace-specific WordPress function overrides
 // These allow WordPress functions to be called from within namespaced code
 require_once __DIR__ . '/wordpress-functions.php';
+
+// Controllable stubs, WordPress classes and plugin constants for the unit tests.
+require_once __DIR__ . '/confur-test-harness.php';
 
 echo "✓ PHPUnit Bootstrap loaded successfully\n";
 echo "  Test mode: " . (CONFUR_TEST_MODE ? 'Enabled' : 'Disabled') . "\n";
