@@ -37,13 +37,13 @@ class AnswerShortcode
 	/**
 	 * Generate answer field
 	 *
-	 * @param array $atts Shortcode attributes
+	 * @param array<string, mixed> $atts Shortcode attributes
 	 * @return string Rendered HTML
 	 */
 	/**
 	 * Generate answer field
 	 *
-	 * @param array $atts Shortcode attributes
+	 * @param array<string, mixed> $atts Shortcode attributes
 	 * @return string Rendered HTML
 	 */
 	public function generateAnswerField(array $atts = []): string
@@ -86,7 +86,7 @@ class AnswerShortcode
 	/**
 	 * Generate question
 	 *
-	 * @param array $atts Shortcode attributes
+	 * @param array<string, mixed> $atts Shortcode attributes
 	 * @param string|null $content Shortcode content
 	 * @return string Rendered HTML
 	 */
@@ -114,7 +114,7 @@ class AnswerShortcode
 	/**
 	 * Generate committee
 	 *
-	 * @param array $atts Shortcode attributes
+	 * @param array<string, mixed> $atts Shortcode attributes
 	 * @param string|null $content Shortcode content
 	 * @return string Rendered HTML
 	 */
@@ -139,7 +139,7 @@ class AnswerShortcode
 	/**
 	 * Generate start committee
 	 *
-	 * @param array $atts Shortcode attributes
+	 * @param array<string, mixed> $atts Shortcode attributes
 	 * @return string Rendered HTML
 	 */
 	public function generateStartCommittee(array $atts = []): string
@@ -188,7 +188,7 @@ class AnswerShortcode
 	/**
 	 * Configure custom form
 	 *
-	 * @param array $atts Shortcode attributes
+	 * @param array<string, mixed> $atts Shortcode attributes
 	 * @return string Rendered HTML
 	 */
 	public function configureCustomForm(array $atts): string
@@ -204,7 +204,7 @@ class AnswerShortcode
 	/**
 	 * Generate status
 	 *
-	 * @param array $atts Shortcode attributes
+	 * @param array<string, mixed> $atts Shortcode attributes
 	 * @return string Rendered HTML
 	 */
 	public function generateStatus(array $atts): string
@@ -246,7 +246,7 @@ class AnswerShortcode
 	/**
 	 * Generate control
 	 *
-	 * @param array $atts Shortcode attributes
+	 * @param array<string, mixed> $atts Shortcode attributes
 	 * @return string Rendered HTML
 	 */
 	public function generateControl(array $atts): string
@@ -275,7 +275,7 @@ class AnswerShortcode
 	 * Displays "Allocated Committee (Number)" if the associated meeting
 	 * has a populated allocation field. Committee 7 displays as "Final Committee".
 	 *
-	 * @param array $atts Shortcode attributes
+	 * @param array<string, mixed> $atts Shortcode attributes
 	 * @return string Rendered HTML or empty string if no allocation
 	 */
 	public function generateAllocatedCommittee(array $atts = []): string

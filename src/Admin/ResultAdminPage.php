@@ -138,7 +138,7 @@ class ResultAdminPage
     /**
      * Generate answer table
      *
-     * @param array $answers All answers
+     * @param array<string, mixed> $answers All answers
      * @return string Rendered HTML
      */
     private function generateAnswerTable(array $answers): string
@@ -176,8 +176,8 @@ class ResultAdminPage
      * Render committee section
      *
      * @param string $committeeNumber Committee number
-     * @param array $questionsByCommittee Questions
-     * @param array $addedAnchors Added anchors tracker
+     * @param array<string, mixed> $questionsByCommittee Questions
+     * @param array<string, mixed> $addedAnchors Added anchors tracker
      * @return string Rendered HTML
      */
     private function renderCommitteeSection(string $committeeNumber, array $questionsByCommittee, array &$addedAnchors): string
@@ -218,8 +218,8 @@ class ResultAdminPage
      *
      * @param string $committeeNumber Committee number
      * @param string $questionNumber Question number
-     * @param array $row Answer data
-     * @param array $addedAnchors Added anchors tracker
+     * @param array<string, mixed> $row Answer data
+     * @param array<string, mixed> $addedAnchors Added anchors tracker
      * @return string Rendered HTML
      */
     private function renderAnswerGroup(string $committeeNumber, string $questionNumber, array $row, array &$addedAnchors): string
@@ -278,7 +278,7 @@ class ResultAdminPage
     /**
      * Generate coverage table
      *
-     * @param array $data Answer data
+     * @param array<string, mixed> $data Answer data
      * @return string Rendered HTML
      */
     private function generateCoverageTable(array $data): string

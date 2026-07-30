@@ -800,7 +800,7 @@ class StatusAdminPage
     /**
      * Get all meetings data (registered and unregistered)
      *
-     * @return array Meeting data
+     * @return array<int, array<string, mixed>> Meeting data
      */
     private function getAllMeetingsData(): array
     {
@@ -995,7 +995,7 @@ class StatusAdminPage
     /**
      * Create contact telephone link
      *
-     * @param array $contact Contact data
+     * @param array<string, mixed> $contact Contact data
      * @return string Rendered HTML
      */
     private function contactTelephoneLink(array $contact): string
@@ -1011,7 +1011,7 @@ class StatusAdminPage
      * Get status display information
      *
      * @param string $status Status value
-     * @return array Status info with label and class
+     * @return array<string, string> Status info with label and class
      */
     private function getStatusInfo($status): array
     {
@@ -1048,8 +1048,8 @@ class StatusAdminPage
     /**
      * Calculate statistics
      *
-     * @param array $allMeetings Meeting data
-     * @return array Statistics
+     * @param array<int, array<string, mixed>> $allMeetings Meeting data
+     * @return array<string, mixed> Statistics
      */
     private function calculateStats(array $allMeetings): array
     {
@@ -1106,8 +1106,8 @@ class StatusAdminPage
     /**
      * Find meetings with duplicate active (non-cancelled) registrations
      *
-     * @param array $allMeetings Meeting data
-     * @return array Duplicates with meeting ID as key and info (name, count) as value
+     * @param array<int, array<string, mixed>> $allMeetings Meeting data
+     * @return array<int, array<string, mixed>> Duplicates with meeting ID as key and info (name, count) as value
      */
     private function findDuplicateRegistrations(array $allMeetings): array
     {

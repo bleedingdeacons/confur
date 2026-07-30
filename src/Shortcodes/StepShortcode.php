@@ -27,7 +27,7 @@ class StepShortcode
 	/**
 	 * Render step shortcode
 	 *
-	 * @param array $atts Shortcode attributes
+	 * @param array<string, mixed> $atts Shortcode attributes
 	 * @param string|null $content Shortcode content
 	 * @return string Rendered HTML
 	 */

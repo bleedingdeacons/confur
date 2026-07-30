@@ -176,7 +176,7 @@ class EmailTemplateAdminPage
     /**
      * Get all email templates from options, merged with defaults
      *
-     * @return array Templates with subject and body
+     * @return array<string, array<string, mixed>> Templates with subject and body
      */
     public static function getAll(): array
     {
@@ -200,7 +200,7 @@ class EmailTemplateAdminPage
      * Get a single template by key
      *
      * @param string $key Template key (e.g., 'RegistrationConfirmation')
-     * @return array|null Template data or null if not found
+     * @return array<string, mixed>|null Template data or null if not found
      */
     public static function get(string $key): ?array
     {
@@ -266,7 +266,7 @@ class EmailTemplateAdminPage
     /**
      * Update templates
      *
-     * @param array $templates Array of template data
+     * @param array<string, array<string, mixed>> $templates Array of template data
      * @return bool Success status
      */
     public static function update(array $templates): bool
