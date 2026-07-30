@@ -26,7 +26,7 @@ class ConfurSettings
     /**
      * Get all email settings
      *
-     * @return array Email settings
+     * @return array<string, mixed> Email settings
      */
     public static function getAll(): array
     {
@@ -120,7 +120,7 @@ class ConfurSettings
     /**
      * Update all email settings
      *
-     * @param array $settings Email settings to update
+     * @param array<string, mixed> $settings Email settings to update
      * @return bool True on success, false on failure
      */
     public static function updateAll(array $settings): bool
@@ -193,7 +193,7 @@ class ConfurSettings
     /**
      * Get default values
      *
-     * @return array Default email settings
+     * @return array<string, mixed> Default email settings
      */
     public static function getDefaults(): array
     {
@@ -203,7 +203,7 @@ class ConfurSettings
     /**
      * Get the email blocklist
      *
-     * @return array Array of blocked email addresses
+     * @return array<int, string> Array of blocked email addresses
      */
     public static function getBlocklist(): array
     {
@@ -219,7 +219,7 @@ class ConfurSettings
     /**
      * Update the email blocklist
      *
-     * @param array $emails Array of email addresses to block
+     * @param array<int, string> $emails Array of email addresses to block
      * @return bool True on success, false on failure
      */
     public static function updateBlocklist(array $emails): bool

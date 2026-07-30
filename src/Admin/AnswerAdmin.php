@@ -41,8 +41,8 @@ class AnswerAdmin
     /**
      * Add custom columns to the answers admin table
      * 
-     * @param array $columns Current admin columns
-     * @return array Modified admin columns
+     * @param array<string, string> $columns Current admin columns
+     * @return array<string, string> Modified admin columns
      */
     public function addCustomColumns(array $columns): array
     {
@@ -87,8 +87,8 @@ class AnswerAdmin
     /**
      * Make certain columns sortable
      * 
-     * @param array $columns Current sortable columns
-     * @return array Modified sortable columns
+     * @param array<string, mixed> $columns Current sortable columns
+     * @return array<string, mixed> Modified sortable columns
      */
     public function makeColumnsSortable(array $columns): array
     {
@@ -222,8 +222,8 @@ class AnswerAdmin
     /**
      * Add bulk actions to the dropdown
      * 
-     * @param array $actions Current bulk actions
-     * @return array Modified bulk actions
+     * @param array<string, string> $actions Current bulk actions
+     * @return array<string, string> Modified bulk actions
      */
     public function addBulkActions(array $actions): array
     {
@@ -236,7 +236,7 @@ class AnswerAdmin
      * 
      * @param string $redirectTo Redirect URL
      * @param string $action Action being performed
-     * @param array $postIds Array of post IDs
+     * @param array<int, int> $postIds Array of post IDs
      * @return string Modified redirect URL
      */
     public function handleBulkActions(string $redirectTo, string $action, array $postIds): string

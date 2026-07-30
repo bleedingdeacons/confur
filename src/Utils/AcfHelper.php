@@ -47,7 +47,7 @@ class AcfHelper {
 	 * Update ACF fields using $_POST method with field name to field key translation
 	 *
 	 * @param int $post_id The post ID to update
-	 * @param array $fields Associative array of field_name => value pairs
+	 * @param array<string, mixed> $fields Associative array of field_name => value pairs
 	 * @return bool True on success, false on failure
 	 */
 	static function update_acf_fields($post_id, $fields) {

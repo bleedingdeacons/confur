@@ -25,7 +25,7 @@ class AnswerRepository
 	 * Get answer status
 	 *
 	 * @param int $postId Post ID
-	 * @return array Status data
+	 * @return array<string, mixed> Status data
 	 */
 	public function getAnswerStatus(int $postId): array
 	{
@@ -55,7 +55,7 @@ class AnswerRepository
 	/**
 	 * Get all answer posts
 	 *
-	 * @return array Answer post IDs
+	 * @return array<int, int> Answer post IDs
 	 */
 	public function getAllAnswers(): array
 	{
@@ -72,7 +72,7 @@ class AnswerRepository
 	/**
 	 * Get registered groups
 	 *
-	 * @return array Registered groups data
+	 * @return array<int, array<string, mixed>> Registered groups data
 	 */
 	public function getRegisteredGroups(): array
 	{
@@ -117,7 +117,7 @@ class AnswerRepository
 	 * @param int|null $fellowMeetingId Fellow meeting post ID (can be null)
 	 * @param string $email Email address
 	 * @param int|null $excludePostId Post ID to exclude from search (the newly created post)
-	 * @return array|null Array with 'post_id' and 'slug' if duplicate found, null otherwise
+	 * @return array<string, mixed>|null Array with 'post_id' and 'slug' if duplicate found, null otherwise
 	 */
 	public function findDuplicate(?int $meetingId, ?int $fellowMeetingId, string $email, ?int $excludePostId = null): ?array
 	{
@@ -286,7 +286,7 @@ class AnswerRepository
 	/**
 	 * Get group answers
 	 *
-	 * @return array Group answers data
+	 * @return array<string, mixed> Group answers data
 	 */
 //	public function getGroupAnswers(): array
 //	{
@@ -333,7 +333,7 @@ class AnswerRepository
 	/**
 	 * Get group answers
 	 *
-	 * @return array Group answers data
+	 * @return array<string, mixed> Group answers data
 	 */
 	public function getGroupAnswers(): array
 	{

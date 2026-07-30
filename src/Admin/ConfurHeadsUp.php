@@ -344,6 +344,8 @@ class ConfurHeadsUp
 
 	/**
 	 * Get recent updates from last 24 hours
+	 *
+	 * @return array<int, array<int, list<array<string, mixed>>>> Committee => question => updates
 	 */
 	private function getRecentUpdates(): array
 	{
@@ -405,6 +407,8 @@ class ConfurHeadsUp
 
 	/**
 	 * Render the updates list
+	 *
+	 * @param array<int, array<int, list<array<string, mixed>>>> $updates
 	 */
 	private function renderUpdatesList(array $updates): void
 	{
@@ -418,17 +422,17 @@ class ConfurHeadsUp
 		echo '<ul class="confur-updates-list">';
 
 		foreach ($updates as $committeeNum => $questions) {
-			echo '<li class="confur-committee-item" data-committee="' . esc_attr($committeeNum) . '">';
+			echo '<li class="confur-committee-item" data-committee="' . esc_attr((string) $committeeNum) . '">';
 			echo '<div class="confur-committee-title">';
 			echo '<span class="confur-committee-toggle">▼</span>';
-			echo 'Committee ' . esc_html($committeeNum);
+			echo 'Committee ' . esc_html((string) $committeeNum);
 			echo '</div>';
 
 			echo '<ul class="confur-questions-list">';
 
 			foreach ($questions as $questionNum => $groups) {
 				echo '<li class="confur-question-item">';
-				echo '<div class="confur-question-title">Question ' . esc_html($questionNum);
+				echo '<div class="confur-question-title">Question ' . esc_html((string) $questionNum);
 				echo '<span class="confur-recent-badge">UPDATED</span>';
 				echo '</div>';
 

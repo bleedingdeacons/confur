@@ -10,7 +10,7 @@ class MeetingRepository
 	/**
 	 * Get all meetings
 	 *
-	 * @return array All meetings data
+	 * @return array<int, array<string, mixed>> All meetings data
 	 */
 	public function getMeetings(): array
 	{
@@ -56,7 +56,7 @@ class MeetingRepository
 	 * Get meeting contacts
 	 *
 	 * @param int $postId Meeting post ID
-	 * @return array Meeting contacts
+	 * @return array<int, array<string, mixed>> Meeting contacts
 	 */
 	public function getMeetingContacts(int $postId): array
 	{
@@ -84,7 +84,7 @@ class MeetingRepository
 	/**
 	 * Check if meeting is online
 	 *
-	 * @param array $types Meeting types
+	 * @param array<int, string> $types Meeting types
 	 * @return bool True if online
 	 */
 	private function isOnline(array $types): bool

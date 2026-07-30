@@ -172,7 +172,7 @@ class EmailService
 	 * Render email template with parameters
 	 *
 	 * @param string $name Template name
-	 * @param array $params Template parameters
+	 * @param array<string, mixed> $params Template parameters
 	 * @return string Rendered template
 	 */
 	private static function renderTemplate(string $name, array $params): string

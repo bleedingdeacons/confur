@@ -284,7 +284,7 @@ class AnswerHandler
 	 * Update answer fields from POST data
 	 *
 	 * @param int $postId Post ID
-	 * @param array $data POST data
+	 * @param array<string, mixed> $data POST data
 	 */
 	private function updateAnswerFields(int $postId, array $data): void
 	{
