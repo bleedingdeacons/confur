@@ -17,10 +17,19 @@ class AnswerShortcode
 		$this->answerRepository = new AnswerRepository();
 	}
 
+	/**
+	 * @param string $selector
+	 * @param int|string|false $post_id
+	 * @param bool $format_value
+	 * @return mixed ACF returns whatever the field holds.
+	 */
 	function get_field($selector, $post_id = false, $format_value = true) {
 		return \get_field($selector, $post_id, $format_value);  // Calls global
 	}
 
+	/**
+	 * @return int|false Post ID, or false outside the loop.
+	 */
 	function get_the_ID() {
 		return \get_the_ID();  // Calls global
 	}

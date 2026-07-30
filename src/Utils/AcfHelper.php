@@ -93,6 +93,11 @@ class AcfHelper {
 
 	/**
 	 * Update ACF field with error handling and debugging
+	 *
+	 * @param int|string $post_id ACF post id — numeric, or a form like "option".
+	 * @param string $field_name
+	 * @param mixed $value
+	 * @return bool True on a successful update, false on any validation failure.
 	 */
 	static function update_acf_field2($post_id, $field_name, $value) {
 		if (empty($post_id) || empty($field_name)) {

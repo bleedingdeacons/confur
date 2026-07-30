@@ -41,6 +41,8 @@ class ConfurSettingsAdminPage
 
     /**
      * Enqueue admin styles
+     *
+     * @param string $hook Current admin page hook suffix.
      */
     public function enqueueAdminAssets($hook): void
     {
