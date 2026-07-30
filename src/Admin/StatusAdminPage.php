@@ -269,6 +269,8 @@ class StatusAdminPage
 
     /**
      * Enqueue admin styles and scripts
+     *
+     * @param string $hook Current admin page hook suffix.
      */
     public function enqueueAdminAssets($hook): void
     {
