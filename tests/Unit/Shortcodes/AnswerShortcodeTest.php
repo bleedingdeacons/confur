@@ -6,7 +6,8 @@ use Confur\Config\Constants;
 use Confur\Repositories\AnswerRepository;
 use Confur\Shortcodes\AnswerShortcode;
 use Mockery;
-use PHPUnit\Framework\TestCase;
+use Brain\Monkey\Functions;
+use Tests\ConfurTestCase;
 
 /**
  * Test class for AnswerShortcode
@@ -15,7 +16,7 @@ use PHPUnit\Framework\TestCase;
  * - Inside WordPress (Local by Flywheel) - uses WordPress functions
  * - Outside WordPress (standalone) - uses mocked functions from bootstrap
  */
-class AnswerShortcodeTest extends TestCase
+class AnswerShortcodeTest extends ConfurTestCase
 {
 	private AnswerShortcode $shortcode;
 	private $answerRepositoryMock;
@@ -127,6 +128,13 @@ class AnswerShortcodeTest extends TestCase
 	/** @test */
 	public function it_escapes_html_in_answer_values()
 	{
+		// wp-mocks' escaping stubs pass their input through by design, so a
+		// test that is genuinely about escaping has to supply the real thing.
+		// The answer value lands in a <textarea>, hence esc_textarea.
+		$escape = static fn (mixed $text): string => htmlspecialchars((string) $text, ENT_QUOTES, 'UTF-8');
+		Functions\when('esc_html')->alias($escape);
+		Functions\when('esc_textarea')->alias($escape);
+
 		$maliciousContent = '<script>alert("xss")</script>';
 
 		$this->answerRepositoryMock

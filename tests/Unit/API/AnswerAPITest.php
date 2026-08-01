@@ -5,23 +5,23 @@ namespace Tests\Unit\API;
 use Confur\API\AnswerAPI;
 use Confur\Repositories\AnswerRepository;
 use Mockery;
-use PHPUnit\Framework\TestCase;
+use Brain\Monkey\Functions;
+use BleedingDeacons\WpMocks\WpState;
+use Tests\ConfurTestCase;
 use WP_Error;
 use WP_REST_Response;
 
 /**
  * @covers \Confur\API\AnswerAPI
  */
-class AnswerAPITest extends TestCase
+class AnswerAPITest extends ConfurTestCase
 {
     private AnswerAPI $api;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $GLOBALS['confur_rest_routes'] = [];
-        $GLOBALS['confur_page_by_path'] = null;
-        $GLOBALS['confur_fields'] = [];
+        Functions\when('get_page_by_path')->justReturn(null);
         $this->api = new AnswerAPI();
     }
 
@@ -34,14 +34,14 @@ class AnswerAPITest extends TestCase
     public function testRegisterRoutesRegistersTheStatusRoute(): void
     {
         $this->api->registerRoutes();
-        $this->assertNotEmpty($GLOBALS['confur_rest_routes']);
+        $this->assertNotEmpty(WpState::$restRoutes);
     }
 
     public function testRegisteredValidateCallbackAcceptsAndRejects(): void
     {
         $this->api->registerRoutes();
-        $route = $GLOBALS['confur_rest_routes'][0];
-        $validate = $GLOBALS['confur_rest_args'][$route]['args']['n']['validate_callback'];
+        $route = WpState::$restRoutes[0];
+        $validate = WpState::$restRoutes[0]['args']['args']['n']['validate_callback'];
 
         $this->assertTrue((bool) $validate('valid_slug-1'));
         $this->assertFalse((bool) $validate('has spaces!'));
@@ -55,7 +55,7 @@ class AnswerAPITest extends TestCase
         $prop = (new \ReflectionClass($this->api))->getProperty('answerRepository');
         $prop->setValue($this->api, $repo);
 
-        $GLOBALS['confur_page_by_path'] = (object) ['ID' => 42];
+        Functions\when('get_page_by_path')->justReturn((object) ['ID' => 42]);
 
         $result = $this->api->getAnswerPostStatus(['n' => 'slug']);
         $this->assertInstanceOf(WP_Error::class, $result);
@@ -71,7 +71,7 @@ class AnswerAPITest extends TestCase
 
     public function testGetStatusReturns404WhenPostMissing(): void
     {
-        $GLOBALS['confur_page_by_path'] = null;
+        Functions\when('get_page_by_path')->justReturn(null);
         $result = $this->api->getAnswerPostStatus(['n' => 'missing-slug']);
         $this->assertInstanceOf(WP_Error::class, $result);
         $this->assertSame('invalid_post', $result->get_error_code());
@@ -79,10 +79,10 @@ class AnswerAPITest extends TestCase
 
     public function testGetStatusReturnsResponseForFoundPost(): void
     {
-        $GLOBALS['confur_page_by_path'] = (object) ['ID' => 42];
-        $GLOBALS['confur_fields'] = [
+        Functions\when('get_page_by_path')->justReturn((object) ['ID' => 42]);
+        $this->seedFields([
             42 => ['state' => 'Draft', 'updated' => '2026-01-01'],
-        ];
+        ]);
 
         $result = $this->api->getAnswerPostStatus(['n' => 'found-slug']);
 

@@ -2,19 +2,20 @@
 
 namespace Tests\Unit;
 
+use BleedingDeacons\WpMocks\WpState;
+use Brain\Monkey\Functions;
 use Confur\Plugin;
-use PHPUnit\Framework\TestCase;
+use Tests\ConfurTestCase;
 
 /**
  * @covers \Confur\Plugin
  */
-class PluginTest extends TestCase
+class PluginTest extends ConfurTestCase
 {
     protected function setUp(): void
     {
         parent::setUp();
-        $GLOBALS['confur_options'] = [];
-        $GLOBALS['confur_roles'] = [];
+        WpState::$options = [];
         $GLOBALS['wp_post_types'] = [];
         unset($_GET['et_fb'], $_GET['page']);
     }
@@ -68,13 +69,12 @@ class PluginTest extends TestCase
     public function testMaybeDisableShortcodesForDiviSwallowsRemovalErrors(): void
     {
         $_GET['et_fb'] = '1';
-        $GLOBALS['confur_remove_shortcode_throws'] = true;
-        try {
-            (new Plugin())->maybeDisableShortcodesForDivi();
-            $this->assertTrue(true); // per-shortcode failures are caught and logged
-        } finally {
-            unset($GLOBALS['confur_remove_shortcode_throws']);
-        }
+        Functions\when('remove_shortcode')->alias(static function (): void {
+            throw new \RuntimeException('remove_shortcode failed');
+        });
+
+        (new Plugin())->maybeDisableShortcodesForDivi();
+        $this->assertTrue(true); // per-shortcode failures are caught and logged
     }
 
     public function testActivateAddsCapabilitiesToAdministrator(): void
@@ -92,7 +92,10 @@ class PluginTest extends TestCase
                 $this->ref[] = $cap;
             }
         };
-        $GLOBALS['confur_roles']['administrator'] = $role;
+        // wp-mocks' get_role() hands back a plain object describing the role.
+        // This test needs one that records add_cap(), so it stands in for the
+        // duration of the test.
+        Functions\when('get_role')->justReturn($role);
 
         Plugin::activate();
 
@@ -102,7 +105,9 @@ class PluginTest extends TestCase
 
     public function testActivateReturnsEarlyWithoutAdministrator(): void
     {
-        $GLOBALS['confur_roles'] = [];
+        // No administrator role to add caps to; activate() must not fatal.
+        Functions\when('get_role')->justReturn(null);
+
         Plugin::activate();
         $this->assertTrue(true);
     }

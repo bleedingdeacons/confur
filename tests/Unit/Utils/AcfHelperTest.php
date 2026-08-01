@@ -2,20 +2,40 @@
 
 namespace Tests\Unit\Utils;
 
+use BleedingDeacons\WpMocks\WpState;
+use Brain\Monkey\Functions;
 use Confur\Utils\AcfHelper;
-use PHPUnit\Framework\TestCase;
+use Tests\ConfurTestCase;
 
 /**
  * @covers \Confur\Utils\AcfHelper
  */
-class AcfHelperTest extends TestCase
+class AcfHelperTest extends ConfurTestCase
 {
     protected function setUp(): void
     {
         parent::setUp();
-        $GLOBALS['confur_acf_fieldobj'] = [];
-        $GLOBALS['confur_posts'] = [];
         unset($_POST['acf']);
+
+        // AcfHelper's whole job is refusing to write a field ACF does not
+        // know, so acf_get_field() has to be able to answer "no". wp-mocks'
+        // default invents a field object for any selector, which would make
+        // that branch unreachable, so every test here declares the fields it
+        // considers to exist through knownFields().
+        $this->knownFields([]);
+    }
+
+    /**
+     * Make acf_get_field() answer for exactly these selectors and false for
+     * anything else, which is what the real ACF does for an unknown name.
+     *
+     * @param array<string, array<string, mixed>> $fields
+     */
+    private function knownFields(array $fields): void
+    {
+        Functions\when('acf_get_field')->alias(
+            static fn (string $selector): array|false => $fields[$selector] ?? false
+        );
     }
 
     // ── update_acf_field ─────────────────────────────────────────────────
@@ -33,7 +53,7 @@ class AcfHelperTest extends TestCase
 
     public function testUpdateFieldSucceeds(): void
     {
-        $GLOBALS['confur_acf_fieldobj']['price'] = ['key' => 'field_abc'];
+        $this->knownFields(['price' => ['key' => 'field_abc']]);
         $this->assertTrue(AcfHelper::update_acf_field(5, 'price', '10'));
         $this->assertArrayNotHasKey('acf', $_POST);
     }
@@ -53,10 +73,10 @@ class AcfHelperTest extends TestCase
 
     public function testUpdateFieldsSucceedsForKnownFields(): void
     {
-        $GLOBALS['confur_acf_fieldobj'] = [
+        $this->knownFields([
             'price' => ['key' => 'field_price'],
             'name'  => ['key' => 'field_name'],
-        ];
+        ]);
         $this->assertTrue(AcfHelper::update_acf_fields(5, ['price' => '10', 'name' => 'x', 'unknown' => 'y']));
     }
 
@@ -69,32 +89,33 @@ class AcfHelperTest extends TestCase
 
     public function testUpdateField2ReturnsFalseWhenPostMissing(): void
     {
-        $GLOBALS['confur_posts'] = [];
+        // Nothing seeded, so get_post() answers null.
         $this->assertFalse(AcfHelper::update_acf_field2(999, 'price', 'v'));
     }
 
     public function testUpdateField2ReturnsFalseWhenFieldUnknown(): void
     {
-        $GLOBALS['confur_posts'] = [(object) ['ID' => 5, 'post_type' => 'answer']];
+        $this->makePost(5, '', 'publish', 'answer');
         $this->assertFalse(AcfHelper::update_acf_field2(5, 'unknown', 'v'));
     }
 
     public function testUpdateField2Succeeds(): void
     {
-        $GLOBALS['confur_posts'] = [(object) ['ID' => 5, 'post_type' => 'answer']];
-        $GLOBALS['confur_acf_fieldobj']['price'] = ['key' => 'field_price'];
+        $this->makePost(5, '', 'publish', 'answer');
+        $this->knownFields(['price' => ['key' => 'field_price']]);
         $this->assertTrue(AcfHelper::update_acf_field2(5, 'price', '10'));
     }
 
     public function testUpdateField2ReturnsFalseWhenSaveThrows(): void
     {
-        $GLOBALS['confur_posts'] = [(object) ['ID' => 5, 'post_type' => 'answer']];
-        $GLOBALS['confur_acf_fieldobj']['price'] = ['key' => 'field_price'];
-        $GLOBALS['confur_acf_save_throws'] = true;
+        $this->makePost(5, '', 'publish', 'answer');
+        $this->knownFields(['price' => ['key' => 'field_price']]);
+        Functions\when('acf_save_post')->alias(static function (): bool {
+            throw new \RuntimeException('acf save failed');
+        });
         try {
             $this->assertFalse(AcfHelper::update_acf_field2(5, 'price', '10'));
         } finally {
-            unset($GLOBALS['confur_acf_save_throws']);
         }
     }
 }

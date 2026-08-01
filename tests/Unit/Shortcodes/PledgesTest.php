@@ -5,14 +5,14 @@ namespace Tests\Unit\Shortcodes;
 use Confur\Shortcodes\ResponsibilityPledgeShortcode;
 use Confur\Shortcodes\StepShortcode;
 use Confur\Shortcodes\TraditionShortcode;
-use PHPUnit\Framework\TestCase;
+use Tests\ConfurTestCase;
 
 /**
  * @covers \Confur\Shortcodes\StepShortcode
  * @covers \Confur\Shortcodes\TraditionShortcode
  * @covers \Confur\Shortcodes\ResponsibilityPledgeShortcode
  */
-class PledgesTest extends TestCase
+class PledgesTest extends ConfurTestCase
 {
     public function testStepRendersValidNumber(): void
     {
