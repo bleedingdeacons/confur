@@ -242,9 +242,14 @@ class AnswerRepositoryRealTest extends ConfurTestCase
 
     public function testGetGroupAnswersSkipsTrashedPosts(): void
     {
+        // getAllAnswers() already excludes the trash by asking get_posts() for
+        // publish/draft/pending/private, so the loop's own trash check is the
+        // guard for a post trashed *after* that query ran. Reproduce that: the
+        // query still returns it, get_post_status() reports it trashed.
         $this->answer(1, [Constants::MEETING_FIELD => 100, Constants::UPDATED_FIELD => '2024-01-01']);
-        $this->statuses[1] = 'trash';
         $this->addFields(1, ['c1_a1' => 'x']);
+
+        WpState::$postStatuses[1] = 'trash';
 
         $this->assertSame([], $this->repo->getGroupAnswers());
     }
