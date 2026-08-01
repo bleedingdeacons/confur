@@ -4,7 +4,8 @@ namespace Tests\Unit\Repositories;
 
 use Confur\Config\Constants;
 use Confur\Repositories\AnswerRepository;
-use PHPUnit\Framework\TestCase;
+use BleedingDeacons\WpMocks\WpState;
+use Tests\ConfurTestCase;
 
 /**
  * Exercises the real AnswerRepository methods (getValue, getAnswerStatus,
@@ -14,41 +15,47 @@ use PHPUnit\Framework\TestCase;
  *
  * @covers \Confur\Repositories\AnswerRepository
  */
-class AnswerRepositoryRealTest extends TestCase
+class AnswerRepositoryRealTest extends ConfurTestCase
 {
     private AnswerRepository $repo;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $GLOBALS['confur_posts'] = [];
-        $GLOBALS['confur_fields'] = [];
-        $GLOBALS['confur_allfields'] = [];
-        $GLOBALS['confur_poststatus'] = [];
+        WpState::$queryPosts = [];
         $this->repo = new AnswerRepository();
     }
 
     /** Register an answer post plus its ACF fields. */
     private function answer(int $id, array $fields, string $date = '2024-01-01 00:00:00'): void
     {
-        $GLOBALS['confur_posts'][] = (object) [
+        // Seed both: get_posts() reads $queryPosts, get_post() reads $posts,
+        // and findDuplicate() goes through each in turn.
+        $post = (object) [
             'ID' => $id,
             'post_type' => 'answer',
             'post_name' => "post-{$id}",
             'post_date' => $date,
+            'post_status' => 'publish',
         ];
-        $GLOBALS['confur_fields'][$id] = $fields;
+
+        WpState::$queryPosts[] = $post;
+        WpState::$posts[$id] = $post;
+        WpState::$postTypes[$id] = 'answer';
+        WpState::$postStatuses[$id] = 'publish';
+
+        $this->fields[$id] = $fields;
     }
 
     public function testGetValueSanitises(): void
     {
-        $GLOBALS['confur_fields'][0]['c1_a1'] = "  <b>hi</b>  ";
+        update_field('c1_a1', '  <b>hi</b>  ', 0);
         $this->assertSame('hi', $this->repo->getValue('c1_a1'));
     }
 
     public function testGetAnswerStatusReturnsExisting(): void
     {
-        $GLOBALS['confur_fields'][5] = [Constants::STATUS_FIELD => 'Complete', Constants::UPDATED_FIELD => '2024-05-01'];
+        $this->fields[5] = [Constants::STATUS_FIELD => 'Complete', Constants::UPDATED_FIELD => '2024-05-01'];
         $status = $this->repo->getAnswerStatus(5);
         $this->assertSame('Complete', $status['state']);
         $this->assertSame('2024-05-01', $status['updated']);
@@ -56,7 +63,7 @@ class AnswerRepositoryRealTest extends TestCase
 
     public function testGetAnswerStatusInitialisesWhenEmpty(): void
     {
-        $GLOBALS['confur_fields'][6] = [];
+        $this->fields[6] = [];
         $status = $this->repo->getAnswerStatus(6);
         // update_field writes the draft status, which get_field then reads back.
         $this->assertSame(Constants::STATUS_DRAFT, $status['state']);
@@ -217,12 +224,15 @@ class AnswerRepositoryRealTest extends TestCase
             Constants::UPDATED_FIELD => '2024-01-01',
             Constants::STATUS_FIELD => Constants::STATUS_DRAFT,
         ]);
-        $GLOBALS['confur_allfields'][1] = [
+        // Adds to what answer() seeded rather than replacing it: the old
+        // harness had get_field() and get_fields() reading separate stores,
+        // and real ACF (like WpState) has only one.
+        $this->addFields(1, [
             'c1_a1' => 'An answer',
             'c1_a2' => '',          // empty → skipped
             'other' => 'ignored',   // not c\d+_ → skipped
-        ];
-        $GLOBALS['confur_titles'] = [100 => 'Monday Group'];
+        ]);
+        $this->seedTitles([100 => 'Monday Group']);
 
         $answers = $this->repo->getGroupAnswers();
         $this->assertArrayHasKey('c1_a1', $answers);
@@ -233,8 +243,8 @@ class AnswerRepositoryRealTest extends TestCase
     public function testGetGroupAnswersSkipsTrashedPosts(): void
     {
         $this->answer(1, [Constants::MEETING_FIELD => 100, Constants::UPDATED_FIELD => '2024-01-01']);
-        $GLOBALS['confur_poststatus'][1] = 'trash';
-        $GLOBALS['confur_allfields'][1] = ['c1_a1' => 'x'];
+        $this->statuses[1] = 'trash';
+        $this->addFields(1, ['c1_a1' => 'x']);
 
         $this->assertSame([], $this->repo->getGroupAnswers());
     }

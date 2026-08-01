@@ -2,13 +2,14 @@
 
 namespace Tests\Unit\Shortcodes;
 
+use Brain\Monkey\Functions;
 use Confur\Shortcodes\GeneralShortcodes;
-use PHPUnit\Framework\TestCase;
+use Tests\ConfurTestCase;
 
 /**
  * @covers \Confur\Shortcodes\GeneralShortcodes
  */
-class GeneralShortcodesTest extends TestCase
+class GeneralShortcodesTest extends ConfurTestCase
 {
     private GeneralShortcodes $sc;
 
@@ -90,21 +91,47 @@ class GeneralShortcodesTest extends TestCase
     }
 
     // ── error branches: a non-scalar attribute makes an inner call throw ──
+    //
+    // WordPress declares these as esc_x(string $text), so handing one an array
+    // is a TypeError — which is exactly what these branches catch. wp-mocks'
+    // escaping stubs are deliberately permissive, taking mixed and casting, so
+    // each of these tests restores the real signature first.
+
+    private function strictEscaping(): void
+    {
+        $strict = static function (mixed $text) use (&$strict): string {
+            if (!is_string($text)) {
+                throw new \TypeError('Argument #1 must be of type string');
+            }
+
+            return $text;
+        };
+
+        foreach (['esc_attr', 'esc_url', 'esc_html'] as $fn) {
+            Functions\when($fn)->alias($strict);
+        }
+    }
 
     public function testOpenBlankReturnsErrorOnThrow(): void
     {
+        $this->strictEscaping();
+
         $out = $this->sc->openBlank(['href' => ['array'], 'class' => ''], 'x');
         $this->assertStringContainsString('openBlank error', $out);
     }
 
     public function testLinkEmailReturnsErrorOnThrow(): void
     {
+        $this->strictEscaping();
+
         $out = $this->sc->linkEmail(['address' => ['array'], 'subject' => null], 'x');
         $this->assertStringContainsString('linkEmail error', $out);
     }
 
     public function testGeneratePdfLinkReturnsErrorOnThrow(): void
     {
+        $this->strictEscaping();
+
         $out = $this->sc->generatePdfLink(['url' => ['array'], 'name' => 'f.pdf'], 'x');
         $this->assertStringContainsString('generatePdfLink error', $out);
     }

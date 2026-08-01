@@ -4,7 +4,7 @@ namespace Tests\Unit\Repositories;
 
 use Confur\Config\Constants;
 use Confur\Repositories\AnswerRepository;
-use PHPUnit\Framework\TestCase;
+use Tests\ConfurTestCase;
 
 /**
  * Test class for AnswerRepository
@@ -12,7 +12,7 @@ use PHPUnit\Framework\TestCase;
  * This test uses mocked WordPress and ACF functions to test the repository
  * in isolation without requiring a WordPress installation.
  */
-class AnswerRepositoryTest extends TestCase
+class AnswerRepositoryTest extends ConfurTestCase
 {
     private AnswerRepository $repository;
 

@@ -3,12 +3,12 @@
 namespace Tests\Unit\Utils;
 
 use Confur\Utils\HtmlHelper;
-use PHPUnit\Framework\TestCase;
+use Tests\ConfurTestCase;
 
 /**
  * @covers \Confur\Utils\HtmlHelper
  */
-class HtmlHelperTest extends TestCase
+class HtmlHelperTest extends ConfurTestCase
 {
     public function testGeneratePdfLink(): void
     {
