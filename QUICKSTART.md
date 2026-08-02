@@ -42,7 +42,7 @@ composer version
 composer clean
 
 # Get help
-composer help
+composer build:help
 ```
 
 ### Using PHP Script Directly
