@@ -46,7 +46,7 @@ class PluginBuilder {
             'package.json',
             'package-lock.json',
             '.editorconfig',
-            'build.php',
+            'build.php',
 
             // Dev artefacts that must never ship
             '.phpunit.result.cache',
