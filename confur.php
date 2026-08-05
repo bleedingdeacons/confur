@@ -3,7 +3,7 @@
  * Plugin Name: Confur
  * Plugin URI:
  * Description: Automated collation of answers to questions for conference.
- * Version: 2.14.0
+ * Version: 2.14.1
  * Requires at least: 6.0
  * Requires PHP: 8.1
  * GitHub Plugin URI: https://github.com/bleedingdeacons/confur
