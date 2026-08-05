@@ -1,5 +1,6 @@
 #!/usr/bin/env php
 <?php
+
 /**
  * Build Script for Confur WordPress Plugin
  *
@@ -17,7 +18,8 @@
  *   --help              Show this help message
  */
 
-class PluginBuilder {
+class PluginBuilder
+{
     private $pluginDir;
     private $buildDir;
     private $version;
@@ -46,7 +48,7 @@ class PluginBuilder {
             'package.json',
             'package-lock.json',
             '.editorconfig',
-            'build.php',
+            'build.php',
 
             // Dev artefacts that must never ship
             '.phpunit.result.cache',
@@ -64,7 +66,8 @@ class PluginBuilder {
             '.DS_Store'
     ];
 
-    public function __construct() {
+    public function __construct()
+    {
         $this->isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
         $this->pluginDir = $this->normalizePath(dirname(__FILE__));
         $this->buildDir = $this->pluginDir . DIRECTORY_SEPARATOR . 'build';
@@ -156,14 +159,16 @@ class PluginBuilder {
     /**
      * Normalize path separators for cross-platform compatibility
      */
-    private function normalizePath($path) {
+    private function normalizePath($path)
+    {
         return str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path);
     }
 
     /**
      * Check for required PHP extensions
      */
-    private function checkRequirements() {
+    private function checkRequirements()
+    {
         if (!extension_loaded('zip')) {
             $this->error("PHP ZIP extension is required but not installed.");
             $this->error("Install it with:");
@@ -180,7 +185,8 @@ class PluginBuilder {
     /**
      * Extract version from the main plugin file
      */
-    private function getVersionFromPlugin() {
+    private function getVersionFromPlugin()
+    {
         $mainFile = $this->pluginDir . DIRECTORY_SEPARATOR . 'confur.php';
         if (file_exists($mainFile)) {
             $content = file_get_contents($mainFile);
@@ -197,7 +203,8 @@ class PluginBuilder {
     /**
      * Clean the build directory
      */
-    public function clean() {
+    public function clean()
+    {
         $this->log("Cleaning build directory...");
         if (is_dir($this->buildDir)) {
             $this->deleteDirectory($this->buildDir);
@@ -208,7 +215,8 @@ class PluginBuilder {
     /**
      * Create the plugin archive
      */
-    public function build($type = 'production', $customVersion = null) {
+    public function build($type = 'production', $customVersion = null)
+    {
         if ($customVersion) {
             $this->version = $customVersion;
         }
@@ -321,7 +329,8 @@ class PluginBuilder {
      * otherwise a new line is inserted immediately after the "Stable tag:"
      * line, preserving the file's existing line ending convention.
      */
-    private function syncBuildDate() {
+    private function syncBuildDate()
+    {
         $readmeFile = $this->pluginDir . DIRECTORY_SEPARATOR . 'readme.txt';
         if (!file_exists($readmeFile)) {
             $this->log("No readme.txt found — skipping build date sync");
@@ -379,7 +388,8 @@ class PluginBuilder {
     /**
      * Create a ZIP archive
      */
-    private function createZip($archivePath, $excludes, ?string $stagedVendor = null) {
+    private function createZip($archivePath, $excludes, ?string $stagedVendor = null)
+    {
         $zip = new ZipArchive();
 
         if ($zip->open($archivePath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
@@ -426,11 +436,12 @@ class PluginBuilder {
     /**
      * Get all files in directory, excluding specified patterns
      */
-    private function getFiles($dir, $excludes) {
+    private function getFiles($dir, $excludes)
+    {
         $files = [];
         $iterator = new RecursiveIteratorIterator(
-                new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS),
-                RecursiveIteratorIterator::SELF_FIRST
+            new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::SELF_FIRST
         );
 
         foreach ($iterator as $file) {
@@ -451,7 +462,8 @@ class PluginBuilder {
     /**
      * Check if a file path should be excluded
      */
-    private function shouldExclude($path, $excludes) {
+    private function shouldExclude($path, $excludes)
+    {
         // Normalize path for comparison (use forward slashes)
         $normalizedPath = str_replace('\\', '/', $path);
 
@@ -497,7 +509,8 @@ class PluginBuilder {
     /**
      * Delete directory recursively (cross-platform)
      */
-    private function deleteDirectory($dir) {
+    private function deleteDirectory($dir)
+    {
         if (!is_dir($dir)) {
             return;
         }
@@ -528,7 +541,8 @@ class PluginBuilder {
     /**
      * Format bytes to human readable format
      */
-    private function formatBytes($bytes) {
+    private function formatBytes($bytes)
+    {
         $units = ['B', 'KB', 'MB', 'GB'];
         $i = 0;
         while ($bytes >= 1024 && $i < count($units) - 1) {
@@ -541,21 +555,24 @@ class PluginBuilder {
     /**
      * Log message
      */
-    private function log($message) {
+    private function log($message)
+    {
         echo "[BUILD] {$message}\n";
     }
 
     /**
      * Log error message
      */
-    private function error($message) {
+    private function error($message)
+    {
         echo "[ERROR] {$message}\n";
     }
 
     /**
      * Display help message
      */
-    public function showHelp() {
+    public function showHelp()
+    {
         $phpVersion = PHP_VERSION;
         $platform = PHP_OS;
 
