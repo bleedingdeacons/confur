@@ -2,10 +2,10 @@
 
 namespace Confur\Utils;
 
-/**
- * HTML helper utilities
- */
 if (!class_exists('HtmlHelper')) {
+    /**
+     * HTML helper utilities
+     */
     class HtmlHelper
     {
         /**

@@ -12,16 +12,16 @@ use Confur\Repositories\AnswerRepository;
  */
 class AnswerHandler
 {
-	private AnswerRepository $answerRepository;
+    private AnswerRepository $answerRepository;
 
-	public function __construct()
-	{
-		$this->answerRepository = new AnswerRepository();
-	}
+    public function __construct()
+    {
+        $this->answerRepository = new AnswerRepository();
+    }
 
-	/**
-	 * Handle answer submission
-	 */
+    /**
+     * Handle answer submission
+     */
     public function handleSubmission(): void
     {
         try {
@@ -122,244 +122,243 @@ class AnswerHandler
         }
     }
 
-	/**
-	 * Handle after insert post
-	 *
-	 * @param string $formId Form ID
-	 * @param int $postId Post ID
-	 */
-	public function handleRegistration(string $formId, int $postId): void
-	{
-		try {
+    /**
+     * Handle after insert post
+     *
+     * @param string $formId Form ID
+     * @param int $postId Post ID
+     */
+    public function handleRegistration(string $formId, int $postId): void
+    {
+        try {
+            if (Constants::REGISTER_QUESTION_FORM !== $formId) {
+                return;
+            }
 
-			if (Constants::REGISTER_QUESTION_FORM !== $formId) {
-				return;
-			}
+            error_log(Constants::REGISTER_QUESTION_FORM);
 
-			error_log(Constants::REGISTER_QUESTION_FORM);
+            $meetingId = get_field(Constants::MEETING_FIELD, $postId);
+            $fellow_meetingId = get_field(Constants::FELLOW_MEETING_FIELD, $postId);
+            $email = get_field(Constants::REGISTRATION_RECIPIENT_EMAIL, $postId);
 
-			$meetingId = get_field(Constants::MEETING_FIELD, $postId);
-			$fellow_meetingId = get_field(Constants::FELLOW_MEETING_FIELD, $postId);
-			$email = get_field(Constants::REGISTRATION_RECIPIENT_EMAIL, $postId);
+            // Check if email is blocked
+            if (ConfurSettings::isBlocked($email)) {
+                error_log("AnswerHandler::handleRegistration - Email is blocked: $email for post ID: $postId");
 
-			// Check if email is blocked
-			if (ConfurSettings::isBlocked($email)) {
-				error_log("AnswerHandler::handleRegistration - Email is blocked: $email for post ID: $postId");
+                // Delete the post if the setting is enabled
+                if (ConfurSettings::shouldDeleteBlockedPosts()) {
+                    wp_delete_post($postId, true);
+                    error_log("AnswerHandler::handleRegistration - Deleted post ID: $postId for blocked email");
+                }
 
-				// Delete the post if the setting is enabled
-				if (ConfurSettings::shouldDeleteBlockedPosts()) {
-					wp_delete_post($postId, true);
-					error_log("AnswerHandler::handleRegistration - Deleted post ID: $postId for blocked email");
-				}
+                // Send a generic error response to the blocked user using template
+                try {
+                    EmailService::sendRegistrationBlocked($email);
+                } catch (\Exception $e) {
+                    error_log("AnswerHandler::handleRegistration - Failed to send blocked notification email: " . $e->getMessage());
+                }
 
-				// Send a generic error response to the blocked user using template
-				try {
-					EmailService::sendRegistrationBlocked($email);
-				} catch (\Exception $e) {
-					error_log("AnswerHandler::handleRegistration - Failed to send blocked notification email: " . $e->getMessage());
-				}
+                return;
+            }
 
-				return;
-			}
+            // Normalize meeting IDs for duplicate check
+            $normalizedMeetingId = $this->normalizePostId($meetingId);
+            $normalizedFellowMeetingId = $this->normalizePostId($fellow_meetingId);
 
-			// Normalize meeting IDs for duplicate check
-			$normalizedMeetingId = $this->normalizePostId($meetingId);
-			$normalizedFellowMeetingId = $this->normalizePostId($fellow_meetingId);
+            // Check for duplicate registration (only if feature is enabled)
+            if (ConfurSettings::isDuplicateDetectionEnabled()) {
+                error_log("AnswerHandler::handleRegistration - Checking for duplicates. Meeting: $normalizedMeetingId, Fellow Meeting: $normalizedFellowMeetingId, Email: $email, Excluding Post: $postId");
 
-			// Check for duplicate registration (only if feature is enabled)
-			if (ConfurSettings::isDuplicateDetectionEnabled()) {
-				error_log("AnswerHandler::handleRegistration - Checking for duplicates. Meeting: $normalizedMeetingId, Fellow Meeting: $normalizedFellowMeetingId, Email: $email, Excluding Post: $postId");
+                $duplicate = $this->answerRepository->findDuplicate(
+                    $normalizedMeetingId,
+                    $normalizedFellowMeetingId,
+                    $email,
+                    $postId
+                );
 
-				$duplicate = $this->answerRepository->findDuplicate(
-					$normalizedMeetingId,
-					$normalizedFellowMeetingId,
-					$email,
-					$postId
-				);
+                error_log("AnswerHandler::handleRegistration - Duplicate check result: " . ($duplicate !== null ? "FOUND (post_id: {$duplicate['post_id']}, slug: {$duplicate['slug']})" : "NOT FOUND"));
 
-				error_log("AnswerHandler::handleRegistration - Duplicate check result: " . ($duplicate !== null ? "FOUND (post_id: {$duplicate['post_id']}, slug: {$duplicate['slug']})" : "NOT FOUND"));
+                if ($duplicate !== null) {
+                    error_log("AnswerHandler::handleRegistration - Duplicate registration found for meeting: $normalizedMeetingId, fellow_meeting: $normalizedFellowMeetingId, email: $email");
+                    error_log("AnswerHandler::handleRegistration - Existing post ID: {$duplicate['post_id']}, slug: {$duplicate['slug']}");
 
-				if ($duplicate !== null) {
-					error_log("AnswerHandler::handleRegistration - Duplicate registration found for meeting: $normalizedMeetingId, fellow_meeting: $normalizedFellowMeetingId, email: $email");
-					error_log("AnswerHandler::handleRegistration - Existing post ID: {$duplicate['post_id']}, slug: {$duplicate['slug']}");
+                    // Move the duplicate post to trash
+                    wp_trash_post($postId);
+                    error_log("AnswerHandler::handleRegistration - Moved post ID: $postId to trash");
 
-					// Move the duplicate post to trash
-					wp_trash_post($postId);
-					error_log("AnswerHandler::handleRegistration - Moved post ID: $postId to trash");
+                    // Send confirmation email with duplicate notification
+                    $existingUrl = get_permalink($duplicate['post_id']);
+                    $meetingName = get_the_title($normalizedMeetingId);
 
-					// Send confirmation email with duplicate notification
-					$existingUrl = get_permalink($duplicate['post_id']);
-					$meetingName = get_the_title($normalizedMeetingId);
+                    if (!empty($normalizedFellowMeetingId)) {
+                        $meetingName = substr($meetingName, 0, 85) . " and " . substr(get_the_title($normalizedFellowMeetingId), 0, 85);
+                    }
 
-					if (!empty($normalizedFellowMeetingId)) {
-						$meetingName = substr($meetingName, 0, 85) . " and " . substr(get_the_title($normalizedFellowMeetingId), 0, 85);
-					}
+                    // Get allocated committee from the existing meeting
+                    $allocatedCommittee = get_field('allocated_committee', $normalizedMeetingId) ?: '';
 
-					// Get allocated committee from the existing meeting
-					$allocatedCommittee = get_field('allocated_committee', $normalizedMeetingId) ?: '';
+                    try {
+                        EmailService::sendConfirmation($email, $meetingName, $existingUrl, $allocatedCommittee, true);
+                    } catch (\Exception $e) {
+                        error_log("AnswerHandler::handleRegistration - Failed to send duplicate notification email: " . $e->getMessage());
+                    }
 
-					try {
-						EmailService::sendConfirmation($email, $meetingName, $existingUrl, $allocatedCommittee, true);
-					} catch (\Exception $e) {
-						error_log("AnswerHandler::handleRegistration - Failed to send duplicate notification email: " . $e->getMessage());
-					}
+                    return;
+                }
+            } else {
+                error_log("AnswerHandler::handleRegistration - Duplicate detection is disabled, skipping check");
+            }
 
-					return;
-				}
-			} else {
-				error_log("AnswerHandler::handleRegistration - Duplicate detection is disabled, skipping check");
-			}
+            if (empty($meetingId)) {
+                error_log("Error: No meeting group set for post ID: $postId");
 
-			if (empty($meetingId)) {
-				error_log("Error: No meeting group set for post ID: $postId");
+                $errorBody = '<p>There was an issue with your registration: No meeting group was given.</p>';
 
-				$errorBody = '<p>There was an issue with your registration: No meeting group was given.</p>';
+                try {
+                    EmailService::sendEmail(
+                        $email,
+                        ConfurSettings::getSupportEmail(),
+                        'Error: Missing Meeting Group',
+                        $errorBody
+                    );
+                } catch (\Exception $e) {
+                    error_log("AnswerHandler::handleRegistration - Failed to send error email: " . $e->getMessage());
+                }
 
-				try {
-					EmailService::sendEmail(
-						$email,
-						ConfurSettings::getSupportEmail(),
-						'Error: Missing Meeting Group',
-						$errorBody
-					);
-				} catch (\Exception $e) {
-					error_log("AnswerHandler::handleRegistration - Failed to send error email: " . $e->getMessage());
-				}
+                return;
+            }
 
-				return;
-			}
+            $meetingName = get_the_title($meetingId);
 
-			$meetingName = get_the_title($meetingId);
+            if (!empty($fellow_meetingId)) {
+                $meetingName = substr($meetingName, 0, 85)  . " and " . substr(get_the_title($fellow_meetingId), 0, 85);
+            }
 
-			if (!empty($fellow_meetingId)) {
-				$meetingName = substr($meetingName, 0, 85)  . " and " . substr(get_the_title($fellow_meetingId), 0, 85);
-			}
+            $slug = $this->generateUniqueSlug($meetingName);
 
-			$slug = $this->generateUniqueSlug($meetingName);
+            $title = 'Answers from ' . $meetingName;
 
-			$title = 'Answers from ' . $meetingName;
+            update_field(Constants::STATUS_FIELD, Constants::DEFAULT_STATUS);
+            acf_save_post();
 
-			update_field(Constants::STATUS_FIELD, Constants::DEFAULT_STATUS);
-			acf_save_post();
+            wp_update_post([
+                'ID' => $postId,
+                'post_title' => $title,
+                'post_name' => $slug
+            ]);
 
-			wp_update_post([
-				'ID' => $postId,
-				'post_title' => $title,
-				'post_name' => $slug
-			]);
+            $url = get_permalink($postId);
 
-			$url = get_permalink($postId);
+            // Get allocated committee from the meeting
+            $allocatedCommittee = get_field('allocated_committee', $meetingId) ?: '';
 
-			// Get allocated committee from the meeting
-			$allocatedCommittee = get_field('allocated_committee', $meetingId) ?: '';
+            try {
+                EmailService::sendConfirmation($email, $meetingName, $url, $allocatedCommittee);
+            } catch (\Exception $e) {
+                error_log("AnswerHandler::handleRegistration - Failed to send registration confirmation email: " . $e->getMessage());
+                // Continue processing even if email fails
+            }
+        } catch (\Exception $e) {
+            error_log("AnswerHandler::handleRegistration - Unexpected error: " . $e->getMessage());
+            error_log("AnswerHandler::handleRegistration - Stack trace: " . $e->getTraceAsString());
 
-			try {
-				EmailService::sendConfirmation($email, $meetingName, $url, $allocatedCommittee);
-			} catch (\Exception $e) {
-				error_log("AnswerHandler::handleRegistration - Failed to send registration confirmation email: " . $e->getMessage());
-				// Continue processing even if email fails
-			}
-		} catch (\Exception $e) {
-			error_log("AnswerHandler::handleRegistration - Unexpected error: " . $e->getMessage());
-			error_log("AnswerHandler::handleRegistration - Stack trace: " . $e->getTraceAsString());
+            // Attempt to send error notification email if we have an email address
+            if (!empty($email)) {
+                try {
+                    $errorBody = '<p>There was an unexpected error during your registration. Please try again or contact support.</p>';
+                    EmailService::sendEmail(
+                        $email,
+                        ConfurSettings::getSupportEmail(),
+                        'Error: Registration Failed',
+                        $errorBody
+                    );
+                } catch (\Exception $emailException) {
+                    error_log("AnswerHandler::handleRegistration - Failed to send error notification email: " . $emailException->getMessage());
+                }
+            }
+        }
+    }
 
-			// Attempt to send error notification email if we have an email address
-			if (!empty($email)) {
-				try {
-					$errorBody = '<p>There was an unexpected error during your registration. Please try again or contact support.</p>';
-					EmailService::sendEmail(
-						$email,
-						ConfurSettings::getSupportEmail(),
-						'Error: Registration Failed',
-						$errorBody
-					);
-				} catch (\Exception $emailException) {
-					error_log("AnswerHandler::handleRegistration - Failed to send error notification email: " . $emailException->getMessage());
-				}
-			}
-		}
-	}
+    /**
+     * Update answer fields from POST data
+     *
+     * @param int $postId Post ID
+     * @param array<string, mixed> $data POST data
+     */
+    private function updateAnswerFields(int $postId, array $data): void
+    {
+        foreach ($data as $key => $newValue) {
+            if (preg_match('/^c\d+_a\d+$/', $key)) {
+                $sanitizedValue = sanitize_textarea_field($newValue);
+                error_log($key . ' = ' . $newValue);
 
-	/**
-	 * Update answer fields from POST data
-	 *
-	 * @param int $postId Post ID
-	 * @param array<string, mixed> $data POST data
-	 */
-	private function updateAnswerFields(int $postId, array $data): void
-	{
-		foreach ($data as $key => $newValue) {
-			if (preg_match('/^c\d+_a\d+$/', $key)) {
-				$sanitizedValue = sanitize_textarea_field($newValue);
-				error_log($key . ' = ' . $newValue);
+                $existing = $this->answerRepository->getValue($key);
 
-				$existing = $this->answerRepository->getValue($key);
+                if ($existing !== $sanitizedValue) {
+                    error_log("AnswerHandler::updateAnswerFields - Updating field $key current value: '{$existing}' new value: '{$sanitizedValue}'");
+                    if (!update_field($key, $sanitizedValue, $postId)) {
+//                  if (!AcfHelper::updateAcfField2($postId, $key, $sanitizedValue)) {
+                        error_log("AnswerHandler::updateAnswerFields - Failed to update field $key for Post ID: $postId");
+                    }
+                }
+            }
+        }
+    }
 
-				if ($existing !== $sanitizedValue) {
-					error_log("AnswerHandler::updateAnswerFields - Updating field $key current value: '{$existing}' new value: '{$sanitizedValue}'");
-					if (!update_field($key, $sanitizedValue, $postId)) {
-//					if (!AcfHelper::update_acf_field2($postId, $key, $sanitizedValue)) {
-						error_log("AnswerHandler::updateAnswerFields - Failed to update field $key for Post ID: $postId");
-					}
-				}
-			}
-		}
-	}
+    /**
+     * Generate unique slug for answer page
+     *
+     * @param string $pageTitle Page title
+     * @return string|false Unique slug or false on error
+     */
+    private function generateUniqueSlug(string $pageTitle)
+    {
+        if (empty($pageTitle)) {
+            error_log('AnswerHandler::generateUniqueSlug - Empty page title received');
+            return false;
+        }
 
-	/**
-	 * Generate unique slug for answer page
-	 *
-	 * @param string $pageTitle Page title
-	 * @return string|false Unique slug or false on error
-	 */
-	private function generateUniqueSlug(string $pageTitle)
-	{
-		if (empty($pageTitle)) {
-			error_log('AnswerHandler::generateUniqueSlug - Empty page title received');
-			return false;
-		}
+        try {
+            $prefix = substr(hash('sha256', random_bytes(16)), 0, 16);
+        } catch (\Exception $e) {
+            error_log('AnswerHandler::generateUniqueSlug - Error generating prefix: ' . $e->getMessage());
+            return false;
+        }
 
-		try {
-			$prefix = substr(hash('sha256', random_bytes(16)), 0, 16);
-		} catch (\Exception $e) {
-			error_log('AnswerHandler::generateUniqueSlug - Error generating prefix: ' . $e->getMessage());
-			return false;
-		}
+        $pageTitle = sanitize_title($pageTitle);
+        $suffix = str_replace('-', '_', $pageTitle);
 
-		$pageTitle = sanitize_title($pageTitle);
-		$suffix = str_replace('-', '_', $pageTitle);
+        return $prefix . '_' . $suffix;
+    }
 
-		return $prefix . '_' . $suffix;
-	}
+    /**
+     * Normalize post ID from ACF field value
+     * ACF can return post ID as int, object, or array depending on configuration
+     *
+     * @param mixed $value ACF field value
+     * @return int|null Post ID or null
+     */
+    private function normalizePostId($value): ?int
+    {
+        if (empty($value)) {
+            return null;
+        }
 
-	/**
-	 * Normalize post ID from ACF field value
-	 * ACF can return post ID as int, object, or array depending on configuration
-	 *
-	 * @param mixed $value ACF field value
-	 * @return int|null Post ID or null
-	 */
-	private function normalizePostId($value): ?int
-	{
-		if (empty($value)) {
-			return null;
-		}
+        // Already an integer
+        if (is_numeric($value)) {
+            return (int)$value;
+        }
 
-		// Already an integer
-		if (is_numeric($value)) {
-			return (int)$value;
-		}
+        // Post object
+        if (is_object($value) && isset($value->ID)) {
+            return (int)$value->ID;
+        }
 
-		// Post object
-		if (is_object($value) && isset($value->ID)) {
-			return (int)$value->ID;
-		}
+        // Array with ID key
+        if (is_array($value) && isset($value['ID'])) {
+            return (int)$value['ID'];
+        }
 
-		// Array with ID key
-		if (is_array($value) && isset($value['ID'])) {
-			return (int)$value['ID'];
-		}
-
-		return null;
-	}
+        return null;
+    }
 }

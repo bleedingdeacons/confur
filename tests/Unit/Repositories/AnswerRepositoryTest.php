@@ -503,7 +503,7 @@ class AnswerRepositoryTest extends ConfurTestCase
         }
 
         // Create anonymous class that overrides WordPress function calls
-        return new class($mockFields, $mockPostData, $returnPostIds) extends AnswerRepository {
+        return new class ($mockFields, $mockPostData, $returnPostIds) extends AnswerRepository {
             private array $mockFields;
             private array $mockPostData;
             private ?array $returnPostIds;
@@ -594,7 +594,7 @@ class AnswerRepositoryTest extends ConfurTestCase
                 }
 
                 // Sort by updated date, then post date
-                usort($duplicates, function($a, $b) {
+                usort($duplicates, function ($a, $b) {
                     $aUpdated = !empty($a['updated']) ? strtotime($a['updated']) : 0;
                     $bUpdated = !empty($b['updated']) ? strtotime($b['updated']) : 0;
 
@@ -602,8 +602,12 @@ class AnswerRepositoryTest extends ConfurTestCase
                         return $bUpdated - $aUpdated;
                     }
 
-                    if ($aUpdated > 0) return -1;
-                    if ($bUpdated > 0) return 1;
+                    if ($aUpdated > 0) {
+                        return -1;
+                    }
+                    if ($bUpdated > 0) {
+                        return 1;
+                    }
 
                     $aCreated = strtotime($a['post_date']);
                     $bCreated = strtotime($b['post_date']);

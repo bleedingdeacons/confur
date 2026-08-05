@@ -10,305 +10,308 @@ use Confur\Repositories\AnswerRepository;
  */
 class AnswerShortcode
 {
-	private AnswerRepository $answerRepository;
+    private AnswerRepository $answerRepository;
 
-	public function __construct()
-	{
-		$this->answerRepository = new AnswerRepository();
-	}
+    public function __construct()
+    {
+        $this->answerRepository = new AnswerRepository();
+    }
 
-	/**
-	 * @param string $selector
-	 * @param int|string|false $post_id
-	 * @param bool $format_value
-	 * @return mixed ACF returns whatever the field holds.
-	 */
-	function get_field($selector, $post_id = false, $format_value = true) {
-		return \get_field($selector, $post_id, $format_value);  // Calls global
-	}
+    /**
+     * @param string $selector
+     * @param int|string|false $post_id
+     * @param bool $format_value
+     * @return mixed ACF returns whatever the field holds.
+     */
+    public function getField($selector, $post_id = false, $format_value = true)
+    {
+        return \get_field($selector, $post_id, $format_value);  // Calls global
+    }
 
-	/**
-	 * @return int|false Post ID, or false outside the loop.
-	 */
-	function get_the_ID() {
-		return \get_the_ID();  // Calls global
-	}
+    /**
+     * @return int|false Post ID, or false outside the loop.
+     */
+    public function getTheId()
+    {
+        return \get_the_ID();  // Calls global
+    }
 
-	/**
-	 * Generate answer field
-	 *
-	 * @param array<string, mixed> $atts Shortcode attributes
-	 * @return string Rendered HTML
-	 */
-	/**
-	 * Generate answer field
-	 *
-	 * @param array<string, mixed> $atts Shortcode attributes
-	 * @return string Rendered HTML
-	 */
-	public function generateAnswerField(array $atts = []): string
-	{
-		$committee = isset($atts['committee']) ? sanitize_text_field($atts['committee']) : '';
-		$question = isset($atts['question']) ? sanitize_text_field($atts['question']) : '';
-		$hidden = isset($atts['hidden']) && filter_var($atts['hidden'], FILTER_VALIDATE_BOOLEAN);
+    /**
+     * Generate answer field
+     *
+     * @param array<string, mixed> $atts Shortcode attributes
+     * @return string Rendered HTML
+     */
+    /**
+     * Generate answer field
+     *
+     * @param array<string, mixed> $atts Shortcode attributes
+     * @return string Rendered HTML
+     */
+    public function generateAnswerField(array $atts = []): string
+    {
+        $committee = isset($atts['committee']) ? sanitize_text_field($atts['committee']) : '';
+        $question = isset($atts['question']) ? sanitize_text_field($atts['question']) : '';
+        $hidden = isset($atts['hidden']) && filter_var($atts['hidden'], FILTER_VALIDATE_BOOLEAN);
 
-		$name = 'c' . esc_attr($committee) . '_a' . esc_attr($question);
+        $name = 'c' . esc_attr($committee) . '_a' . esc_attr($question);
 
-		$existingValue = $this->answerRepository->getValue($name);
-		$safeValue = !empty($existingValue) ? esc_textarea($existingValue) : '';
+        $existingValue = $this->answerRepository->getValue($name);
+        $safeValue = !empty($existingValue) ? esc_textarea($existingValue) : '';
 
-		$labelText = $hidden
-			? sprintf('Answer %s', esc_html($question))
-			: sprintf('Answer %s.%s', esc_html($committee), esc_html($question));
+        $labelText = $hidden
+            ? sprintf('Answer %s', esc_html($question))
+            : sprintf('Answer %s.%s', esc_html($committee), esc_html($question));
 
-		$label = sprintf(
-			'<label class="answer" for="%s">%s</label>',
-			esc_attr($name),
-			$labelText
-		);
+        $label = sprintf(
+            '<label class="answer" for="%s">%s</label>',
+            esc_attr($name),
+            $labelText
+        );
 
-		$textarea = sprintf(
-			'<textarea class="answer" name="%s" id="%s" placeholder="">%s</textarea>',
-			esc_attr($name),
-			esc_attr($name),
-			$safeValue
-		);
+        $textarea = sprintf(
+            '<textarea class="answer" name="%s" id="%s" placeholder="">%s</textarea>',
+            esc_attr($name),
+            esc_attr($name),
+            $safeValue
+        );
 
-		$textareaExisting = sprintf(
-			'<textarea class="existing-answer" id="e_%s" readonly>%s</textarea>',
-			esc_attr($name),
-			$safeValue
-		);
+        $textareaExisting = sprintf(
+            '<textarea class="existing-answer" id="e_%s" readonly>%s</textarea>',
+            esc_attr($name),
+            $safeValue
+        );
 
-		return $label . $textarea . $textareaExisting;
-	}
+        return $label . $textarea . $textareaExisting;
+    }
 
-	/**
-	 * Generate question
-	 *
-	 * @param array<string, mixed> $atts Shortcode attributes
-	 * @param string|null $content Shortcode content
-	 * @return string Rendered HTML
-	 */
-	public function generateQuestion(array $atts = [], ?string $content = null): string
-	{
-		$question = trim($atts['number']);
-		$committee = trim($atts['committee']);
-		$hidden = isset($atts['hidden']) && filter_var($atts['hidden'], FILTER_VALIDATE_BOOLEAN);
+    /**
+     * Generate question
+     *
+     * @param array<string, mixed> $atts Shortcode attributes
+     * @param string|null $content Shortcode content
+     * @return string Rendered HTML
+     */
+    public function generateQuestion(array $atts = [], ?string $content = null): string
+    {
+        $question = trim($atts['number']);
+        $committee = trim($atts['committee']);
+        $hidden = isset($atts['hidden']) && filter_var($atts['hidden'], FILTER_VALIDATE_BOOLEAN);
 
-		$name = 'c' . $committee . '_q' . $question;
-		$content = do_shortcode($content);
+        $name = 'c' . $committee . '_q' . $question;
+        $content = do_shortcode($content);
 
-		$headerText = $hidden
-			? sprintf('Question %s', $question)
-			: sprintf('Question %s.%s', $committee, $question);
+        $headerText = $hidden
+            ? sprintf('Question %s', $question)
+            : sprintf('Question %s.%s', $committee, $question);
 
-		return sprintf(
-			'<h3 id="%s">%s</h3>%s',
-			$name,
-			$headerText,
-			$content
-		);
-	}
+        return sprintf(
+            '<h3 id="%s">%s</h3>%s',
+            $name,
+            $headerText,
+            $content
+        );
+    }
 
-	/**
-	 * Generate committee
-	 *
-	 * @param array<string, mixed> $atts Shortcode attributes
-	 * @param string|null $content Shortcode content
-	 * @return string Rendered HTML
-	 */
-	public function generateCommittee(array $atts = [], ?string $content = null): string
-	{
-		$number = sanitize_text_field(trim($atts['number']));
-		$id = 'c' . $number;
+    /**
+     * Generate committee
+     *
+     * @param array<string, mixed> $atts Shortcode attributes
+     * @param string|null $content Shortcode content
+     * @return string Rendered HTML
+     */
+    public function generateCommittee(array $atts = [], ?string $content = null): string
+    {
+        $number = sanitize_text_field(trim($atts['number']));
+        $id = 'c' . $number;
 
-		// Check if name attribute exists, otherwise use default "Committee {number}"
-		$title = isset($atts['name']) ? sanitize_text_field(trim($atts['name'])) : 'Committee ' . $number;
+        // Check if name attribute exists, otherwise use default "Committee {number}"
+        $title = isset($atts['name']) ? sanitize_text_field(trim($atts['name'])) : 'Committee ' . $number;
 
-		$content = do_shortcode($content);
+        $content = do_shortcode($content);
 
-		return sprintf(
-			'<div id="g_%s"><h2>%s</h2>%s</div>',
-			$id,
-			$title,
-			$content
-		);
-	}
+        return sprintf(
+            '<div id="g_%s"><h2>%s</h2>%s</div>',
+            $id,
+            $title,
+            $content
+        );
+    }
 
-	/**
-	 * Generate start committee
-	 *
-	 * @param array<string, mixed> $atts Shortcode attributes
-	 * @return string Rendered HTML
-	 */
-	public function generateStartCommittee(array $atts = []): string
-	{
-		$number = trim($atts['number']);
-		$id = 'c' . $number;
+    /**
+     * Generate start committee
+     *
+     * @param array<string, mixed> $atts Shortcode attributes
+     * @return string Rendered HTML
+     */
+    public function generateStartCommittee(array $atts = []): string
+    {
+        $number = trim($atts['number']);
+        $id = 'c' . $number;
 
-		return sprintf(
-			'<div id="%s"><h2>Committee %s</h2>',
-			$id,
-			$number
-		);
-	}
+        return sprintf(
+            '<div id="%s"><h2>Committee %s</h2>',
+            $id,
+            $number
+        );
+    }
 
-	/**
-	 * Generate end committee
-	 *
-	 * @return string Rendered HTML
-	 */
-	public function generateEndCommittee(): string
-	{
-		return '</div>';
-	}
+    /**
+     * Generate end committee
+     *
+     * @return string Rendered HTML
+     */
+    public function generateEndCommittee(): string
+    {
+        return '</div>';
+    }
 
-	/**
-	 * Generate header
-	 *
-	 * @return string Rendered HTML
-	 */
-	public function generateHeader(): string
-	{
-		$meetingId = get_field(Constants::MEETING_FIELD);
-		$fellow_meetingId = get_field(Constants::FELLOW_MEETING_FIELD);
-		$meetingTitle = get_the_title($meetingId);
+    /**
+     * Generate header
+     *
+     * @return string Rendered HTML
+     */
+    public function generateHeader(): string
+    {
+        $meetingId = get_field(Constants::MEETING_FIELD);
+        $fellow_meetingId = get_field(Constants::FELLOW_MEETING_FIELD);
+        $meetingTitle = get_the_title($meetingId);
 
-		if (! empty($fellow_meetingId ) ) {
-			$meetingTitle .= ' and ' . get_the_title($fellow_meetingId);
-		}
+        if (! empty($fellow_meetingId)) {
+            $meetingTitle .= ' and ' . get_the_title($fellow_meetingId);
+        }
 
-		return sprintf(
-			'<h2>Answers from %s</h2>',
-			esc_html($meetingTitle)
-		);
-	}
+        return sprintf(
+            '<h2>Answers from %s</h2>',
+            esc_html($meetingTitle)
+        );
+    }
 
-	/**
-	 * Configure custom form
-	 *
-	 * @param array<string, mixed> $atts Shortcode attributes
-	 * @return string Rendered HTML
-	 */
-	public function configureCustomForm(array $atts): string
-	{
-		error_log('Action: ' . $atts['action']);
+    /**
+     * Configure custom form
+     *
+     * @param array<string, mixed> $atts Shortcode attributes
+     * @return string Rendered HTML
+     */
+    public function configureCustomForm(array $atts): string
+    {
+        error_log('Action: ' . $atts['action']);
 
-		return sprintf(
-			'<input type="hidden" name="action" value="%s">',
-			esc_attr($atts['action'])
-		);
-	}
+        return sprintf(
+            '<input type="hidden" name="action" value="%s">',
+            esc_attr($atts['action'])
+        );
+    }
 
-	/**
-	 * Generate status
-	 *
-	 * @param array<string, mixed> $atts Shortcode attributes
-	 * @return string Rendered HTML
-	 */
-	public function generateStatus(array $atts): string
-	{
-		return sprintf(
-			'<p class="middle important" id="%sDirty">You have made unsaved changes!</p>',
-			esc_attr($atts['position'])
-		);
-	}
+    /**
+     * Generate status
+     *
+     * @param array<string, mixed> $atts Shortcode attributes
+     * @return string Rendered HTML
+     */
+    public function generateStatus(array $atts): string
+    {
+        return sprintf(
+            '<p class="middle important" id="%sDirty">You have made unsaved changes!</p>',
+            esc_attr($atts['position'])
+        );
+    }
 
-	/**
-	 * Generate progress table
-	 *
-	 * @return string Rendered HTML
-	 */
-	public function generateProgressTable(): string
-	{
-		$html = '<div id="progress">';
-		$html .= '<table><tbody>';
+    /**
+     * Generate progress table
+     *
+     * @return string Rendered HTML
+     */
+    public function generateProgressTable(): string
+    {
+        $html = '<div id="progress">';
+        $html .= '<table><tbody>';
 
-		for ($count = 1; $count <= 6; $count++) {
-			$html .= sprintf(
-				'<tr><td><a href="#g_c%1$d" class="status-link"><strong>Committee %1$d</a></strong></td><td class="value" id="s_c%1$d">Not Started</td></tr>',
-				$count
-			);
-		}
+        for ($count = 1; $count <= 6; $count++) {
+            $html .= sprintf(
+                '<tr><td><a href="#g_c%1$d" class="status-link"><strong>Committee %1$d</a></strong></td><td class="value" id="s_c%1$d">Not Started</td></tr>',
+                $count
+            );
+        }
 
-		// Work around for extra questions not grouped by 'Committee'
-		$count = 7;
-		$html .= sprintf(
-			'<tr><td><a href="#g_c%1$d" class="status-link"><strong>All Committees</a></strong></td><td class="value" id="s_c%1$d">Not Started</td></tr>',
-			$count);
+        // Work around for extra questions not grouped by 'Committee'
+        $count = 7;
+        $html .= sprintf(
+            '<tr><td><a href="#g_c%1$d" class="status-link"><strong>All Committees</a></strong></td><td class="value" id="s_c%1$d">Not Started</td></tr>',
+            $count
+        );
 
-		$html .= '</tbody></table></div>';
+        $html .= '</tbody></table></div>';
 
-		return $html;
-	}
+        return $html;
+    }
 
-	/**
-	 * Generate control
-	 *
-	 * @param array<string, mixed> $atts Shortcode attributes
-	 * @return string Rendered HTML
-	 */
-	public function generateControl(array $atts): string
-	{
-		$position = esc_attr($atts['position']);
+    /**
+     * Generate control
+     *
+     * @param array<string, mixed> $atts Shortcode attributes
+     * @return string Rendered HTML
+     */
+    public function generateControl(array $atts): string
+    {
+        $position = esc_attr($atts['position']);
 
-		$html = sprintf('<div><strong>Status: </strong><span id="%sSaveState"></span></div>', $position);
-		$html .= sprintf('<div><strong>Last Saved: </strong><span id="%sSaveTime"></span></div>', $position);
-		$html .= '<div id="buttons">';
-		$html .= sprintf(
-			'<button type="button" class="submit" id="%sSubmit" name="submit_answers" value="Draft" disabled>Save Draft</button>',
-			$position
-		);
-		$html .= sprintf(
-			'<button type="button" class="submit" id="%sFinish" name="submit_answers" value="Complete" disabled>Save Complete</button>',
-			$position
-		);
-		$html .= '</div>';
+        $html = sprintf('<div><strong>Status: </strong><span id="%sSaveState"></span></div>', $position);
+        $html .= sprintf('<div><strong>Last Saved: </strong><span id="%sSaveTime"></span></div>', $position);
+        $html .= '<div id="buttons">';
+        $html .= sprintf(
+            '<button type="button" class="submit" id="%sSubmit" name="submit_answers" value="Draft" disabled>Save Draft</button>',
+            $position
+        );
+        $html .= sprintf(
+            '<button type="button" class="submit" id="%sFinish" name="submit_answers" value="Complete" disabled>Save Complete</button>',
+            $position
+        );
+        $html .= '</div>';
 
-		return $html;
-	}
+        return $html;
+    }
 
-	/**
-	 * Generate allocated committee display
-	 *
-	 * Displays "Allocated Committee (Number)" if the associated meeting
-	 * has a populated allocation field. Committee 7 displays as "Final Committee".
-	 *
-	 * @param array<string, mixed> $atts Shortcode attributes
-	 * @return string Rendered HTML or empty string if no allocation
-	 */
-	public function generateAllocatedCommittee(array $atts = []): string
-	{
-		// Get the meeting ID from the current answer post
-		$meetingId = $this->get_field(Constants::MEETING_FIELD);
+    /**
+     * Generate allocated committee display
+     *
+     * Displays "Allocated Committee (Number)" if the associated meeting
+     * has a populated allocation field. Committee 7 displays as "Final Committee".
+     *
+     * @param array<string, mixed> $atts Shortcode attributes
+     * @return string Rendered HTML or empty string if no allocation
+     */
+    public function generateAllocatedCommittee(array $atts = []): string
+    {
+        // Get the meeting ID from the current answer post
+        $meetingId = $this->getField(Constants::MEETING_FIELD);
 
-		if (empty($meetingId)) {
-			return '';
-		}
+        if (empty($meetingId)) {
+            return '';
+        }
 
-		// Get the allocation field from the meeting
-		// Assumes Constants::ALLOCATION_FIELD exists, adjust field name as needed
-		$allocation = $this->get_field(Constants::ALLOCATION_FIELD, $meetingId);
+        // Get the allocation field from the meeting
+        // Assumes Constants::ALLOCATION_FIELD exists, adjust field name as needed
+        $allocation = $this->getField(Constants::ALLOCATION_FIELD, $meetingId);
 
-		if (empty($allocation)) {
-			return '';
-		}
+        if (empty($allocation)) {
+            return '';
+        }
 
-		// Sanitize the allocation value
-		$committeeNumber = is_numeric($allocation) ? intval($allocation) : sanitize_text_field($allocation);
+        // Sanitize the allocation value
+        $committeeNumber = is_numeric($allocation) ? intval($allocation) : sanitize_text_field($allocation);
 
-		// Committee 7 is displayed as "Last Question"
-		if ($committeeNumber === 7) {
-			return sprintf(
-				'<p class="allocated-committee">To start, your group has been allocated: <a href="#g_c%1$d" class="status-link">Last Question</a> (Under All Committee\'s)</p>',
-				$committeeNumber
-			);
-		}
+        // Committee 7 is displayed as "Last Question"
+        if ($committeeNumber === 7) {
+            return sprintf(
+                '<p class="allocated-committee">To start, your group has been allocated: <a href="#g_c%1$d" class="status-link">Last Question</a> (Under All Committee\'s)</p>',
+                $committeeNumber
+            );
+        }
 
-		return sprintf(
-			'<p class="allocated-committee">To start, your group has been allocated: <a href="#g_c%1$d" class="status-link">Committee %1$d</a></p>',
-			$committeeNumber
-		);
-	}
+        return sprintf(
+            '<p class="allocated-committee">To start, your group has been allocated: <a href="#g_c%1$d" class="status-link">Committee %1$d</a></p>',
+            $committeeNumber
+        );
+    }
 }

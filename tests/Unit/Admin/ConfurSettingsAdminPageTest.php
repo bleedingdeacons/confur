@@ -351,14 +351,16 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
     {
         $html = $this->capture(fn () => $this->page->renderAdminPage());
 
-        foreach ([
+        foreach (
+            [
             'registration_reply_email',
             'support_email',
             'backup_email',
             'email_blocklist',
             'delete_blocked_posts',
             'enable_duplicate_detection',
-        ] as $field) {
+            ] as $field
+        ) {
             $this->assertStringContainsString('name="' . $field . '"', $html, $field . ' should be on the form');
         }
 

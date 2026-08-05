@@ -42,7 +42,7 @@ class StatusAdminPage
 
         // Add screen options
         add_action('load-questions-for-conference_page_confur-answer-submissions', [$this, 'addScreenOptions']);
-        
+
         // Handle saving screen options via AJAX
         add_action('wp_ajax_confur_save_screen_option', [$this, 'handleSaveScreenOption']);
     }
@@ -61,10 +61,10 @@ class StatusAdminPage
     public function handleSaveScreenOption(): void
     {
         check_ajax_referer('confur_screen_options', 'nonce');
-        
+
         $show_cancellations = isset($_POST['show_cancellations']) && $_POST['show_cancellations'] === '1' ? 1 : 0;
         update_user_meta(get_current_user_id(), 'confur_show_cancellations', $show_cancellations);
-        
+
         wp_send_json_success(['saved' => true]);
     }
 
@@ -92,7 +92,7 @@ class StatusAdminPage
         $settings .= ' Show Cancellations';
         $settings .= '</label>';
         $settings .= '</fieldset>';
-        
+
         $settings .= '<script>
             jQuery(document).ready(function($) {
                 // Create progress indicator element (same as confur-client.js)
@@ -160,12 +160,12 @@ class StatusAdminPage
     public function addAdminMenu(): void
     {
         add_submenu_page(
-                'confur',                       // Parent slug (Confur menu)
-                'Status',                       // Page title
-                'Status',                       // Menu title
-                'read',                         // Capability
-                'confur-answer-submissions',    // Menu slug
-                [$this, 'renderAdminPage']     // Callback
+            'confur',                       // Parent slug (Confur menu)
+            'Status',                       // Page title
+            'Status',                       // Menu title
+            'read',                         // Capability
+            'confur-answer-submissions',    // Menu slug
+            [$this, 'renderAdminPage']     // Callback
         );
     }
 
@@ -643,7 +643,7 @@ class StatusAdminPage
         // Filter out cancelled items if screen option is disabled
         $showCancellations = $this->shouldShowCancellations();
         if (!$showCancellations) {
-            $allMeetings = array_filter($allMeetings, function($meeting) {
+            $allMeetings = array_filter($allMeetings, function ($meeting) {
                 return $meeting['status_class'] !== 'cancelled';
             });
         }
@@ -655,12 +655,12 @@ class StatusAdminPage
         <div class="wrap">
             <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
 
-            <?php if (!empty($duplicates)): ?>
+            <?php if (!empty($duplicates)) : ?>
                 <div class="notice notice-warning">
                     <p><strong><?php _e('Warning: Duplicate registrations detected!', 'confur'); ?></strong></p>
                     <p><?php _e('The following meetings have multiple active (non-cancelled) registrations. Use the "Cancel" button to cancel duplicate entries:', 'confur'); ?></p>
                     <ul>
-                        <?php foreach ($duplicates as $meetingId => $info): ?>
+                        <?php foreach ($duplicates as $meetingId => $info) : ?>
                             <li><?php echo esc_html($info['name']); ?> (<?php echo esc_html($info['count']); ?> registrations)</li>
                         <?php endforeach; ?>
                     </ul>
@@ -696,11 +696,11 @@ class StatusAdminPage
                 </div>
             </div>
 
-            <?php if (empty($allMeetings)): ?>
+            <?php if (empty($allMeetings)) : ?>
                 <div class="notice notice-info">
                     <p><?php _e('No meetings found.', 'confur'); ?></p>
                 </div>
-            <?php else: ?>
+            <?php else : ?>
                 <table class="confur-answers-table">
                     <thead>
                     <tr>
@@ -716,7 +716,7 @@ class StatusAdminPage
                     </tr>
                     </thead>
                     <tbody>
-                    <?php foreach ($allMeetings as $meeting):
+                    <?php foreach ($allMeetings as $meeting) :
                         // Check if this meeting is part of a duplicate set (and not cancelled)
                         $isDuplicate = in_array($meeting['id'], $duplicateMeetingIds)
                                        && $meeting['is_registered']
@@ -725,23 +725,23 @@ class StatusAdminPage
                         ?>
                         <tr class="<?php echo esc_attr($rowClass); ?>">
                             <td class="answer-name">
-                                <?php if ($meeting['is_registered']): ?>
+                                <?php if ($meeting['is_registered']) : ?>
                                     <a href="<?php echo esc_url($meeting['edit_url']); ?>">
                                         <?php echo esc_html($meeting['name']); ?>
                                     </a>
-                                    <?php if ($isDuplicate): ?>
+                                    <?php if ($isDuplicate) : ?>
                                         <span class="duplicate-indicator">DUPLICATE</span>
                                     <?php endif; ?>
-                                <?php else: ?>
+                                <?php else : ?>
                                     <a href="<?php echo esc_url($meeting['meeting_url']); ?>" target="_blank">
                                         <?php echo esc_html($meeting['name']); ?>
                                     </a>
                                 <?php endif; ?>
                             </td>
                             <td>
-								<span class="status-badge status-<?php echo esc_attr($meeting['status_class']); ?>">
-									<?php echo esc_html($meeting['status_label']); ?>
-								</span>
+                                <span class="status-badge status-<?php echo esc_attr($meeting['status_class']); ?>">
+                                    <?php echo esc_html($meeting['status_label']); ?>
+                                </span>
                             </td>
                             <td>
                                 <?php
@@ -765,8 +765,8 @@ class StatusAdminPage
                             <td><?php echo esc_html($meeting['time']); ?></td>
                             <td><?php echo esc_html($meeting['last_saved']); ?></td>
                             <td class="actions-cell">
-                                <?php if ($meeting['is_registered'] && !empty($meeting['answer_id'])): ?>
-                                    <?php if ($isDuplicate): ?>
+                                <?php if ($meeting['is_registered'] && !empty($meeting['answer_id'])) : ?>
+                                    <?php if ($isDuplicate) : ?>
                                         <button type="button"
                                                 class="cancel-duplicate-btn"
                                                 data-answer-id="<?php echo esc_attr($meeting['answer_id']); ?>"
@@ -775,7 +775,7 @@ class StatusAdminPage
                                             <span class="spinner"></span>
                                         </button>
                                     <?php endif; ?>
-                                    <?php if ($meeting['status_class'] !== 'cancelled'): ?>
+                                    <?php if ($meeting['status_class'] !== 'cancelled') : ?>
                                         <button type="button"
                                                 class="resend-confirmation-btn"
                                                 data-answer-id="<?php echo esc_attr($meeting['answer_id']); ?>"
@@ -784,7 +784,7 @@ class StatusAdminPage
                                             <span class="spinner"></span>
                                         </button>
                                     <?php endif; ?>
-                                <?php else: ?>
+                                <?php else : ?>
                                     -
                                 <?php endif; ?>
                             </td>
@@ -897,9 +897,9 @@ class StatusAdminPage
                     // Create email link
                     $emailHtml = !empty($item['email'])
                             ? HtmlHelper::createLink(
-                                    HtmlHelper::createEmailToAddress($item['email'], "Questions for Conference"),
-                                    '',
-                                    $item['email']
+                                HtmlHelper::createEmailToAddress($item['email'], "Questions for Conference"),
+                                '',
+                                $item['email']
                             )
                             : '-';
 
@@ -944,7 +944,7 @@ class StatusAdminPage
         }
 
         // Sort by registration status (registered first), then by meeting name
-        usort($allMeetings, function($a, $b) {
+        usort($allMeetings, function ($a, $b) {
             if ($a['is_registered'] != $b['is_registered']) {
                 return $b['is_registered'] - $a['is_registered']; // Registered first
             }
@@ -1001,10 +1001,10 @@ class StatusAdminPage
     private function contactTelephoneLink(array $contact): string
     {
         return $contact['name'] . ' ' . HtmlHelper::createLink(
-                        HtmlHelper::createPhoneToAddress($contact['phone']),
-                        '',
-                        $contact['phone']
-                );
+            HtmlHelper::createPhoneToAddress($contact['phone']),
+            '',
+            $contact['phone']
+        );
     }
 
     /**
@@ -1113,44 +1113,44 @@ class StatusAdminPage
     {
         // Get all registered groups with full data
         $registered = $this->answerRepository->getRegisteredGroups();
-        
+
         // Build a list of unique registrations (by answer ID) with their meeting combinations
         // We need to track the FIRST entry for each answer ID (which has the correct fellowMeetingId)
         $registrations = [];
         $answerData = [];
-        
+
         // First pass: collect the primary entry for each answer (the one with fellowMeetingId if paired)
         foreach ($registered as $item) {
             $answerId = $item['answersId'];
-            
+
             // Only keep the first entry for each answer (which has the full meeting data)
             if (!isset($answerData[$answerId])) {
                 $answerData[$answerId] = $item;
             }
         }
-        
+
         error_log("findDuplicateRegistrations - Found " . count($answerData) . " unique answers");
-        
+
         // Second pass: group by email + meeting combination
         foreach ($answerData as $answerId => $item) {
             $status = $item['status'] ?? '';
-            
+
             // Skip cancelled registrations (check for the exact constant value)
             if ($status === Constants::STATUS_CANCELLED) {
                 error_log("findDuplicateRegistrations - Skipping cancelled answer $answerId");
                 continue;
             }
-            
+
             $meetingId = $item['meetingId'];
             $fellowMeetingId = $item['fellowMeetingId'];
-            
+
             $email = strtolower(trim($item['email'] ?? ''));
-            
+
             if (empty($meetingId) || empty($email)) {
                 error_log("findDuplicateRegistrations - Skipping answer $answerId due to empty meetingId or email");
                 continue;
             }
-            
+
             // Build sorted meeting IDs array for comparison
             $meetingIds = [(int)$meetingId];
             $isPaired = !empty($fellowMeetingId);
@@ -1158,19 +1158,19 @@ class StatusAdminPage
                 $meetingIds[] = (int)$fellowMeetingId;
             }
             sort($meetingIds);
-            
+
             // Create a unique key for this meeting combination + email
             $key = $email . '|' . ($isPaired ? 'paired' : 'single') . '|' . implode('-', $meetingIds);
-            
+
             error_log("findDuplicateRegistrations - Answer $answerId: key=$key, status=$status");
-            
+
             if (!isset($registrations[$key])) {
                 // Build name for display
                 $name = get_the_title($meetingId);
                 if ($isPaired) {
                     $name .= ' and ' . get_the_title($fellowMeetingId);
                 }
-                
+
                 $registrations[$key] = [
                     'meetingIds' => $meetingIds,
                     'email' => $email,
@@ -1179,12 +1179,12 @@ class StatusAdminPage
                     'name' => $name
                 ];
             }
-            
+
             $registrations[$key]['count']++;
         }
-        
+
         error_log("findDuplicateRegistrations - Registration groups: " . print_r($registrations, true));
-        
+
         // Filter to only duplicates and reformat for display
         $duplicates = [];
         foreach ($registrations as $key => $info) {
@@ -1198,9 +1198,9 @@ class StatusAdminPage
                 error_log("findDuplicateRegistrations - Found duplicate: " . $info['name'] . " count=" . $info['count']);
             }
         }
-        
+
         error_log("findDuplicateRegistrations - Total duplicates found: " . count($duplicates));
-        
+
         return $duplicates;
     }
 }

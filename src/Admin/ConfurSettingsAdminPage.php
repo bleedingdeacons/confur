@@ -30,12 +30,12 @@ class ConfurSettingsAdminPage
     public function addAdminMenu(): void
     {
         add_submenu_page(
-                'confur',                        // Parent slug (Confur menu)
-                'Confur Settings',               // Page title
-                'Settings',                      // Menu title
-                'manage_options',                // Capability (admin only)
-                'confur-settings',               // Menu slug
-                [$this, 'renderAdminPage']      // Callback
+            'confur',                        // Parent slug (Confur menu)
+            'Confur Settings',               // Page title
+            'Settings',                      // Menu title
+            'manage_options',                // Capability (admin only)
+            'confur-settings',               // Menu slug
+            [$this, 'renderAdminPage']      // Callback
         );
     }
 
@@ -169,8 +169,10 @@ class ConfurSettingsAdminPage
         }
 
         // Verify nonce
-        if (!isset($_POST['confur_settings_nonce']) ||
-            !wp_verify_nonce($_POST['confur_settings_nonce'], 'confur_settings_action')) {
+        if (
+            !isset($_POST['confur_settings_nonce']) ||
+            !wp_verify_nonce($_POST['confur_settings_nonce'], 'confur_settings_action')
+        ) {
             wp_die(__('Security check failed.'));
         }
 
@@ -194,26 +196,26 @@ class ConfurSettingsAdminPage
         if (isset($_POST['reset_to_defaults'])) {
             if (ConfurSettings::resetToDefaults()) {
                 $redirect_url = add_query_arg(
-                        ['page' => 'confur-settings', 'updated' => '1'],
-                        admin_url('admin.php')
+                    ['page' => 'confur-settings', 'updated' => '1'],
+                    admin_url('admin.php')
                 );
             } else {
                 $redirect_url = add_query_arg(
-                        ['page' => 'confur-settings', 'error' => '1'],
-                        admin_url('admin.php')
+                    ['page' => 'confur-settings', 'error' => '1'],
+                    admin_url('admin.php')
                 );
             }
         } elseif (isset($_POST['clear_blocklist'])) {
             // Handle clear blocklist button
             if (ConfurSettings::clearBlocklist()) {
                 $redirect_url = add_query_arg(
-                        ['page' => 'confur-settings', 'updated' => 'blocklist_cleared'],
-                        admin_url('admin.php')
+                    ['page' => 'confur-settings', 'updated' => 'blocklist_cleared'],
+                    admin_url('admin.php')
                 );
             } else {
                 $redirect_url = add_query_arg(
-                        ['page' => 'confur-settings', 'error' => 'blocklist'],
-                        admin_url('admin.php')
+                    ['page' => 'confur-settings', 'error' => 'blocklist'],
+                    admin_url('admin.php')
                 );
             }
         } else {
@@ -245,13 +247,13 @@ class ConfurSettingsAdminPage
 
             if ($settingsUpdated || $blocklistUpdated) {
                 $redirect_url = add_query_arg(
-                        ['page' => 'confur-settings', 'updated' => '1'],
-                        admin_url('admin.php')
+                    ['page' => 'confur-settings', 'updated' => '1'],
+                    admin_url('admin.php')
                 );
             } else {
                 $redirect_url = add_query_arg(
-                        ['page' => 'confur-settings', 'error' => '1'],
-                        admin_url('admin.php')
+                    ['page' => 'confur-settings', 'error' => '1'],
+                    admin_url('admin.php')
                 );
             }
         }
@@ -278,25 +280,25 @@ class ConfurSettingsAdminPage
         <div class="wrap">
             <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
 
-            <?php if (isset($_GET['updated']) && $_GET['updated'] === '1'): ?>
+            <?php if (isset($_GET['updated']) && $_GET['updated'] === '1') : ?>
                 <div class="confur-notice">
                     <p><strong>Settings updated successfully.</strong></p>
                 </div>
             <?php endif; ?>
 
-            <?php if (isset($_GET['updated']) && $_GET['updated'] === 'reset'): ?>
+            <?php if (isset($_GET['updated']) && $_GET['updated'] === 'reset') : ?>
                 <div class="confur-notice">
                     <p><strong>Settings reset to defaults successfully.</strong></p>
                 </div>
             <?php endif; ?>
 
-            <?php if (isset($_GET['updated']) && $_GET['updated'] === 'blocklist_cleared'): ?>
+            <?php if (isset($_GET['updated']) && $_GET['updated'] === 'blocklist_cleared') : ?>
                 <div class="confur-notice">
                     <p><strong>Email blocked list cleared successfully.</strong></p>
                 </div>
             <?php endif; ?>
 
-            <?php if (isset($_GET['error'])): ?>
+            <?php if (isset($_GET['error'])) : ?>
                 <div class="confur-notice error">
                     <p><strong>Error:</strong> Failed to update settings. Please ensure all email addresses are valid.</p>
                 </div>
@@ -382,7 +384,7 @@ class ConfurSettingsAdminPage
                             Users with blocked emails will receive a different error message during registration.
                         </p>
 
-                        <?php if ($blocklistCount > 0): ?>
+                        <?php if ($blocklistCount > 0) : ?>
                             <div class="confur-blocklist-warning">
                                 <strong>Note:</strong> There are currently <strong><?php echo esc_html((string) $blocklistCount); ?></strong> blocked email address(es).
                             </div>
@@ -443,7 +445,7 @@ class ConfurSettingsAdminPage
                     <div class="confur-form-actions">
                         <?php submit_button('Save Settings', 'primary', 'submit', false); ?>
                         <?php submit_button('Reset to Defaults', 'secondary', 'reset_to_defaults', false); ?>
-                        <?php if ($blocklistCount > 0): ?>
+                        <?php if ($blocklistCount > 0) : ?>
                             <?php submit_button('Clear Blocked List', 'delete', 'clear_blocklist', false, ['onclick' => 'return confirm("Are you sure you want to clear the entire blocked list?");']); ?>
                         <?php endif; ?>
                     </div>
