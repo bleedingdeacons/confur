@@ -38,37 +38,37 @@ class AcfHelperTest extends ConfurTestCase
         );
     }
 
-    // ── update_acf_field ─────────────────────────────────────────────────
+    // ── updateAcfField ─────────────────────────────────────────────────
 
     public function testUpdateFieldRejectsEmptyArguments(): void
     {
-        $this->assertFalse(AcfHelper::update_acf_field(0, 'name', 'v'));
-        $this->assertFalse(AcfHelper::update_acf_field(5, '', 'v'));
+        $this->assertFalse(AcfHelper::updateAcfField(0, 'name', 'v'));
+        $this->assertFalse(AcfHelper::updateAcfField(5, '', 'v'));
     }
 
     public function testUpdateFieldReturnsFalseWhenFieldUnknown(): void
     {
-        $this->assertFalse(AcfHelper::update_acf_field(5, 'unknown', 'v'));
+        $this->assertFalse(AcfHelper::updateAcfField(5, 'unknown', 'v'));
     }
 
     public function testUpdateFieldSucceeds(): void
     {
         $this->knownFields(['price' => ['key' => 'field_abc']]);
-        $this->assertTrue(AcfHelper::update_acf_field(5, 'price', '10'));
+        $this->assertTrue(AcfHelper::updateAcfField(5, 'price', '10'));
         $this->assertArrayNotHasKey('acf', $_POST);
     }
 
-    // ── update_acf_fields ────────────────────────────────────────────────
+    // ── updateAcfFields ────────────────────────────────────────────────
 
     public function testUpdateFieldsRejectsInvalidInput(): void
     {
-        $this->assertFalse(AcfHelper::update_acf_fields(0, ['a' => 1]));
-        $this->assertFalse(AcfHelper::update_acf_fields(5, []));
+        $this->assertFalse(AcfHelper::updateAcfFields(0, ['a' => 1]));
+        $this->assertFalse(AcfHelper::updateAcfFields(5, []));
     }
 
     public function testUpdateFieldsReturnsFalseWhenNoneResolve(): void
     {
-        $this->assertFalse(AcfHelper::update_acf_fields(5, ['unknown' => 'v']));
+        $this->assertFalse(AcfHelper::updateAcfFields(5, ['unknown' => 'v']));
     }
 
     public function testUpdateFieldsSucceedsForKnownFields(): void
@@ -77,33 +77,33 @@ class AcfHelperTest extends ConfurTestCase
             'price' => ['key' => 'field_price'],
             'name'  => ['key' => 'field_name'],
         ]);
-        $this->assertTrue(AcfHelper::update_acf_fields(5, ['price' => '10', 'name' => 'x', 'unknown' => 'y']));
+        $this->assertTrue(AcfHelper::updateAcfFields(5, ['price' => '10', 'name' => 'x', 'unknown' => 'y']));
     }
 
-    // ── update_acf_field2 ────────────────────────────────────────────────
+    // ── updateAcfField2 ────────────────────────────────────────────────
 
     public function testUpdateField2RejectsEmptyArguments(): void
     {
-        $this->assertFalse(AcfHelper::update_acf_field2(0, 'name', 'v'));
+        $this->assertFalse(AcfHelper::updateAcfField2(0, 'name', 'v'));
     }
 
     public function testUpdateField2ReturnsFalseWhenPostMissing(): void
     {
         // Nothing seeded, so get_post() answers null.
-        $this->assertFalse(AcfHelper::update_acf_field2(999, 'price', 'v'));
+        $this->assertFalse(AcfHelper::updateAcfField2(999, 'price', 'v'));
     }
 
     public function testUpdateField2ReturnsFalseWhenFieldUnknown(): void
     {
         $this->makePost(5, '', 'publish', 'answer');
-        $this->assertFalse(AcfHelper::update_acf_field2(5, 'unknown', 'v'));
+        $this->assertFalse(AcfHelper::updateAcfField2(5, 'unknown', 'v'));
     }
 
     public function testUpdateField2Succeeds(): void
     {
         $this->makePost(5, '', 'publish', 'answer');
         $this->knownFields(['price' => ['key' => 'field_price']]);
-        $this->assertTrue(AcfHelper::update_acf_field2(5, 'price', '10'));
+        $this->assertTrue(AcfHelper::updateAcfField2(5, 'price', '10'));
     }
 
     public function testUpdateField2ReturnsFalseWhenSaveThrows(): void
@@ -114,7 +114,7 @@ class AcfHelperTest extends ConfurTestCase
             throw new \RuntimeException('acf save failed');
         });
         try {
-            $this->assertFalse(AcfHelper::update_acf_field2(5, 'price', '10'));
+            $this->assertFalse(AcfHelper::updateAcfField2(5, 'price', '10'));
         } finally {
         }
     }

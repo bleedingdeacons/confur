@@ -38,12 +38,12 @@ class ResultAdminPage
     public function registerAdminPage(): void
     {
         add_submenu_page(
-                'confur',                      // Parent slug (Confur menu)
-                self::PAGE_TITLE,              // Page title
-                self::MENU_TITLE,              // Menu title
-                self::CAPABILITY,              // Capability
-                self::PAGE_SLUG,               // Menu slug
-                [$this, 'renderPage']          // Callback function
+            'confur',                      // Parent slug (Confur menu)
+            self::PAGE_TITLE,              // Page title
+            self::MENU_TITLE,              // Menu title
+            self::CAPABILITY,              // Capability
+            self::PAGE_SLUG,               // Menu slug
+            [$this, 'renderPage']          // Callback function
         );
     }
 
@@ -128,10 +128,10 @@ class ResultAdminPage
 
         // Return report without registration section
         return sprintf(
-                '<h2 id="answer_table">Navigation</h2>%s<h2 id="answer_table">Answers</h2>%s<h2 id="coverage">Coverage</h2>%s',
-                $linksTable,
-                $allAnswerTable,
-                $coverage
+            '<h2 id="answer_table">Navigation</h2>%s<h2 id="answer_table">Answers</h2>%s<h2 id="coverage">Coverage</h2>%s',
+            $linksTable,
+            $allAnswerTable,
+            $coverage
         );
     }
 
@@ -186,9 +186,9 @@ class ResultAdminPage
 
         if ($committeeNumber <= 6) {
             $html = "<tr><td colspan='2' class='committee-header'>Committee {$committeeNumber} ";
-        }
-        else
+        } else {
             $html = "<tr><td colspan='2' class='committee-header'>All Committees";
+        }
 
         $html .= "<button class='copy-btn' onclick=\"copyCommitteeToClipboard('{$committeeId}', {$committeeNumber})\">📋 Copy Committee</button>";
 
@@ -290,7 +290,7 @@ class ResultAdminPage
             $committee = ltrim($committee, "c");
             $answer = ltrim($answer, "a");
 
-            $wordCounts = array_map(function($response) {
+            $wordCounts = array_map(function ($response) {
                 return str_word_count($response['answer']);
             }, $answers);
 
@@ -319,19 +319,19 @@ class ResultAdminPage
 
         foreach ($results as $result) {
             $link = $this->createAnswerLink(
-                    (int) $result['committee'],
-                    (int) $result['answer'],
-                    'Answer ' . $result['answer']
+                (int) $result['committee'],
+                (int) $result['answer'],
+                'Answer ' . $result['answer']
             );
 
             $html .= sprintf(
-                    "<tr><td>Committee %s</td><td>%s</td><td>%d</td><td>%s</td><td>%d</td><td>%d</td></tr>",
-                    $result['committee'],
-                    $link,
-                    $result['response_count'],
-                    $result['average_word_count'],
-                    $result['lowest_word_count'],
-                    $result['highest_word_count']
+                "<tr><td>Committee %s</td><td>%s</td><td>%d</td><td>%s</td><td>%d</td><td>%d</td></tr>",
+                $result['committee'],
+                $link,
+                $result['response_count'],
+                $result['average_word_count'],
+                $result['lowest_word_count'],
+                $result['highest_word_count']
             );
         }
 
@@ -360,14 +360,21 @@ class ResultAdminPage
         $class = 'class="answerLinks"';
 
         $html .= sprintf(
-                "<tr><td %s>%s</td><td %s>%s</td><td %s>%s</td><td %s>%s</td><td %s>%s</td><td %s>%s</td><td %s>%s</td></tr>",
-                $class, $committee1,
-                $class, $committee2,
-                $class, $committee3,
-                $class, $committee4,
-                $class, $committee5,
-                $class, $committee6,
-                $class, $committee7
+            "<tr><td %s>%s</td><td %s>%s</td><td %s>%s</td><td %s>%s</td><td %s>%s</td><td %s>%s</td><td %s>%s</td></tr>",
+            $class,
+            $committee1,
+            $class,
+            $committee2,
+            $class,
+            $committee3,
+            $class,
+            $committee4,
+            $class,
+            $committee5,
+            $class,
+            $committee6,
+            $class,
+            $committee7
         );
 
         $html .= "</tbody></table>";
@@ -382,11 +389,11 @@ class ResultAdminPage
      * @param int $answerCount Number of answers
      * @return string Rendered HTML
      */
-    private function createAnswerLinks(int $committeeNumber, int $answerCount): string {
+    private function createAnswerLinks(int $committeeNumber, int $answerCount): string
+    {
 
-        if ( $committeeNumber <= 6 ) {
+        if ($committeeNumber <= 6) {
             $html = "<strong>Committee {$committeeNumber}</strong><ul>";
-
         } else {
             $html = "<strong>All Committees</strong><ul>";
         }
@@ -412,10 +419,10 @@ class ResultAdminPage
     private function createAnswerLink(int $committeeNumber, int $answerNumber, string $content): string
     {
         return sprintf(
-                '<a href="#c%d_a%d">%s</a>',
-                $committeeNumber,
-                $answerNumber,
-                $content
+            '<a href="#c%d_a%d">%s</a>',
+            $committeeNumber,
+            $answerNumber,
+            $content
         );
     }
 

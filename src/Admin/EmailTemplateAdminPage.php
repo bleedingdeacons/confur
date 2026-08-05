@@ -53,12 +53,12 @@ class EmailTemplateAdminPage
     public function addAdminMenu(): void
     {
         add_submenu_page(
-                'confur',                           // Parent slug (Confur menu)
-                'Email Templates',                   // Page title
-                'Email Templates',                   // Menu title
-                'manage_options',                    // Capability (admin only)
-                'confur-email-templates',            // Menu slug
-                [$this, 'renderAdminPage']          // Callback
+            'confur',                           // Parent slug (Confur menu)
+            'Email Templates',                   // Page title
+            'Email Templates',                   // Menu title
+            'manage_options',                    // Capability (admin only)
+            'confur-email-templates',            // Menu slug
+            [$this, 'renderAdminPage']          // Callback
         );
     }
 
@@ -341,8 +341,10 @@ class EmailTemplateAdminPage
         }
 
         // Verify nonce
-        if (!isset($_POST['confur_email_templates_nonce']) ||
-            !wp_verify_nonce($_POST['confur_email_templates_nonce'], 'confur_email_templates_action')) {
+        if (
+            !isset($_POST['confur_email_templates_nonce']) ||
+            !wp_verify_nonce($_POST['confur_email_templates_nonce'], 'confur_email_templates_action')
+        ) {
             wp_die(__('Security check failed.'));
         }
 
@@ -367,13 +369,13 @@ class EmailTemplateAdminPage
         if (isset($_POST['reset_all_defaults'])) {
             if (self::resetToDefaults()) {
                 $redirect_url = add_query_arg(
-                        ['page' => 'confur-email-templates', 'updated' => 'reset_all'],
-                        admin_url('admin.php')
+                    ['page' => 'confur-email-templates', 'updated' => 'reset_all'],
+                    admin_url('admin.php')
                 );
             } else {
                 $redirect_url = add_query_arg(
-                        ['page' => 'confur-email-templates', 'error' => '1'],
-                        admin_url('admin.php')
+                    ['page' => 'confur-email-templates', 'error' => '1'],
+                    admin_url('admin.php')
                 );
             }
 
@@ -385,13 +387,13 @@ class EmailTemplateAdminPage
             $templateKey = sanitize_text_field($_POST['reset_template']);
             if (self::resetTemplate($templateKey)) {
                 $redirect_url = add_query_arg(
-                        ['page' => 'confur-email-templates', 'updated' => 'reset_single'],
-                        admin_url('admin.php')
+                    ['page' => 'confur-email-templates', 'updated' => 'reset_single'],
+                    admin_url('admin.php')
                 );
             } else {
                 $redirect_url = add_query_arg(
-                        ['page' => 'confur-email-templates', 'error' => '1'],
-                        admin_url('admin.php')
+                    ['page' => 'confur-email-templates', 'error' => '1'],
+                    admin_url('admin.php')
                 );
             }
 
@@ -409,13 +411,13 @@ class EmailTemplateAdminPage
 
         if (self::update($templates)) {
             $redirect_url = add_query_arg(
-                    ['page' => 'confur-email-templates', 'updated' => '1'],
-                    admin_url('admin.php')
+                ['page' => 'confur-email-templates', 'updated' => '1'],
+                admin_url('admin.php')
             );
         } else {
             $redirect_url = add_query_arg(
-                    ['page' => 'confur-email-templates', 'error' => '1'],
-                    admin_url('admin.php')
+                ['page' => 'confur-email-templates', 'error' => '1'],
+                admin_url('admin.php')
             );
         }
 
@@ -437,25 +439,25 @@ class EmailTemplateAdminPage
         <div class="wrap">
             <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
 
-            <?php if (isset($_GET['updated']) && $_GET['updated'] === '1'): ?>
+            <?php if (isset($_GET['updated']) && $_GET['updated'] === '1') : ?>
                 <div class="confur-notice">
                     <p><strong>Email templates updated successfully.</strong></p>
                 </div>
             <?php endif; ?>
 
-            <?php if (isset($_GET['updated']) && $_GET['updated'] === 'reset_all'): ?>
+            <?php if (isset($_GET['updated']) && $_GET['updated'] === 'reset_all') : ?>
                 <div class="confur-notice">
                     <p><strong>All email templates reset to defaults.</strong></p>
                 </div>
             <?php endif; ?>
 
-            <?php if (isset($_GET['updated']) && $_GET['updated'] === 'reset_single'): ?>
+            <?php if (isset($_GET['updated']) && $_GET['updated'] === 'reset_single') : ?>
                 <div class="confur-notice">
                     <p><strong>Email template reset to default.</strong></p>
                 </div>
             <?php endif; ?>
 
-            <?php if (isset($_GET['error'])): ?>
+            <?php if (isset($_GET['error'])) : ?>
                 <div class="confur-notice error">
                     <p><strong>Error:</strong> Failed to update email templates.</p>
                 </div>
@@ -466,7 +468,7 @@ class EmailTemplateAdminPage
                     <?php wp_nonce_field('confur_email_templates_action', 'confur_email_templates_nonce'); ?>
                     <input type="hidden" name="action" value="confur_update_email_templates">
 
-                    <?php foreach ($templates as $key => $template): ?>
+                    <?php foreach ($templates as $key => $template) : ?>
                         <div class="confur-template-card">
                             <h2>
                                 <?php echo esc_html($template['name']); ?>
@@ -475,10 +477,10 @@ class EmailTemplateAdminPage
 
                             <div class="template-description">
                                 <?php echo esc_html($template['description']); ?>
-                                <?php if (!empty($template['placeholders'])): ?>
+                                <?php if (!empty($template['placeholders'])) : ?>
                                     <br><br>
                                     <strong>Placeholders:</strong>
-                                    <?php foreach ($template['placeholders'] as $placeholder): ?>
+                                    <?php foreach ($template['placeholders'] as $placeholder) : ?>
                                         <code><?php echo esc_html($placeholder); ?></code>
                                     <?php endforeach; ?>
                                 <?php endif; ?>

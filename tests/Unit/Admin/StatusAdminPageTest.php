@@ -168,14 +168,16 @@ final class StatusAdminPageTest extends ConfurTestCase
     {
         $this->page->init();
 
-        foreach ([
+        foreach (
+            [
             'admin_menu',
             'admin_enqueue_scripts',
             'wp_ajax_confur_cancel_duplicate',
             'wp_ajax_confur_resend_confirmation',
             'load-' . self::SCREEN,
             'wp_ajax_confur_save_screen_option',
-        ] as $hook) {
+            ] as $hook
+        ) {
             $this->assertActionAdded($hook, false, 'expected ' . $hook . ' to be hooked');
         }
     }

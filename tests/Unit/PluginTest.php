@@ -80,7 +80,7 @@ class PluginTest extends ConfurTestCase
     public function testActivateAddsCapabilitiesToAdministrator(): void
     {
         $added = [];
-        $role = new class($added) {
+        $role = new class ($added) {
             public array $caps = [];
             public function __construct(&$added)
             {
