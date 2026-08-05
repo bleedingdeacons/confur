@@ -32,13 +32,21 @@
             <directory>src/Config</directory>
             <file>src/autoload.php</file>
             <!--
-                Admin screens: settings/status/result/email-template pages, the
-                answer list-table columns and the heads-up notices. These are
-                WordPress render/callback and menu glue exercised through the
-                admin UI at runtime, not in unit tests — the same exclusion the
-                other suite plugins apply to their src/Admin layers.
+                src/Admin is deliberately NOT excluded. It used to be, as
+                "WordPress render/callback and menu glue exercised through the
+                admin UI at runtime" — the same exclusion the other suite
+                plugins apply to their src/Admin layers. Amber covers its whole
+                src/Admin on this same tooling, which showed the exclusion was
+                habit rather than necessity, and it was hiding real logic:
+                answer aggregation, duplicate detection, coverage arithmetic
+                and email templating all live under src/Admin here.
+
+                It is covered by tests/Unit/Admin. Do not reintroduce the
+                exclusion — see those tests' class docblocks for the three
+                techniques that make the layer testable (drive registration
+                against WpState, assert on wp_die()/wp_send_json_* throwing,
+                and capture renders with ob_start()).
             -->
-            <directory>src/Admin</directory>
         </exclude>
     </source>
 

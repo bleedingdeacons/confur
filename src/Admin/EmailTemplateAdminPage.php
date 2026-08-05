@@ -346,6 +346,23 @@ class EmailTemplateAdminPage
             wp_die(__('Security check failed.'));
         }
 
+        wp_redirect($this->resolveSubmissionRedirect());
+        exit;
+    }
+
+    /**
+     * Apply whatever the submitted form asked for and say where to go next.
+     *
+     * Split out of handleFormSubmission() so it can be driven in a test: the
+     * caller ends in wp_redirect() followed by a bare exit, which would take
+     * the test runner with it. Each branch below previously redirected and
+     * exited in place, so returning the URL early is the same control flow;
+     * the caller keeps the guards and the single redirect.
+     *
+     * @return string Redirect URL
+     */
+    private function resolveSubmissionRedirect(): string
+    {
         // Check if reset all button was clicked
         if (isset($_POST['reset_all_defaults'])) {
             if (self::resetToDefaults()) {
@@ -359,8 +376,8 @@ class EmailTemplateAdminPage
                         admin_url('admin.php')
                 );
             }
-            wp_redirect($redirect_url);
-            exit;
+
+            return $redirect_url;
         }
 
         // Check if reset single template
@@ -377,8 +394,8 @@ class EmailTemplateAdminPage
                         admin_url('admin.php')
                 );
             }
-            wp_redirect($redirect_url);
-            exit;
+
+            return $redirect_url;
         }
 
         // Normal save
@@ -402,8 +419,7 @@ class EmailTemplateAdminPage
             );
         }
 
-        wp_redirect($redirect_url);
-        exit;
+        return $redirect_url;
     }
 
     /**
