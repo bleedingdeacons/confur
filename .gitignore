@@ -55,14 +55,13 @@ build/
 /vendor/
 
 # IDE - PhpStorm / IntelliJ IDEA
-/.idea/
-.idea/codeStyles/codeStyleConfig.xml
-.idea/codeStyles/Project.xml
-.idea/confur.iml
-.idea/modules.xml
-.idea/php.xml
-.idea/vcs.xml
-.idea/laravel-idea.xml
+#
+# Unrooted, so it matches at any depth. It read `/.idea/` until 2026-08-05,
+# which anchors to the repo root — and someone had opened src/ as a project,
+# so src/.idea/ was never matched and got committed. The individual
+# .idea/<file> lines that used to follow were dead weight: unrooted, but only
+# ever ignore rules, and git does not ignore a file it is already tracking.
+.idea/
 
 # IDE - Visual Studio Code
 .vscode/
@@ -105,9 +104,6 @@ yarn-error.log*
 *.tmp
 *.temp
 *.cache
-.idea/php.xml
-.idea/php.xml
-.idea/php.xml
 
 # composer.lock is COMMITTED, deliberately - do not add it here.
 #
