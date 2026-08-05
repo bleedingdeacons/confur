@@ -174,6 +174,22 @@ class ConfurSettingsAdminPage
             wp_die(__('Security check failed.'));
         }
 
+        wp_redirect($this->resolveSubmissionRedirect());
+        exit;
+    }
+
+    /**
+     * Apply whatever the submitted form asked for and say where to go next.
+     *
+     * Split out of handleFormSubmission() so it can be driven in a test: the
+     * caller ends in wp_redirect() followed by a bare exit, which would take
+     * the test runner with it. Everything below the nonce check lives here
+     * unchanged; the caller keeps the guards and the redirect.
+     *
+     * @return string Redirect URL
+     */
+    private function resolveSubmissionRedirect(): string
+    {
         // Check if reset button was clicked
         if (isset($_POST['reset_to_defaults'])) {
             if (ConfurSettings::resetToDefaults()) {
@@ -240,8 +256,7 @@ class ConfurSettingsAdminPage
             }
         }
 
-        wp_redirect($redirect_url);
-        exit;
+        return $redirect_url;
     }
 
     /**
