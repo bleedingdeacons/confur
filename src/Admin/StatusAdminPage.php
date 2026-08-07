@@ -252,8 +252,14 @@ class StatusAdminPage
             $meetingName = substr($meetingName, 0, 85) . " and " . substr(get_the_title($fellowMeetingId), 0, 85);
         }
 
-        // Get the answer URL
+        // Get the answer URL. get_permalink() is string|false; an unresolvable
+        // one means there is no answer page to point the recipient at, so
+        // stop rather than send a confirmation with a blank link.
         $answerUrl = get_permalink($answerId);
+        if ($answerUrl === false) {
+            // No return needed: wp_send_json_error() is declared never.
+            wp_send_json_error(['message' => 'Could not resolve the answer URL']);
+        }
 
         // Send the confirmation email
         $result = \Confur\Services\EmailService::sendConfirmation($email, $meetingName, $answerUrl);
@@ -817,18 +823,24 @@ class StatusAdminPage
         $registeredLookup = [];
         foreach ($registered as $item) {
             // Get meeting ID - handle if it's an object, array, or scalar
+            // An object here is a post-like row — WP_Post, or a plain object
+            // straight off a query. Casting it to an array reads the public ID
+            // without naming a class, and collapses the object and array cases
+            // into the one expression they always morally were.
             $meetingId = $item['meetingId'];
             if (is_object($meetingId)) {
-                $meetingId = $meetingId->ID;
-            } elseif (is_array($meetingId)) {
+                $meetingId = (array) $meetingId;
+            }
+            if (is_array($meetingId)) {
                 $meetingId = $meetingId['ID'] ?? null;
             }
 
             // Get fellow meeting ID
             $fellowMeetingId = $item['fellowMeetingId'] ?? null;
             if (is_object($fellowMeetingId)) {
-                $fellowMeetingId = $fellowMeetingId->ID;
-            } elseif (is_array($fellowMeetingId)) {
+                $fellowMeetingId = (array) $fellowMeetingId;
+            }
+            if (is_array($fellowMeetingId)) {
                 $fellowMeetingId = $fellowMeetingId['ID'] ?? null;
             }
 
@@ -974,8 +986,17 @@ class StatusAdminPage
         // Use WordPress's global $wp_locale object for internationalization support
         global $wp_locale;
 
-        if (isset($wp_locale) && method_exists($wp_locale, 'get_weekday')) {
-            return $wp_locale->get_weekday($dayNumber);
+        // Duck-typed on purpose — anything exposing get_weekday() is accepted,
+        // not just WP_Locale, and there is a test pinning that. Routed through
+        // is_callable() rather than method_exists() because the latter narrows
+        // its argument to class-string|object, which has no methods to call, so
+        // the call could not be checked at all.
+        $getWeekday = isset($wp_locale) && is_object($wp_locale)
+            ? [$wp_locale, 'get_weekday']
+            : null;
+
+        if (is_callable($getWeekday)) {
+            return (string) $getWeekday($dayNumber);
         }
 
         // Fallback to built-in PHP function if $wp_locale is not available

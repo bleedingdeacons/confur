@@ -56,14 +56,18 @@ class AnswerHandler
             }
 
             // Send backup email (sanitize POST data before logging)
-            $subject = get_permalink($postId);
+            // Both are string|false. The post is known to exist by here so the
+            // permalink will resolve, but the backup email is a safety net —
+            // send it with what we have rather than not at all.
+            $subject = get_permalink($postId) ?: '';
+            $submitted = json_encode($_POST) ?: '';
 
             try {
                 EmailService::sendBackup(
                     ConfurSettings::getBackupEmail(),
                     ConfurSettings::getSupportEmail(),
                     $subject,
-                    json_encode($_POST)
+                    $submitted
                 );
             } catch (\Exception $e) {
                 error_log("AnswerHandler::handleSubmission - Failed to send backup email: " . $e->getMessage());
@@ -187,7 +191,7 @@ class AnswerHandler
                     error_log("AnswerHandler::handleRegistration - Moved post ID: $postId to trash");
 
                     // Send confirmation email with duplicate notification
-                    $existingUrl = get_permalink($duplicate['post_id']);
+                    $existingUrl = get_permalink($duplicate['post_id']) ?: '';
                     $meetingName = get_the_title($normalizedMeetingId);
 
                     if (!empty($normalizedFellowMeetingId)) {
@@ -241,13 +245,21 @@ class AnswerHandler
             update_field(Constants::STATUS_FIELD, Constants::DEFAULT_STATUS);
             acf_save_post();
 
-            wp_update_post([
+            $postData = [
                 'ID' => $postId,
                 'post_title' => $title,
-                'post_name' => $slug
-            ]);
+            ];
 
-            $url = get_permalink($postId);
+            // generateUniqueSlug() returns false when it cannot build one.
+            // Omit post_name in that case and let WordPress derive it from the
+            // title, rather than sending false and blanking the slug.
+            if ($slug !== false) {
+                $postData['post_name'] = $slug;
+            }
+
+            wp_update_post($postData);
+
+            $url = get_permalink($postId) ?: '';
 
             // Get allocated committee from the meeting
             $allocatedCommittee = get_field('allocated_committee', $meetingId) ?: '';
