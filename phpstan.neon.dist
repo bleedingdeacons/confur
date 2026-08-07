@@ -32,9 +32,8 @@ parameters:
         # be scanned explicitly.
         - confur.php
     ignoreErrors:
-        # WordPress functions that PHPStan doesn't recognize
-        - '#Function get_plugin_data not found#'
-        - '#Function dbDelta not found#'
+        # The get_plugin_data and dbDelta entries were removed from here once
+        # wordpress-stubs resolved them and they stopped matching.
         # ACF, a third-party plugin this one reads its data through. Not a
         # composer dependency and not covered by wordpress-stubs. Matched both
         # spellings PHPStan 2 uses ("Used function ..." for an import,
