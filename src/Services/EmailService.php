@@ -199,12 +199,21 @@ class EmailService
             $realPath = realpath($templatePath);
             $emailsDir = realpath(CONFUR_PLUGIN_DIR . "/emails");
 
-            if ($realPath === false || strpos($realPath, $emailsDir) !== 0) {
+            // $emailsDir has to be checked too. realpath() returns false, and
+            // strpos($realPath, false) compares against '' and returns 0 — so
+            // an emails directory that failed to resolve would have *satisfied*
+            // this containment test rather than failing it, leaving the
+            // traversal guard open.
+            if ($realPath === false || $emailsDir === false || strpos($realPath, $emailsDir) !== 0) {
                 error_log('EmailService::renderTemplate - Template not found or path traversal attempt: ' . $name);
                 return '';
             }
 
             $template = file_get_contents($realPath);
+            if ($template === false) {
+                error_log('EmailService::renderTemplate - Template could not be read: ' . $name);
+                return '';
+            }
         } else {
             // Wrap the body content in HTML structure
             $template = '<!DOCTYPE html>

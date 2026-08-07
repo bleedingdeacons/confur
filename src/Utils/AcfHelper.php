@@ -108,6 +108,18 @@ class AcfHelper
             return false;
         }
 
+        // get_post() and clean_post_cache() take a post id, not one of ACF's
+        // "option"-style pseudo-ids. Rejecting those here is not a behaviour
+        // change — get_post() cast them to 0, found nothing and returned false
+        // two lines later — it just stops a string being passed to functions
+        // that do not accept one.
+        if (!is_numeric($post_id)) {
+            error_log("Post {$post_id} is not a post id");
+            return false;
+        }
+
+        $post_id = (int) $post_id;
+
         // Check if post exists
         if (!get_post($post_id)) {
             error_log("Post {$post_id} does not exist");

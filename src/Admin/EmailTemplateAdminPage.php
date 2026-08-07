@@ -255,6 +255,12 @@ class EmailTemplateAdminPage
 
         $content = file_get_contents($templatePath);
 
+        // file_exists() above does not guarantee a readable file — permissions
+        // or a race can still leave this false.
+        if ($content === false) {
+            return '';
+        }
+
         // Extract just the body content (between <body> tags)
         if (preg_match('/<body[^>]*>(.*?)<\/body>/is', $content, $matches)) {
             return trim($matches[1]);

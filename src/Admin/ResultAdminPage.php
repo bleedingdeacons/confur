@@ -297,8 +297,11 @@ class ResultAdminPage
             $responseCount = count($answers);
             $totalWords = array_sum($wordCounts);
             $avgWordCount = $responseCount > 0 ? $totalWords / $responseCount : 0;
-            $minWordCount = $responseCount > 0 ? min($wordCounts) : 0;
-            $maxWordCount = $responseCount > 0 ? max($wordCounts) : 0;
+            // Keyed off $wordCounts, not $responseCount: they have the same
+            // length, but only the former proves to the type checker that
+            // min()/max() are not being handed an empty array.
+            $minWordCount = $wordCounts === [] ? 0 : min($wordCounts);
+            $maxWordCount = $wordCounts === [] ? 0 : max($wordCounts);
 
             $results[] = [
                     "committee" => $committee,
