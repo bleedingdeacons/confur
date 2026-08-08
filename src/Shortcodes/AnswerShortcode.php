@@ -99,7 +99,9 @@ class AnswerShortcode
         $hidden = isset($atts['hidden']) && filter_var($atts['hidden'], FILTER_VALIDATE_BOOLEAN);
 
         $name = 'c' . $committee . '_q' . $question;
-        $content = do_shortcode($content);
+        // WordPress passes null for a self-closing shortcode, which is how
+        // this one is often written.
+        $content = do_shortcode($content ?? '');
 
         $headerText = $hidden
             ? sprintf('Question %s', $question)
@@ -128,7 +130,9 @@ class AnswerShortcode
         // Check if name attribute exists, otherwise use default "Committee {number}"
         $title = isset($atts['name']) ? sanitize_text_field(trim($atts['name'])) : 'Committee ' . $number;
 
-        $content = do_shortcode($content);
+        // WordPress passes null for a self-closing shortcode, which is how
+        // this one is often written.
+        $content = do_shortcode($content ?? '');
 
         return sprintf(
             '<div id="g_%s"><h2>%s</h2>%s</div>',

@@ -235,11 +235,14 @@ class AnswerRepository
                 return 1;
             }
 
-            // If neither has updated date, fall back to post creation date
+            // If neither has updated date, fall back to post creation date.
+            // get_post() returns null for a post deleted between the query
+            // above and this comparison; treat that as the oldest possible
+            // date so it sorts last rather than fatalling mid-usort.
             $aPost = get_post($a['post_id']);
             $bPost = get_post($b['post_id']);
-            $aCreated = strtotime($aPost->post_date);
-            $bCreated = strtotime($bPost->post_date);
+            $aCreated = $aPost !== null ? (int) strtotime($aPost->post_date) : 0;
+            $bCreated = $bPost !== null ? (int) strtotime($bPost->post_date) : 0;
 
             return $bCreated - $aCreated; // Descending order (latest first)
         });
@@ -252,7 +255,9 @@ class AnswerRepository
 
         return [
             'post_id' => $latestDuplicate['post_id'],
-            'slug' => $post->post_name
+            // Null only if the post went away since the query above; the
+            // post_id is what callers act on, so an empty slug is enough.
+            'slug' => $post->post_name ?? ''
         ];
     }
 
@@ -368,7 +373,9 @@ class AnswerRepository
                         $answer = $fieldValue;
 
                         if (!empty($answer)) {
-                            $meetingName = get_the_title($meetingId);
+                            // normalizePostId() returns null when the meeting
+                            // field is empty, which get_the_title() will not take.
+                            $meetingName = $meetingId !== null ? get_the_title($meetingId) : '';
                             $resultUrl = get_permalink($postId);
 
                             $groupAnswer = [

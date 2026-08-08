@@ -192,7 +192,11 @@ class AnswerHandler
 
                     // Send confirmation email with duplicate notification
                     $existingUrl = get_permalink($duplicate['post_id']) ?: '';
-                    $meetingName = get_the_title($normalizedMeetingId);
+                    // normalizePostId() returns null when the meeting field is
+                    // empty, which get_the_title() will not take.
+                    $meetingName = $normalizedMeetingId !== null
+                        ? get_the_title($normalizedMeetingId)
+                        : '';
 
                     if (!empty($normalizedFellowMeetingId)) {
                         $meetingName = substr($meetingName, 0, 85) . " and " . substr(get_the_title($normalizedFellowMeetingId), 0, 85);
