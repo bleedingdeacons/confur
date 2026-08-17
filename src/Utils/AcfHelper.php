@@ -142,8 +142,6 @@ class AcfHelper
                 $field_object['key'] => $value
             );
 
-            error_log("POST data: " . print_r($_POST['acf'], true));
-
             // Save with ACF
             acf_save_post($post_id);
 

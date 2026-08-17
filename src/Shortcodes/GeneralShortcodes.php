@@ -33,17 +33,20 @@ if (!class_exists(__NAMESPACE__ . '\\GeneralShortcodes')) {
                     'class' => ''
                 ], $atts);
 
+                // Not pre-escaped here: createLink() escapes each argument
+                // for the context it lands in, and escaping twice mangles
+                // ampersands in a query string.
                 return HtmlHelper::createLink(
-                    esc_attr($atts['href']),
-                    esc_attr($atts['class']),
+                    $atts['href'],
+                    $atts['class'],
                     $content
                 );
             } catch (Throwable $e) {
                 return sprintf(
                     '[openBlank error: %s | href="%s", class="%s"]',
-                    $e->getMessage(),
-                    $atts['href'] ?? '',
-                    $atts['class'] ?? ''
+                    esc_html($e->getMessage()),
+                    esc_html((string) ($atts['href'] ?? '')),
+                    esc_html((string) ($atts['class'] ?? ''))
                 );
             }
         }
@@ -75,9 +78,9 @@ if (!class_exists(__NAMESPACE__ . '\\GeneralShortcodes')) {
             } catch (Throwable $e) {
                 return sprintf(
                     '[linkEmail error: %s | address="%s", subject="%s"]',
-                    $e->getMessage(),
-                    $atts['address'] ?? '',
-                    $atts['subject'] ?? ''
+                    esc_html($e->getMessage()),
+                    esc_html((string) ($atts['address'] ?? '')),
+                    esc_html((string) ($atts['subject'] ?? ''))
                 );
             }
         }
@@ -98,7 +101,9 @@ if (!class_exists(__NAMESPACE__ . '\\GeneralShortcodes')) {
                 ], $atts);
 
                 if (empty($atts['url']) || empty($atts['name'])) {
-                    return '[generatePdfLink error: Missing required parameters | url="' . ($atts['url'] ?? '') . '", name="' . ($atts['name'] ?? '') . '"]';
+                    return '[generatePdfLink error: Missing required parameters | url="'
+                        . esc_html((string) ($atts['url'] ?? '')) . '", name="'
+                        . esc_html((string) ($atts['name'] ?? '')) . '"]';
                 }
 
                 return '<div>' . HtmlHelper::generatePdfLink(
@@ -111,9 +116,9 @@ if (!class_exists(__NAMESPACE__ . '\\GeneralShortcodes')) {
             } catch (Throwable $e) {
                 return sprintf(
                     '[generatePdfLink error: %s | url="%s", name="%s"]',
-                    $e->getMessage(),
-                    $atts['url'] ?? '',
-                    $atts['name'] ?? ''
+                    esc_html($e->getMessage()),
+                    esc_html((string) ($atts['url'] ?? '')),
+                    esc_html((string) ($atts['name'] ?? ''))
                 );
             }
         }

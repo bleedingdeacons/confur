@@ -193,15 +193,25 @@ final class StatusAdminPageTest extends ConfurTestCase
         $this->assertActionNotAdded('wp_ajax_confur_cancel_duplicate');
     }
 
-    /** @test */
-    public function the_page_is_added_under_the_confur_menu_for_any_logged_in_user(): void
+    /**
+     * The gate is 'edit_answers', not 'read'.
+     *
+     * This table lists every meeting's contact names, telephone numbers and
+     * registration email address. 'read' is held by every logged-in user
+     * including Subscribers, which put that data one URL away from anyone
+     * with an account; the rest of this class already gated on
+     * 'edit_answers'.
+     *
+     * @test
+     */
+    public function the_page_is_added_under_the_confur_menu_for_answer_editors(): void
     {
         $this->page->addAdminMenu();
 
         $this->assertCount(1, WpState::$menus);
         $this->assertSame('confur', WpState::$menus[0]['parent']);
         $this->assertSame('confur-answer-submissions', WpState::$menus[0]['slug']);
-        $this->assertSame('read', WpState::$menus[0]['cap']);
+        $this->assertSame('edit_answers', WpState::$menus[0]['cap']);
     }
 
     /** @test */
