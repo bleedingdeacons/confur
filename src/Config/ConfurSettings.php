@@ -134,30 +134,25 @@ class ConfurSettings
             'enable_duplicate_detection' => !empty($settings['enable_duplicate_detection']),
         ];
 
-        // Log sanitized values
-        error_log('EmailSettings - Sanitized emails:');
-        error_log('  registration_reply: "' . $sanitized['registration_reply'] . '"');
-        error_log('  support: "' . $sanitized['support'] . '"');
-        error_log('  backup: "' . $sanitized['backup'] . '"');
-
-        // Validate only email fields
+        // Validate only email fields.
+        //
+        // Which field failed is logged; the address itself is not. The PHP
+        // error log is not access-controlled and is not the audit trail —
+        // Scrutiny is — so addresses are named by setting key only.
         $emailFields = ['registration_reply', 'support', 'backup'];
         foreach ($emailFields as $key) {
             $email = $sanitized[$key];
-            error_log("EmailSettings - Validating '{$key}': '{$email}' - is_email=" . (is_email($email) ? 'true' : 'false'));
 
             if (empty($email)) {
-                error_log("EmailSettings validation failed for '{$key}': email is empty");
+                error_log("Confur EmailSettings: '{$key}' is empty; settings not saved.");
                 return false;
             }
 
             if (!is_email($email)) {
-                error_log("EmailSettings validation failed for '{$key}': is_email() returned false for '{$email}'");
+                error_log("Confur EmailSettings: '{$key}' is not a valid address; settings not saved.");
                 return false;
             }
         }
-
-        error_log('EmailSettings - All validations passed, updating option');
 
         // Get current values to check if anything changed
         $current = get_option(self::OPTION_NAME, []);

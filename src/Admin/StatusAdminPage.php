@@ -163,7 +163,7 @@ class StatusAdminPage
             'confur',                       // Parent slug (Confur menu)
             'Status',                       // Page title
             'Status',                       // Menu title
-            'read',                         // Capability
+            'edit_answers',                 // Capability — see renderAdminPage()
             'confur-answer-submissions',    // Menu slug
             [$this, 'renderAdminPage']     // Callback
         );
@@ -638,8 +638,13 @@ class StatusAdminPage
      */
     public function renderAdminPage(): void
     {
-        if (!current_user_can('read')) {
-            wp_die(__('You do not have sufficient permissions to access this page.'));
+        // 'edit_answers', not 'read'. This table carries every meeting's
+        // contact names, telephone numbers and registration email, which is
+        // not Subscriber-level information — and 'read' is held by every
+        // logged-in user. The rest of this class already gates on
+        // 'edit_answers'; this path was the outlier.
+        if (!current_user_can('edit_answers')) {
+            wp_die(__('You do not have sufficient permissions to access this page.', 'confur'));
         }
 
         $allMeetings = $this->getAllMeetingsData();
@@ -751,12 +756,16 @@ class StatusAdminPage
                             </td>
                             <td>
                                 <?php
+                                // Anchor markup built by HtmlHelper::createLink(),
+                                // which escapes href, class and content itself.
                                 // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
                                 echo $meeting['email_html'];
                                 ?>
                             </td>
                             <td class="contact-info">
                                 <?php
+                                // Contact name is escaped in contactTelephoneLink();
+                                // the anchor is escaped by createLink().
                                 // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
                                 echo $meeting['contact1_html'];
                                 ?>
@@ -1021,7 +1030,7 @@ class StatusAdminPage
      */
     private function contactTelephoneLink(array $contact): string
     {
-        return $contact['name'] . ' ' . HtmlHelper::createLink(
+        return esc_html($contact['name']) . ' ' . HtmlHelper::createLink(
             HtmlHelper::createPhoneToAddress($contact['phone']),
             '',
             $contact['phone']
@@ -1180,10 +1189,9 @@ class StatusAdminPage
             }
             sort($meetingIds);
 
-            // Create a unique key for this meeting combination + email
+            // Create a unique key for this meeting combination + email.
+            // Deliberately not logged: it embeds the registrant's address.
             $key = $email . '|' . ($isPaired ? 'paired' : 'single') . '|' . implode('-', $meetingIds);
-
-            error_log("findDuplicateRegistrations - Answer $answerId: key=$key, status=$status");
 
             if (!isset($registrations[$key])) {
                 // Build name for display
@@ -1204,7 +1212,8 @@ class StatusAdminPage
             $registrations[$key]['count']++;
         }
 
-        error_log("findDuplicateRegistrations - Registration groups: " . print_r($registrations, true));
+        // Not dumped: $registrations is keyed by registrant email address.
+        error_log('findDuplicateRegistrations - Registration groups: ' . count($registrations));
 
         // Filter to only duplicates and reformat for display
         $duplicates = [];

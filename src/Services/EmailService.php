@@ -116,8 +116,9 @@ class EmailService
 
         $from = ConfurSettings::getRegistrationReplyEmail();
 
-        error_log('EmailService::sendConfirmation send email - ' . $recipient . ' ' . $from . ' ' . $subject . ' ' . $body);
-
+        // Not logged: this previously wrote the recipient address and the
+        // entire rendered message body to the PHP error log on every
+        // registration.
         return self::sendEmail($recipient, $from, $subject, $body);
     }
     /**

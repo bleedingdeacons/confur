@@ -121,7 +121,8 @@ class AnswerRepository
      */
     public function findDuplicate(?int $meetingId, ?int $fellowMeetingId, string $email, ?int $excludePostId = null): ?array
     {
-        error_log("AnswerRepository::findDuplicate - Called with meetingId: " . ($meetingId ?? 'null') . ", fellowMeetingId: " . ($fellowMeetingId ?? 'null') . ", email: $email, excludePostId: " . ($excludePostId ?? 'null'));
+        // Meeting and post IDs only — the registrant's address is not logged.
+        error_log("AnswerRepository::findDuplicate - meetingId: " . ($meetingId ?? 'null') . ", fellowMeetingId: " . ($fellowMeetingId ?? 'null') . ", excludePostId: " . ($excludePostId ?? 'null'));
 
         if (empty($meetingId) || empty($email)) {
             error_log("AnswerRepository::findDuplicate - Returning null due to empty meetingId or email");
@@ -169,7 +170,7 @@ class AnswerRepository
             // feeds this straight to strtotime(), which wants a string.
             $postUpdated = (string) (get_field(Constants::UPDATED_FIELD, $postId) ?? '');
 
-            error_log("AnswerRepository::findDuplicate - Checking post $postId: meeting=$postMeeting, fellow=$postFellowMeeting, email=$postEmail, status=$postStatus, updated=$postUpdated");
+            error_log("AnswerRepository::findDuplicate - Checking post $postId: meeting=$postMeeting, fellow=$postFellowMeeting, status=$postStatus, updated=$postUpdated");
 
             // Skip cancelled registrations
             if ($postStatus === Constants::STATUS_CANCELLED) {

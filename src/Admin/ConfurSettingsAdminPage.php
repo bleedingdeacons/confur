@@ -234,10 +234,9 @@ class ConfurSettingsAdminPage
                     'enable_duplicate_detection' => $enable_duplicate_detection,
             ];
 
-            // Log what we're trying to save for debugging
-            error_log('ConfurSettings - POST data: registration_reply_email=' . $registration_reply . ', support_email=' . $support . ', backup_email=' . $backup);
-            error_log('ConfurSettings - Settings array: ' . print_r($settings, true));
-
+            // The submitted addresses are deliberately not logged;
+            // ConfurSettings::updateAll() reports validation failures by
+            // setting key alone.
             $settingsUpdated = ConfurSettings::updateAll($settings);
 
             // Process blocklist

@@ -147,7 +147,7 @@ class AnswerHandler
 
             // Check if email is blocked
             if (ConfurSettings::isBlocked($email)) {
-                error_log("AnswerHandler::handleRegistration - Email is blocked: $email for post ID: $postId");
+                error_log("AnswerHandler::handleRegistration - Blocked email rejected for post ID: $postId");
 
                 // Delete the post if the setting is enabled
                 if (ConfurSettings::shouldDeleteBlockedPosts()) {
@@ -171,7 +171,7 @@ class AnswerHandler
 
             // Check for duplicate registration (only if feature is enabled)
             if (ConfurSettings::isDuplicateDetectionEnabled()) {
-                error_log("AnswerHandler::handleRegistration - Checking for duplicates. Meeting: $normalizedMeetingId, Fellow Meeting: $normalizedFellowMeetingId, Email: $email, Excluding Post: $postId");
+                error_log("AnswerHandler::handleRegistration - Checking for duplicates. Meeting: $normalizedMeetingId, Fellow Meeting: $normalizedFellowMeetingId, Excluding Post: $postId");
 
                 $duplicate = $this->answerRepository->findDuplicate(
                     $normalizedMeetingId,
@@ -183,7 +183,7 @@ class AnswerHandler
                 error_log("AnswerHandler::handleRegistration - Duplicate check result: " . ($duplicate !== null ? "FOUND (post_id: {$duplicate['post_id']}, slug: {$duplicate['slug']})" : "NOT FOUND"));
 
                 if ($duplicate !== null) {
-                    error_log("AnswerHandler::handleRegistration - Duplicate registration found for meeting: $normalizedMeetingId, fellow_meeting: $normalizedFellowMeetingId, email: $email");
+                    error_log("AnswerHandler::handleRegistration - Duplicate registration found for meeting: $normalizedMeetingId, fellow_meeting: $normalizedFellowMeetingId");
                     error_log("AnswerHandler::handleRegistration - Existing post ID: {$duplicate['post_id']}, slug: {$duplicate['slug']}");
 
                     // Move the duplicate post to trash
@@ -306,12 +306,14 @@ class AnswerHandler
         foreach ($data as $key => $newValue) {
             if (preg_match('/^c\d+_a\d+$/', $key)) {
                 $sanitizedValue = sanitize_textarea_field($newValue);
-                error_log($key . ' = ' . $newValue);
 
                 $existing = $this->answerRepository->getValue($key);
 
+                // Field keys and post IDs only. The values are conference
+                // answers written by members and must not reach the PHP
+                // error log, which is neither access-controlled nor covered
+                // by Scrutiny's audit trail.
                 if ($existing !== $sanitizedValue) {
-                    error_log("AnswerHandler::updateAnswerFields - Updating field $key current value: '{$existing}' new value: '{$sanitizedValue}'");
                     if (!update_field($key, $sanitizedValue, $postId)) {
 //                  if (!AcfHelper::updateAcfField2($postId, $key, $sanitizedValue)) {
                         error_log("AnswerHandler::updateAnswerFields - Failed to update field $key for Post ID: $postId");

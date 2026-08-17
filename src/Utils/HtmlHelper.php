@@ -9,6 +9,18 @@ if (!class_exists('HtmlHelper')) {
     class HtmlHelper
     {
         /**
+         * Protocols every link built here may use.
+         *
+         * esc_url() defaults to wp_allowed_protocols(), which is far wider
+         * than anything this class emits and is filterable by other plugins.
+         * Naming the three schemes we actually produce keeps a filtered
+         * allow-list from widening what a link here can point at.
+         *
+         * @var list<string>
+         */
+        private const ALLOWED_PROTOCOLS = ['http', 'https', 'mailto', 'tel'];
+
+        /**
          * Generate PDF link
          *
          * @param string $url PDF URL
@@ -20,9 +32,9 @@ if (!class_exists('HtmlHelper')) {
         {
             return sprintf(
                 '<a href="%s" download="%s" type="application/pdf" target="_blank" rel="noreferrer noopener">%s</a>',
-                esc_attr($url),
+                esc_url($url, self::ALLOWED_PROTOCOLS),
                 esc_attr($name),
-                $content
+                wp_kses_post($content)
             );
         }
 
@@ -38,9 +50,9 @@ if (!class_exists('HtmlHelper')) {
         {
             return sprintf(
                 '<a target="_blank" rel="noreferrer noopener" class="%s" href="%s">%s</a>',
-                $class,
-                $href,
-                $content
+                esc_attr($class),
+                esc_url($href, self::ALLOWED_PROTOCOLS),
+                wp_kses_post((string) $content)
             );
         }
 
@@ -54,7 +66,10 @@ if (!class_exists('HtmlHelper')) {
         public static function createEmailToAddress(string $address, ?string $subject = null): string
         {
             if (!empty($subject)) {
-                $address = $address . '?subject=' . $subject;
+                // Encoded, not interpolated: an unencoded subject containing
+                // '&' or '?' silently corrupts the query, and one containing
+                // a quote would otherwise have to be caught downstream.
+                $address = $address . '?subject=' . rawurlencode($subject);
             }
 
             return 'mailto:' . $address;
@@ -74,8 +89,8 @@ if (!class_exists('HtmlHelper')) {
 
             return sprintf(
                 '<a href="%s">%s</a>',
-                esc_attr($target),
-                $content
+                esc_url($target, self::ALLOWED_PROTOCOLS),
+                wp_kses_post((string) $content)
             );
         }
 
