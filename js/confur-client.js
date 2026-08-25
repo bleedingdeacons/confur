@@ -129,8 +129,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const updateState = () => {
 
-            document.getElementById('topSaveTime').innerHTML = updated;
-            document.getElementById('topSaveState').innerHTML = state;
+            document.getElementById('topSaveTime').textContent = updated;
+            document.getElementById('topSaveState').textContent = state;
 
         }
 
