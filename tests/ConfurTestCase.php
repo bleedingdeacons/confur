@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests;
 
+use BleedingDeacons\WpMocks\WpState;
 use BleedingDeacons\WpMocks\TestCase;
 use WP_Post;
 
@@ -49,7 +50,7 @@ abstract class ConfurTestCase extends TestCase
     {
         return array_values(array_keys(
             array_filter(
-                \BleedingDeacons\WpMocks\WpState::$postStatuses,
+                WpState::$postStatuses,
                 static fn (string $status): bool => $status === 'trash'
             )
         ));
@@ -58,7 +59,7 @@ abstract class ConfurTestCase extends TestCase
     /** Shortcode tags registered via add_shortcode(). */
     protected function registeredShortcodes(): array
     {
-        return array_keys(\BleedingDeacons\WpMocks\WpState::$shortcodes);
+        return array_keys(WpState::$shortcodes);
     }
 
     /**
@@ -127,9 +128,9 @@ abstract class ConfurTestCase extends TestCase
             'post_type' => $type,
         ]);
 
-        \BleedingDeacons\WpMocks\WpState::$posts[$id] = $post;
-        \BleedingDeacons\WpMocks\WpState::$postTypes[$id] = $type;
-        \BleedingDeacons\WpMocks\WpState::$postStatuses[$id] = $status;
+        WpState::$posts[$id] = $post;
+        WpState::$postTypes[$id] = $type;
+        WpState::$postStatuses[$id] = $status;
 
         return $post;
     }

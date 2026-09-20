@@ -2,14 +2,13 @@
 
 namespace Tests\Unit;
 
+use PHPUnit\Framework\Attributes\CoversClass;
+use function Brain\Monkey\Functions\when;
 use BleedingDeacons\WpMocks\WpState;
-use Brain\Monkey\Functions;
 use Confur\Plugin;
 use Tests\ConfurTestCase;
 
-/**
- * @covers \Confur\Plugin
- */
+#[CoversClass(\Confur\Plugin::class)]
 class PluginTest extends ConfurTestCase
 {
     protected function setUp(): void
@@ -69,7 +68,7 @@ class PluginTest extends ConfurTestCase
     public function testMaybeDisableShortcodesForDiviSwallowsRemovalErrors(): void
     {
         $_GET['et_fb'] = '1';
-        Functions\when('remove_shortcode')->alias(static function (): void {
+        when('remove_shortcode')->alias(static function (): void {
             throw new \RuntimeException('remove_shortcode failed');
         });
 
@@ -95,7 +94,7 @@ class PluginTest extends ConfurTestCase
         // wp-mocks' get_role() hands back a plain object describing the role.
         // This test needs one that records add_cap(), so it stands in for the
         // duration of the test.
-        Functions\when('get_role')->justReturn($role);
+        when('get_role')->justReturn($role);
 
         Plugin::activate();
 
@@ -106,7 +105,7 @@ class PluginTest extends ConfurTestCase
     public function testActivateReturnsEarlyWithoutAdministrator(): void
     {
         // No administrator role to add caps to; activate() must not fatal.
-        Functions\when('get_role')->justReturn(null);
+        when('get_role')->justReturn(null);
 
         Plugin::activate();
         $this->assertTrue(true);

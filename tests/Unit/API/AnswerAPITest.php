@@ -2,18 +2,17 @@
 
 namespace Tests\Unit\API;
 
+use PHPUnit\Framework\Attributes\CoversClass;
+use function Brain\Monkey\Functions\when;
 use Confur\API\AnswerAPI;
 use Confur\Repositories\AnswerRepository;
 use Mockery;
-use Brain\Monkey\Functions;
 use BleedingDeacons\WpMocks\WpState;
 use Tests\ConfurTestCase;
 use WP_Error;
 use WP_REST_Response;
 
-/**
- * @covers \Confur\API\AnswerAPI
- */
+#[CoversClass(\Confur\API\AnswerAPI::class)]
 class AnswerAPITest extends ConfurTestCase
 {
     private AnswerAPI $api;
@@ -21,7 +20,7 @@ class AnswerAPITest extends ConfurTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        Functions\when('get_page_by_path')->justReturn(null);
+        when('get_page_by_path')->justReturn(null);
         $this->api = new AnswerAPI();
     }
 
@@ -55,7 +54,7 @@ class AnswerAPITest extends ConfurTestCase
         $prop = (new \ReflectionClass($this->api))->getProperty('answerRepository');
         $prop->setValue($this->api, $repo);
 
-        Functions\when('get_page_by_path')->justReturn((object) ['ID' => 42]);
+        when('get_page_by_path')->justReturn((object) ['ID' => 42]);
 
         $result = $this->api->getAnswerPostStatus(['n' => 'slug']);
         $this->assertInstanceOf(WP_Error::class, $result);
@@ -71,7 +70,7 @@ class AnswerAPITest extends ConfurTestCase
 
     public function testGetStatusReturns404WhenPostMissing(): void
     {
-        Functions\when('get_page_by_path')->justReturn(null);
+        when('get_page_by_path')->justReturn(null);
         $result = $this->api->getAnswerPostStatus(['n' => 'missing-slug']);
         $this->assertInstanceOf(WP_Error::class, $result);
         $this->assertSame('invalid_post', $result->get_error_code());
@@ -79,7 +78,7 @@ class AnswerAPITest extends ConfurTestCase
 
     public function testGetStatusReturnsResponseForFoundPost(): void
     {
-        Functions\when('get_page_by_path')->justReturn((object) ['ID' => 42]);
+        when('get_page_by_path')->justReturn((object) ['ID' => 42]);
         $this->seedFields([
             42 => ['state' => 'Draft', 'updated' => '2026-01-01'],
         ]);

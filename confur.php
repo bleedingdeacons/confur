@@ -6,7 +6,7 @@
  * Description: Automated collation of answers to questions for conference.
  * Version: 2.15.17
  * Requires at least: 6.0
- * Requires PHP: 8.1
+ * Requires PHP: 8.4
  * GitHub Plugin URI: https://github.com/bleedingdeacons/confur
  * GitHub Branch: main
  * Author: The Bleeding Deacons

@@ -2,17 +2,16 @@
 
 namespace Tests\Unit\Services;
 
+use PHPUnit\Framework\Attributes\CoversClass;
 use Confur\Services\AdminAssetService;
 use Confur\Services\AssetService;
 use Confur\Services\ShortcodeService;
 use BleedingDeacons\WpMocks\WpState;
 use Tests\ConfurTestCase;
 
-/**
- * @covers \Confur\Services\AssetService
- * @covers \Confur\Services\AdminAssetService
- * @covers \Confur\Services\ShortcodeService
- */
+#[CoversClass(\Confur\Services\AssetService::class)]
+#[CoversClass(\Confur\Services\AdminAssetService::class)]
+#[CoversClass(\Confur\Services\ShortcodeService::class)]
 class ServicesTest extends ConfurTestCase
 {
     protected function setUp(): void

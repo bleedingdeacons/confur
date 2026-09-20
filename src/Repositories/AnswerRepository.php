@@ -31,8 +31,6 @@ class AnswerRepository
     {
         $status = get_field(Constants::STATUS_FIELD, $postId);
 
-        error_log($status);
-
         if (empty($status)) {
             update_field(Constants::STATUS_FIELD, Constants::STATUS_DRAFT, $postId);
             acf_save_post();

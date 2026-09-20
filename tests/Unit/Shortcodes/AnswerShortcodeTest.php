@@ -2,11 +2,11 @@
 
 namespace Tests\Unit\Shortcodes;
 
-use Confur\Config\Constants;
+use PHPUnit\Framework\Attributes\Test;
+use function Brain\Monkey\Functions\when;
 use Confur\Repositories\AnswerRepository;
 use Confur\Shortcodes\AnswerShortcode;
 use Mockery;
-use Brain\Monkey\Functions;
 use Tests\ConfurTestCase;
 
 /**
@@ -67,7 +67,7 @@ class AnswerShortcodeTest extends ConfurTestCase
         parent::tearDown();
     }
 
-    /** @test */
+    #[Test]
     public function it_generates_answer_field_with_no_existing_value()
     {
         $this->answerRepositoryMock
@@ -86,7 +86,7 @@ class AnswerShortcodeTest extends ConfurTestCase
         $this->assertStringContainsString('<textarea class="existing-answer" id="e_c1_a5"', $result);
     }
 
-    /** @test */
+    #[Test]
     public function it_generates_answer_field_with_existing_value()
     {
         $existingAnswer = 'This is my existing answer';
@@ -106,7 +106,7 @@ class AnswerShortcodeTest extends ConfurTestCase
         $this->assertStringContainsString('name="c2_a3"', $result);
     }
 
-    /** @test */
+    #[Test]
     public function it_generates_hidden_answer_field()
     {
         $this->answerRepositoryMock
@@ -125,15 +125,15 @@ class AnswerShortcodeTest extends ConfurTestCase
         $this->assertStringNotContainsString('Answer 1.1</label>', $result);
     }
 
-    /** @test */
+    #[Test]
     public function it_escapes_html_in_answer_values()
     {
         // wp-mocks' escaping stubs pass their input through by design, so a
         // test that is genuinely about escaping has to supply the real thing.
         // The answer value lands in a <textarea>, hence esc_textarea.
         $escape = static fn (mixed $text): string => htmlspecialchars((string) $text, ENT_QUOTES, 'UTF-8');
-        Functions\when('esc_html')->alias($escape);
-        Functions\when('esc_textarea')->alias($escape);
+        when('esc_html')->alias($escape);
+        when('esc_textarea')->alias($escape);
 
         $maliciousContent = '<script>alert("xss")</script>';
 
@@ -152,7 +152,7 @@ class AnswerShortcodeTest extends ConfurTestCase
         $this->assertStringContainsString('&lt;script&gt;', $result);
     }
 
-    /** @test */
+    #[Test]
     public function it_generates_question_with_committee_and_number()
     {
         $result = $this->shortcode->generateQuestion(
@@ -164,7 +164,7 @@ class AnswerShortcodeTest extends ConfurTestCase
         $this->assertStringContainsString('What is your question?', $result);
     }
 
-    /** @test */
+    #[Test]
     public function it_generates_hidden_question()
     {
         $result = $this->shortcode->generateQuestion(
@@ -176,7 +176,7 @@ class AnswerShortcodeTest extends ConfurTestCase
         $this->assertStringNotContainsString('Question 1.5', $result);
     }
 
-    /** @test */
+    #[Test]
     public function it_generates_committee_with_default_name()
     {
         $result = $this->shortcode->generateCommittee(
@@ -189,7 +189,7 @@ class AnswerShortcodeTest extends ConfurTestCase
         $this->assertStringContainsString('<p>Committee content</p>', $result);
     }
 
-    /** @test */
+    #[Test]
     public function it_generates_committee_with_custom_name()
     {
         $result = $this->shortcode->generateCommittee(
@@ -201,7 +201,7 @@ class AnswerShortcodeTest extends ConfurTestCase
         $this->assertStringNotContainsString('Committee 1', $result);
     }
 
-    /** @test */
+    #[Test]
     public function it_generates_start_committee()
     {
         $result = $this->shortcode->generateStartCommittee(['number' => '4']);
@@ -209,7 +209,7 @@ class AnswerShortcodeTest extends ConfurTestCase
         $this->assertEquals('<div id="c4"><h2>Committee 4</h2>', $result);
     }
 
-    /** @test */
+    #[Test]
     public function it_generates_end_committee()
     {
         $result = $this->shortcode->generateEndCommittee();
@@ -217,7 +217,7 @@ class AnswerShortcodeTest extends ConfurTestCase
         $this->assertEquals('</div>', $result);
     }
 
-    /** @test */
+    #[Test]
     public function it_generates_header_with_single_meeting()
     {
         // get_the_title mock returns "Post Title {id}" so the header will include that
@@ -227,7 +227,7 @@ class AnswerShortcodeTest extends ConfurTestCase
         $this->assertStringContainsString('</h2>', $result);
     }
 
-    /** @test */
+    #[Test]
     public function it_configures_custom_form()
     {
         $result = $this->shortcode->configureCustomForm(['action' => 'save_answers']);
@@ -237,7 +237,7 @@ class AnswerShortcodeTest extends ConfurTestCase
         $this->assertStringNotContainsString('answer_submission_nonce', $result);
     }
 
-    /** @test */
+    #[Test]
     public function it_generates_status()
     {
         $result = $this->shortcode->generateStatus(['position' => 'top']);
@@ -246,7 +246,7 @@ class AnswerShortcodeTest extends ConfurTestCase
         $this->assertStringContainsString('You have made unsaved changes!', $result);
     }
 
-    /** @test */
+    #[Test]
     public function it_generates_progress_table()
     {
         $result = $this->shortcode->generateProgressTable();
@@ -268,7 +268,7 @@ class AnswerShortcodeTest extends ConfurTestCase
         $this->assertStringContainsString('Not Started', $result);
     }
 
-    /** @test */
+    #[Test]
     public function it_generates_control_with_position()
     {
         $result = $this->shortcode->generateControl(['position' => 'bottom']);
@@ -282,7 +282,7 @@ class AnswerShortcodeTest extends ConfurTestCase
         $this->assertStringContainsString('disabled', $result);
     }
 
-    /** @test */
+    #[Test]
     public function it_sanitizes_attributes_in_answer_field()
     {
         $this->answerRepositoryMock
@@ -298,7 +298,7 @@ class AnswerShortcodeTest extends ConfurTestCase
         $this->assertStringNotContainsString('<script>', $result);
     }
 
-    /** @test */
+    #[Test]
     public function it_handles_empty_attributes_gracefully()
     {
         $this->answerRepositoryMock
@@ -312,7 +312,7 @@ class AnswerShortcodeTest extends ConfurTestCase
         $this->assertStringContainsString('name="c_a"', $result);
     }
 
-    /** @test */
+    #[Test]
     public function it_processes_shortcodes_in_question_content()
     {
         $content = '[some_shortcode]Content[/some_shortcode]';
@@ -327,7 +327,7 @@ class AnswerShortcodeTest extends ConfurTestCase
         $this->assertStringContainsString('Content', $result);
     }
 
-    /** @test */
+    #[Test]
     public function it_trims_whitespace_from_attributes()
     {
         $result = $this->shortcode->generateQuestion(

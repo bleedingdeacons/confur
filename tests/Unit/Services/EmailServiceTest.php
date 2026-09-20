@@ -2,13 +2,12 @@
 
 namespace Tests\Unit\Services;
 
+use PHPUnit\Framework\Attributes\CoversClass;
 use Confur\Services\EmailService;
 use BleedingDeacons\WpMocks\WpState;
 use Tests\ConfurTestCase;
 
-/**
- * @covers \Confur\Services\EmailService
- */
+#[CoversClass(\Confur\Services\EmailService::class)]
 class EmailServiceTest extends ConfurTestCase
 {
     protected function setUp(): void

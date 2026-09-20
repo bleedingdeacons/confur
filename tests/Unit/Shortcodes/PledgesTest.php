@@ -2,16 +2,15 @@
 
 namespace Tests\Unit\Shortcodes;
 
+use PHPUnit\Framework\Attributes\CoversClass;
 use Confur\Shortcodes\ResponsibilityPledgeShortcode;
 use Confur\Shortcodes\StepShortcode;
 use Confur\Shortcodes\TraditionShortcode;
 use Tests\ConfurTestCase;
 
-/**
- * @covers \Confur\Shortcodes\StepShortcode
- * @covers \Confur\Shortcodes\TraditionShortcode
- * @covers \Confur\Shortcodes\ResponsibilityPledgeShortcode
- */
+#[CoversClass(\Confur\Shortcodes\StepShortcode::class)]
+#[CoversClass(\Confur\Shortcodes\TraditionShortcode::class)]
+#[CoversClass(\Confur\Shortcodes\ResponsibilityPledgeShortcode::class)]
 class PledgesTest extends ConfurTestCase
 {
     public function testStepRendersValidNumber(): void
