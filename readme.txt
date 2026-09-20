@@ -2,10 +2,10 @@
 Contributors: thebleedingdeacons
 Tags: conference, questions, answers, groups, aa
 Requires at least: 6.0
-Tested up to: 6.9
+Tested up to: 7.1.1
 Stable tag: 2.11.3
-Build date: 2026/09/05 16:40:34
-Requires PHP: 7.4
+Build date: 2026/09/20 18:58:46
+Requires PHP: 8.4
 License: MIT (Modified)
 
 Automated collation of answers to questions for conference. Groups submit answers online; region representatives review and prepare responses.

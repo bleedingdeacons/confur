@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Shortcodes;
 
+use PHPUnit\Framework\Attributes\CoversClass;
 use Confur\Config\Constants;
 use Confur\Shortcodes\AnswerShortcode;
 use Tests\ConfurTestCase;
@@ -9,9 +10,8 @@ use Tests\ConfurTestCase;
 /**
  * Covers AnswerShortcode paths the main suite misses: the allocated-committee
  * display and the header's paired-meeting branch.
- *
- * @covers \Confur\Shortcodes\AnswerShortcode
  */
+#[CoversClass(\Confur\Shortcodes\AnswerShortcode::class)]
 class AnswerShortcodeExtraTest extends ConfurTestCase
 {
     private AnswerShortcode $sc;

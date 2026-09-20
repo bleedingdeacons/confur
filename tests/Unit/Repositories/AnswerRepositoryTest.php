@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Repositories;
 
+use PHPUnit\Framework\Attributes\Test;
 use Confur\Config\Constants;
 use Confur\Repositories\AnswerRepository;
 use Tests\ConfurTestCase;
@@ -110,7 +111,7 @@ class AnswerRepositoryTest extends ConfurTestCase
         self::$mockPostData = $mockPostData;
     }
 
-    /** @test */
+    #[Test]
     public function it_returns_null_when_meeting_id_is_empty(): void
     {
         $repository = $this->createMockedRepository([], null);
@@ -120,7 +121,7 @@ class AnswerRepositoryTest extends ConfurTestCase
         $this->assertNull($result);
     }
 
-    /** @test */
+    #[Test]
     public function it_returns_null_when_email_is_empty(): void
     {
         $repository = $this->createMockedRepository([], null);
@@ -130,7 +131,7 @@ class AnswerRepositoryTest extends ConfurTestCase
         $this->assertNull($result);
     }
 
-    /** @test */
+    #[Test]
     public function it_returns_null_when_no_duplicates_exist(): void
     {
         $posts = [
@@ -151,7 +152,7 @@ class AnswerRepositoryTest extends ConfurTestCase
         $this->assertNull($result);
     }
 
-    /** @test */
+    #[Test]
     public function it_finds_duplicate_with_same_meeting_and_email(): void
     {
         $posts = [
@@ -174,7 +175,7 @@ class AnswerRepositoryTest extends ConfurTestCase
         $this->assertEquals('existing-post', $result['slug']);
     }
 
-    /** @test */
+    #[Test]
     public function it_finds_duplicate_with_case_insensitive_email(): void
     {
         $posts = [
@@ -196,7 +197,7 @@ class AnswerRepositoryTest extends ConfurTestCase
         $this->assertEquals(1, $result['post_id']);
     }
 
-    /** @test */
+    #[Test]
     public function it_skips_cancelled_registrations(): void
     {
         $posts = [
@@ -217,7 +218,7 @@ class AnswerRepositoryTest extends ConfurTestCase
         $this->assertNull($result);
     }
 
-    /** @test */
+    #[Test]
     public function it_excludes_specified_post_id(): void
     {
         $posts = [
@@ -239,7 +240,7 @@ class AnswerRepositoryTest extends ConfurTestCase
         $this->assertNull($result);
     }
 
-    /** @test */
+    #[Test]
     public function it_finds_duplicate_with_paired_meetings_same_order(): void
     {
         $posts = [
@@ -261,7 +262,7 @@ class AnswerRepositoryTest extends ConfurTestCase
         $this->assertEquals(1, $result['post_id']);
     }
 
-    /** @test */
+    #[Test]
     public function it_finds_duplicate_with_paired_meetings_swapped_order(): void
     {
         $posts = [
@@ -284,7 +285,7 @@ class AnswerRepositoryTest extends ConfurTestCase
         $this->assertEquals(1, $result['post_id']);
     }
 
-    /** @test */
+    #[Test]
     public function it_does_not_match_paired_with_single_registration(): void
     {
         $posts = [
@@ -306,7 +307,7 @@ class AnswerRepositoryTest extends ConfurTestCase
         $this->assertNull($result);
     }
 
-    /** @test */
+    #[Test]
     public function it_does_not_match_single_with_paired_registration(): void
     {
         $posts = [
@@ -328,7 +329,7 @@ class AnswerRepositoryTest extends ConfurTestCase
         $this->assertNull($result);
     }
 
-    /** @test */
+    #[Test]
     public function it_returns_latest_duplicate_by_updated_date(): void
     {
         $posts = [
@@ -363,7 +364,7 @@ class AnswerRepositoryTest extends ConfurTestCase
         $this->assertEquals('newer-post', $result['slug']);
     }
 
-    /** @test */
+    #[Test]
     public function it_returns_latest_duplicate_by_post_date_when_no_updated(): void
     {
         $posts = [
@@ -398,7 +399,7 @@ class AnswerRepositoryTest extends ConfurTestCase
         $this->assertEquals('newer-post', $result['slug']);
     }
 
-    /** @test */
+    #[Test]
     public function it_prefers_post_with_updated_date_over_one_without(): void
     {
         $posts = [
@@ -434,21 +435,21 @@ class AnswerRepositoryTest extends ConfurTestCase
         $this->assertEquals('has-updated-post', $result['slug']);
     }
 
-    /** @test */
+    #[Test]
     public function normalize_post_id_handles_integer(): void
     {
         $result = $this->repository->normalizePostId(123);
         $this->assertEquals(123, $result);
     }
 
-    /** @test */
+    #[Test]
     public function normalize_post_id_handles_string(): void
     {
         $result = $this->repository->normalizePostId('456');
         $this->assertEquals(456, $result);
     }
 
-    /** @test */
+    #[Test]
     public function normalize_post_id_handles_object_with_id(): void
     {
         $obj = (object) ['ID' => 789];
@@ -456,7 +457,7 @@ class AnswerRepositoryTest extends ConfurTestCase
         $this->assertEquals(789, $result);
     }
 
-    /** @test */
+    #[Test]
     public function normalize_post_id_handles_array_with_id(): void
     {
         $arr = ['ID' => 101];
@@ -464,14 +465,14 @@ class AnswerRepositoryTest extends ConfurTestCase
         $this->assertEquals(101, $result);
     }
 
-    /** @test */
+    #[Test]
     public function normalize_post_id_handles_null(): void
     {
         $result = $this->repository->normalizePostId(null);
         $this->assertNull($result);
     }
 
-    /** @test */
+    #[Test]
     public function normalize_post_id_handles_empty_string(): void
     {
         $result = $this->repository->normalizePostId('');

@@ -2,14 +2,12 @@
 
 namespace Tests\Unit\Utils;
 
-use BleedingDeacons\WpMocks\WpState;
-use Brain\Monkey\Functions;
+use PHPUnit\Framework\Attributes\CoversClass;
+use function Brain\Monkey\Functions\when;
 use Confur\Utils\AcfHelper;
 use Tests\ConfurTestCase;
 
-/**
- * @covers \Confur\Utils\AcfHelper
- */
+#[CoversClass(\Confur\Utils\AcfHelper::class)]
 class AcfHelperTest extends ConfurTestCase
 {
     protected function setUp(): void
@@ -33,7 +31,7 @@ class AcfHelperTest extends ConfurTestCase
      */
     private function knownFields(array $fields): void
     {
-        Functions\when('acf_get_field')->alias(
+        when('acf_get_field')->alias(
             static fn (string $selector): array|false => $fields[$selector] ?? false
         );
     }
@@ -110,7 +108,7 @@ class AcfHelperTest extends ConfurTestCase
     {
         $this->makePost(5, '', 'publish', 'answer');
         $this->knownFields(['price' => ['key' => 'field_price']]);
-        Functions\when('acf_save_post')->alias(static function (): bool {
+        when('acf_save_post')->alias(static function (): bool {
             throw new \RuntimeException('acf save failed');
         });
         try {

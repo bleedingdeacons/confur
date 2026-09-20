@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Admin;
 
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\DataProvider;
+use function Brain\Monkey\Functions\when;
 use BleedingDeacons\WpMocks\Exceptions\WpDieException;
 use BleedingDeacons\WpMocks\WpState;
-use Brain\Monkey\Functions;
 use Confur\Admin\EmailTemplateAdminPage;
 use ReflectionMethod;
 use Tests\ConfurTestCase;
@@ -24,9 +27,8 @@ use Tests\ConfurTestCase;
  * test runner with it. Its guards are covered as guards; the six outcomes
  * behind them are reached through resolveSubmissionRedirect(), which was split
  * out of it for exactly that reason.
- *
- * @covers \Confur\Admin\EmailTemplateAdminPage
  */
+#[CoversClass(\Confur\Admin\EmailTemplateAdminPage::class)]
 final class EmailTemplateAdminPageTest extends ConfurTestCase
 {
     private const OPTION = 'confur_email_templates';
@@ -45,14 +47,14 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
         $this->page = new EmailTemplateAdminPage();
 
         // Not shipped by wp-mocks: the editor and the form helpers.
-        Functions\when('wp_enqueue_editor')->justReturn(null);
-        Functions\when('get_admin_page_title')->justReturn('Email Templates');
-        Functions\when('wp_editor')->alias(
+        when('wp_enqueue_editor')->justReturn(null);
+        when('get_admin_page_title')->justReturn('Email Templates');
+        when('wp_editor')->alias(
             static function (string $content, string $id): void {
                 echo '<textarea id="' . $id . '">' . $content . '</textarea>';
             }
         );
-        Functions\when('submit_button')->alias(
+        when('submit_button')->alias(
             static function (string $text = 'Save', string $type = 'primary', string $name = 'submit'): void {
                 echo '<button type="submit" name="' . $name . '">' . $text . '</button>';
             }
@@ -87,8 +89,7 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
     }
 
     // ── registration ──────────────────────────────────────────────────
-
-    /** @test */
+    #[Test]
     public function init_registers_the_menu_the_form_handler_and_the_assets(): void
     {
         $this->page->init();
@@ -98,7 +99,7 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
         $this->assertActionAdded('admin_enqueue_scripts', false, 'the assets should be registered');
     }
 
-    /** @test */
+    #[Test]
     public function nothing_is_registered_on_a_front_end_request(): void
     {
         WpState::$isAdmin = false;
@@ -108,7 +109,7 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
         $this->assertActionNotAdded('admin_menu');
     }
 
-    /** @test */
+    #[Test]
     public function the_page_is_added_under_the_confur_menu_for_administrators_only(): void
     {
         $this->page->addAdminMenu();
@@ -119,7 +120,7 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
         $this->assertSame('manage_options', WpState::$menus[0]['cap']);
     }
 
-    /** @test */
+    #[Test]
     public function the_editor_is_only_loaded_on_this_screen(): void
     {
         $this->page->enqueueAdminAssets('edit.php');
@@ -127,7 +128,7 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
         $this->assertSame([], WpState::$enqueued);
     }
 
-    /** @test */
+    #[Test]
     public function the_editor_and_the_page_styles_are_loaded_on_this_screen(): void
     {
         $this->page->enqueueAdminAssets(self::HOOK);
@@ -139,14 +140,12 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
     }
 
     // ── reading templates ─────────────────────────────────────────────
-
     /**
      * With nothing saved, every template falls back to the HTML file shipped
      * in /emails — and to the body of that file, not the whole document, since
      * the result is embedded in an email the plugin composes.
-     *
-     * @test
      */
+    #[Test]
     public function an_unsaved_template_falls_back_to_the_shipped_html_file(): void
     {
         $body = EmailTemplateAdminPage::getBody('RegistrationConfirmation');
@@ -156,7 +155,7 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
         $this->assertStringNotContainsString('</html>', $body);
     }
 
-    /** @test */
+    #[Test]
     public function every_known_template_is_returned_with_its_metadata(): void
     {
         $templates = EmailTemplateAdminPage::getAll();
@@ -174,7 +173,7 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function a_saved_subject_and_body_override_the_defaults(): void
     {
         WpState::$options[self::OPTION] = [
@@ -188,9 +187,8 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
     /**
      * The two halves are saved independently, so a template with only a custom
      * subject must still fall back to the shipped body rather than to nothing.
-     *
-     * @test
      */
+    #[Test]
     public function a_saved_subject_alone_leaves_the_body_at_its_default(): void
     {
         WpState::$options[self::OPTION] = ['AnswersComplete' => ['subject' => 'Nicely done']];
@@ -199,7 +197,7 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
         $this->assertNotSame('', EmailTemplateAdminPage::getBody('AnswersComplete'));
     }
 
-    /** @test */
+    #[Test]
     public function an_unknown_template_key_yields_null_and_empty_strings(): void
     {
         $this->assertNull(EmailTemplateAdminPage::get('NoSuchTemplate'));
@@ -210,10 +208,9 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
     /**
      * The key becomes a filename, so it is sanitised and then re-checked
      * against a strict pattern before it is used to build a path.
-     *
-     * @test
-     * @dataProvider hostileKeys
      */
+    #[DataProvider('hostileKeys')]
+    #[Test]
     public function a_template_key_cannot_be_used_to_read_another_file(string $key): void
     {
         $m = new ReflectionMethod(EmailTemplateAdminPage::class, 'getDefaultBody');
@@ -234,8 +231,7 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
     }
 
     // ── writing templates ─────────────────────────────────────────────
-
-    /** @test */
+    #[Test]
     public function saving_stores_only_the_known_templates(): void
     {
         $this->assertTrue(EmailTemplateAdminPage::update([
@@ -247,7 +243,7 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
         $this->assertSame('Done', WpState::$options[self::OPTION]['AnswersComplete']['subject']);
     }
 
-    /** @test */
+    #[Test]
     public function a_template_saved_with_neither_field_stores_empty_strings(): void
     {
         EmailTemplateAdminPage::update(['AnswersComplete' => []]);
@@ -258,7 +254,7 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function resetting_everything_clears_the_saved_option(): void
     {
         WpState::$options[self::OPTION] = ['AnswersComplete' => ['subject' => 'Custom']];
@@ -267,7 +263,7 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
         $this->assertArrayNotHasKey(self::OPTION, WpState::$options);
     }
 
-    /** @test */
+    #[Test]
     public function resetting_one_template_leaves_the_others_saved(): void
     {
         WpState::$options[self::OPTION] = [
@@ -283,9 +279,8 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
     /**
      * Resetting the last customised template should leave no option row behind
      * rather than an empty array, so getAll() takes its "nothing saved" path.
-     *
-     * @test
      */
+    #[Test]
     public function resetting_the_last_customised_template_removes_the_option_entirely(): void
     {
         WpState::$options[self::OPTION] = ['AnswersComplete' => ['subject' => 'Custom']];
@@ -294,22 +289,21 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
         $this->assertArrayNotHasKey(self::OPTION, WpState::$options);
     }
 
-    /** @test */
+    #[Test]
     public function resetting_a_template_that_was_never_customised_succeeds_quietly(): void
     {
         $this->assertTrue(EmailTemplateAdminPage::resetTemplate('AnswersComplete'));
         $this->assertArrayNotHasKey(self::OPTION, WpState::$options);
     }
 
-    /** @test */
+    #[Test]
     public function resetting_an_unknown_template_fails(): void
     {
         $this->assertFalse(EmailTemplateAdminPage::resetTemplate('NoSuchTemplate'));
     }
 
     // ── submission guards ─────────────────────────────────────────────
-
-    /** @test */
+    #[Test]
     public function the_form_handler_refuses_a_user_without_the_capability(): void
     {
         WpState::$userCan = false;
@@ -318,14 +312,14 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
         $this->page->handleFormSubmission();
     }
 
-    /** @test */
+    #[Test]
     public function the_form_handler_refuses_a_submission_with_no_nonce(): void
     {
         $this->expectException(WpDieException::class);
         $this->page->handleFormSubmission();
     }
 
-    /** @test */
+    #[Test]
     public function the_form_handler_refuses_a_submission_with_a_stale_nonce(): void
     {
         $_POST['confur_email_templates_nonce'] = 'nonce-something-else';
@@ -335,8 +329,7 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
     }
 
     // ── submission outcomes (the caller redirects and exits) ──────────
-
-    /** @test */
+    #[Test]
     public function a_normal_save_writes_every_template_and_reports_success(): void
     {
         $_POST = [
@@ -357,16 +350,16 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function a_save_that_fails_to_write_reports_an_error(): void
     {
-        Functions\when('update_option')->justReturn(false);
+        when('update_option')->justReturn(false);
         $_POST['confur_email_templates_nonce'] = self::NONCE;
 
         $this->assertStringContainsString('error=1', $this->submissionRedirect());
     }
 
-    /** @test */
+    #[Test]
     public function the_reset_all_button_clears_everything(): void
     {
         WpState::$options[self::OPTION] = ['AnswersComplete' => ['subject' => 'Custom']];
@@ -381,7 +374,7 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
         $this->assertArrayNotHasKey(self::OPTION, WpState::$options);
     }
 
-    /** @test */
+    #[Test]
     public function the_per_template_reset_button_clears_only_that_template(): void
     {
         WpState::$options[self::OPTION] = [
@@ -399,7 +392,7 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
         $this->assertSame(['RegistrationConfirmation'], array_keys(WpState::$options[self::OPTION]));
     }
 
-    /** @test */
+    #[Test]
     public function resetting_an_unknown_template_from_the_form_reports_an_error(): void
     {
         $_POST = [
@@ -411,8 +404,7 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
     }
 
     // ── the screen ────────────────────────────────────────────────────
-
-    /** @test */
+    #[Test]
     public function the_screen_refuses_a_user_without_the_capability(): void
     {
         WpState::$userCan = false;
@@ -425,9 +417,8 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
      * Driving the render for real is what proves the form field names match
      * the ones handleFormSubmission() reads back out of $_POST — a rename on
      * one side alone would silently stop saving.
-     *
-     * @test
      */
+    #[Test]
     public function the_screen_renders_a_card_per_template_with_matching_field_names(): void
     {
         $html = $this->capture(fn () => $this->page->renderAdminPage());
@@ -442,7 +433,7 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
         $this->assertStringContainsString('name="reset_all_defaults"', $html);
     }
 
-    /** @test */
+    #[Test]
     public function the_screen_lists_the_placeholders_a_template_accepts(): void
     {
         $html = $this->capture(fn () => $this->page->renderAdminPage());
@@ -452,10 +443,10 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
     }
 
     /**
-     * @test
-     * @dataProvider noticeParameters
      * @param array<string, string> $query
      */
+    #[DataProvider('noticeParameters')]
+    #[Test]
     public function the_screen_reports_back_on_the_last_submission(array $query, string $expected): void
     {
         $_GET = $query;
@@ -476,7 +467,7 @@ final class EmailTemplateAdminPageTest extends ConfurTestCase
         ];
     }
 
-    /** @test */
+    #[Test]
     public function no_notice_is_shown_on_a_plain_page_load(): void
     {
         $html = $this->capture(fn () => $this->page->renderAdminPage());

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Admin;
 
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\Test;
 use BleedingDeacons\WpMocks\Exceptions\WpDieException;
 use BleedingDeacons\WpMocks\WpState;
 use Confur\Admin\ResultAdminPage;
@@ -23,9 +25,8 @@ use Tests\ConfurTestCase;
  *
  * The page builds its own AnswerRepository, so answers are seeded into WpState
  * and the real repository reads them.
- *
- * @covers \Confur\Admin\ResultAdminPage
  */
+#[CoversClass(\Confur\Admin\ResultAdminPage::class)]
 final class ResultAdminPageTest extends ConfurTestCase
 {
     private const HOOK = 'questions-for-conference_page_confur-reporting';
@@ -116,8 +117,7 @@ final class ResultAdminPageTest extends ConfurTestCase
     }
 
     // ── registration ──────────────────────────────────────────────────
-
-    /** @test */
+    #[Test]
     public function init_registers_the_menu_and_the_assets(): void
     {
         $this->page->init();
@@ -129,9 +129,8 @@ final class ResultAdminPageTest extends ConfurTestCase
     /**
      * The report is readable by anyone who can reach wp-admin, unlike the
      * settings screens — the capability is 'read', not 'manage_options'.
-     *
-     * @test
      */
+    #[Test]
     public function the_page_is_added_under_the_confur_menu_for_any_logged_in_user(): void
     {
         $this->page->registerAdminPage();
@@ -142,7 +141,7 @@ final class ResultAdminPageTest extends ConfurTestCase
         $this->assertSame('read', WpState::$menus[0]['cap']);
     }
 
-    /** @test */
+    #[Test]
     public function the_report_assets_are_only_loaded_on_this_screen(): void
     {
         $this->page->enqueueAdminAssets('edit.php');
@@ -150,7 +149,7 @@ final class ResultAdminPageTest extends ConfurTestCase
         $this->assertSame([], WpState::$enqueued);
     }
 
-    /** @test */
+    #[Test]
     public function the_report_styles_and_scripts_are_registered_inline_on_this_screen(): void
     {
         $this->page->enqueueAdminAssets(self::HOOK);
@@ -172,8 +171,7 @@ final class ResultAdminPageTest extends ConfurTestCase
     }
 
     // ── the screen ────────────────────────────────────────────────────
-
-    /** @test */
+    #[Test]
     public function the_screen_refuses_a_user_without_the_capability(): void
     {
         WpState::$userCan = false;
@@ -182,7 +180,7 @@ final class ResultAdminPageTest extends ConfurTestCase
         $this->page->renderPage();
     }
 
-    /** @test */
+    #[Test]
     public function the_screen_renders_its_three_sections_and_its_controls(): void
     {
         $html = $this->capture(fn () => $this->page->renderPage());
@@ -195,7 +193,7 @@ final class ResultAdminPageTest extends ConfurTestCase
         $this->assertStringContainsString('Report generated:', $html);
     }
 
-    /** @test */
+    #[Test]
     public function the_screen_renders_the_answers_it_is_given(): void
     {
         $this->makePost(500, 'Monday Group');
@@ -209,14 +207,12 @@ final class ResultAdminPageTest extends ConfurTestCase
     }
 
     // ── the navigation table ──────────────────────────────────────────
-
     /**
      * The navigation table is a fixed shape: committees 1-6 by name with 3, 2,
      * 2, 2, 2 and 2 questions, then committee 7 rendered as "All Committees"
      * with one.
-     *
-     * @test
      */
+    #[Test]
     public function the_navigation_table_lists_every_committee_and_question(): void
     {
         $m = new ReflectionMethod(ResultAdminPage::class, 'generateLinksTable');
@@ -235,8 +231,7 @@ final class ResultAdminPageTest extends ConfurTestCase
     }
 
     // ── the answer table ──────────────────────────────────────────────
-
-    /** @test */
+    #[Test]
     public function committees_are_ordered_and_labelled(): void
     {
         $html = $this->answerTable([
@@ -254,9 +249,8 @@ final class ResultAdminPageTest extends ConfurTestCase
     /**
      * Committee 7 is the "last question", asked of every committee, so it is
      * labelled differently from the numbered ones.
-     *
-     * @test
      */
+    #[Test]
     public function committee_seven_is_labelled_all_committees(): void
     {
         $html = $this->answerTable(['c7_a1' => [$this->row('The last question')]]);
@@ -269,9 +263,8 @@ final class ResultAdminPageTest extends ConfurTestCase
      * The anchor is what the navigation links and the dashboard widget jump
      * to, so it must appear exactly once per question however many groups
      * answered it.
-     *
-     * @test
      */
+    #[Test]
     public function each_question_is_anchored_exactly_once(): void
     {
         $html = $this->answerTable([
@@ -289,9 +282,8 @@ final class ResultAdminPageTest extends ConfurTestCase
     /**
      * Only draft and completed answers belong in the report — a cancelled
      * registration's text must not appear.
-     *
-     * @test
      */
+    #[Test]
     public function only_draft_and_completed_answers_are_reported(): void
     {
         $html = $this->answerTable([
@@ -312,9 +304,8 @@ final class ResultAdminPageTest extends ConfurTestCase
     /**
      * A paired registration answers on behalf of two groups, and the header
      * has to name both so the report is not read as one group's answer.
-     *
-     * @test
      */
+    #[Test]
     public function a_paired_registration_names_both_meetings_in_its_header(): void
     {
         $this->makePost(501, 'Tuesday Group');
@@ -326,7 +317,7 @@ final class ResultAdminPageTest extends ConfurTestCase
         $this->assertStringContainsString('Monday Group & Tuesday Group', $html);
     }
 
-    /** @test */
+    #[Test]
     public function a_fellow_meeting_that_no_longer_exists_falls_back_to_the_primary_name(): void
     {
         $html = $this->answerTable([
@@ -336,7 +327,7 @@ final class ResultAdminPageTest extends ConfurTestCase
         $this->assertStringContainsString('Monday Group - Complete', $html);
     }
 
-    /** @test */
+    #[Test]
     public function a_fellow_meeting_equal_to_the_primary_is_not_repeated(): void
     {
         $html = $this->answerTable([
@@ -347,7 +338,7 @@ final class ResultAdminPageTest extends ConfurTestCase
         $this->assertStringNotContainsString(' & ', $html, 'the same meeting should not be named twice');
     }
 
-    /** @test */
+    #[Test]
     public function an_empty_report_still_renders_a_table(): void
     {
         $html = $this->answerTable([]);
@@ -357,13 +348,11 @@ final class ResultAdminPageTest extends ConfurTestCase
     }
 
     // ── the coverage table ────────────────────────────────────────────
-
     /**
      * The coverage table is the only arithmetic on the page: response count,
      * mean word count to two places, and the shortest and longest answers.
-     *
-     * @test
      */
+    #[Test]
     public function the_coverage_table_counts_responses_and_words(): void
     {
         $html = $this->coverageTable([
@@ -385,9 +374,8 @@ final class ResultAdminPageTest extends ConfurTestCase
      * coverage arithmetic, which counts every response the repository
      * returned. Asserted as-is: this change covers the page, it does not
      * change what it reports.
-     *
-     * @test
      */
+    #[Test]
     public function the_coverage_table_counts_every_response_including_cancelled_ones(): void
     {
         $html = $this->coverageTable([
@@ -400,7 +388,7 @@ final class ResultAdminPageTest extends ConfurTestCase
         $this->assertStringContainsString('<td>2</td>', $html);
     }
 
-    /** @test */
+    #[Test]
     public function each_coverage_row_links_to_its_question_anchor(): void
     {
         $html = $this->coverageTable(['c3_a2' => [$this->row('An answer')]]);
@@ -411,9 +399,8 @@ final class ResultAdminPageTest extends ConfurTestCase
     /**
      * Rows are sorted by committee then by question, so the table reads in the
      * same order as the report above it.
-     *
-     * @test
      */
+    #[Test]
     public function coverage_rows_are_sorted_by_committee_then_question(): void
     {
         $html = $this->coverageTable([
@@ -428,7 +415,7 @@ final class ResultAdminPageTest extends ConfurTestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function an_empty_coverage_table_still_renders_its_header_row(): void
     {
         $html = $this->coverageTable([]);

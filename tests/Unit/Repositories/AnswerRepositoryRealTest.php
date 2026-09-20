@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Repositories;
 
+use PHPUnit\Framework\Attributes\CoversClass;
 use Confur\Config\Constants;
 use Confur\Repositories\AnswerRepository;
 use BleedingDeacons\WpMocks\WpState;
@@ -12,9 +13,8 @@ use Tests\ConfurTestCase;
  * getAllAnswers, getRegisteredGroups, findDuplicate, getGroupAnswers) against
  * the controllable ACF/post stubs — as opposed to AnswerRepositoryTest, which
  * drives a re-implemented findDuplicate.
- *
- * @covers \Confur\Repositories\AnswerRepository
  */
+#[CoversClass(\Confur\Repositories\AnswerRepository::class)]
 class AnswerRepositoryRealTest extends ConfurTestCase
 {
     private AnswerRepository $repo;

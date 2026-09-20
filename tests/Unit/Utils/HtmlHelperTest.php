@@ -51,9 +51,7 @@ namespace Tests\Unit\Utils {
     use Confur\Utils\HtmlHelper;
     use Tests\ConfurTestCase;
 
-    /**
-     * @covers \Confur\Utils\HtmlHelper
-     */
+    #[\PHPUnit\Framework\Attributes\CoversClass(\Confur\Utils\HtmlHelper::class)]
     class HtmlHelperTest extends ConfurTestCase
     {
         public function testGeneratePdfLink(): void

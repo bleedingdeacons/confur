@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Admin;
 
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\DataProvider;
+use function Brain\Monkey\Functions\when;
 use BleedingDeacons\WpMocks\Exceptions\WpDieException;
 use BleedingDeacons\WpMocks\WpState;
-use Brain\Monkey\Functions;
 use Confur\Admin\ConfurSettingsAdminPage;
 use ReflectionMethod;
 use Tests\ConfurTestCase;
@@ -24,9 +27,8 @@ use Tests\ConfurTestCase;
  * excluded from coverage — these tests drive it anyway, because what matters
  * on this screen is that the field names the form renders are the ones the
  * handler reads back, and that only holds if both sides run for real.
- *
- * @covers \Confur\Admin\ConfurSettingsAdminPage
  */
+#[CoversClass(\Confur\Admin\ConfurSettingsAdminPage::class)]
 final class ConfurSettingsAdminPageTest extends ConfurTestCase
 {
     private const SETTINGS_OPTION  = 'confur_email_settings';
@@ -45,8 +47,8 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
 
         $this->page = new ConfurSettingsAdminPage();
 
-        Functions\when('get_admin_page_title')->justReturn('Confur Settings');
-        Functions\when('submit_button')->alias(
+        when('get_admin_page_title')->justReturn('Confur Settings');
+        when('submit_button')->alias(
             static function (string $text = 'Save', string $type = 'primary', string $name = 'submit'): void {
                 echo '<button type="submit" name="' . $name . '">' . $text . '</button>';
             }
@@ -92,8 +94,7 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
     }
 
     // ── registration ──────────────────────────────────────────────────
-
-    /** @test */
+    #[Test]
     public function init_registers_the_menu_the_form_handler_and_the_assets(): void
     {
         $this->page->init();
@@ -103,7 +104,7 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
         $this->assertActionAdded('admin_enqueue_scripts', false, 'the assets should be registered');
     }
 
-    /** @test */
+    #[Test]
     public function nothing_is_registered_on_a_front_end_request(): void
     {
         WpState::$isAdmin = false;
@@ -113,7 +114,7 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
         $this->assertActionNotAdded('admin_menu');
     }
 
-    /** @test */
+    #[Test]
     public function the_page_is_added_under_the_confur_menu_for_administrators_only(): void
     {
         $this->page->addAdminMenu();
@@ -124,7 +125,7 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
         $this->assertSame('manage_options', WpState::$menus[0]['cap']);
     }
 
-    /** @test */
+    #[Test]
     public function the_page_styles_are_only_loaded_on_this_screen(): void
     {
         $this->page->enqueueAdminAssets('edit.php');
@@ -132,7 +133,7 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
         $this->assertSame([], WpState::$enqueued);
     }
 
-    /** @test */
+    #[Test]
     public function the_page_styles_are_loaded_on_this_screen(): void
     {
         $this->page->enqueueAdminAssets(self::HOOK);
@@ -144,8 +145,7 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
     }
 
     // ── submission guards ─────────────────────────────────────────────
-
-    /** @test */
+    #[Test]
     public function the_form_handler_refuses_a_user_without_the_capability(): void
     {
         WpState::$userCan = false;
@@ -154,14 +154,14 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
         $this->page->handleFormSubmission();
     }
 
-    /** @test */
+    #[Test]
     public function the_form_handler_refuses_a_submission_with_no_nonce(): void
     {
         $this->expectException(WpDieException::class);
         $this->page->handleFormSubmission();
     }
 
-    /** @test */
+    #[Test]
     public function the_form_handler_refuses_a_submission_with_a_stale_nonce(): void
     {
         $_POST['confur_settings_nonce'] = 'nonce-something-else';
@@ -171,8 +171,7 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
     }
 
     // ── saving settings (the caller redirects and exits) ──────────────
-
-    /** @test */
+    #[Test]
     public function a_valid_save_stores_every_field_and_reports_success(): void
     {
         $_POST = $this->validForm() + [
@@ -196,9 +195,8 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
     /**
      * Unticked checkboxes are absent from $_POST rather than sent as "0", so
      * "not present" has to mean false and not "leave as it was".
-     *
-     * @test
      */
+    #[Test]
     public function unticked_checkboxes_are_saved_as_false(): void
     {
         WpState::$options[self::SETTINGS_OPTION] = [
@@ -225,9 +223,8 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
      * reports success over a settings save that did not happen. Asserted as-is
      * rather than corrected: this change is about covering the layer, not
      * altering it.
-     *
-     * @test
      */
+    #[Test]
     public function an_invalid_email_address_is_not_saved(): void
     {
         $_POST = $this->validForm();
@@ -243,10 +240,10 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function a_save_where_nothing_could_be_written_reports_an_error(): void
     {
-        Functions\when('update_option')->justReturn(false);
+        when('update_option')->justReturn(false);
         $_POST = $this->validForm();
         $_POST['support_email'] = 'not-an-email';
 
@@ -256,9 +253,8 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
     /**
      * The blocked list is saved by the same submission as the settings, from
      * a textarea holding one address per line.
-     *
-     * @test
      */
+    #[Test]
     public function the_blocked_list_textarea_is_split_sorted_and_saved(): void
     {
         $_POST = $this->validForm();
@@ -272,7 +268,7 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function the_reset_button_restores_the_shipped_defaults(): void
     {
         WpState::$options[self::SETTINGS_OPTION] = ['support' => 'custom@example.org'];
@@ -290,10 +286,10 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function a_reset_that_fails_to_write_reports_an_error(): void
     {
-        Functions\when('update_option')->justReturn(false);
+        when('update_option')->justReturn(false);
         $_POST = [
             'confur_settings_nonce' => self::NONCE,
             'reset_to_defaults'     => 'Reset to Defaults',
@@ -302,7 +298,7 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
         $this->assertStringContainsString('error=1', $this->submissionRedirect());
     }
 
-    /** @test */
+    #[Test]
     public function the_clear_button_empties_the_blocked_list(): void
     {
         WpState::$options[self::BLOCKLIST_OPTION] = ['blocked@example.org'];
@@ -317,10 +313,10 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
         $this->assertSame([], WpState::$options[self::BLOCKLIST_OPTION]);
     }
 
-    /** @test */
+    #[Test]
     public function a_clear_that_fails_to_write_reports_an_error(): void
     {
-        Functions\when('update_option')->justReturn(false);
+        when('update_option')->justReturn(false);
         $_POST = [
             'confur_settings_nonce' => self::NONCE,
             'clear_blocklist'       => 'Clear Blocked List',
@@ -330,8 +326,7 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
     }
 
     // ── the screen ────────────────────────────────────────────────────
-
-    /** @test */
+    #[Test]
     public function the_screen_refuses_a_user_without_the_capability(): void
     {
         WpState::$userCan = false;
@@ -344,9 +339,8 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
      * The names rendered here are the ones resolveSubmissionRedirect() reads
      * back out of $_POST, so rendering for real is what keeps the two halves
      * of the form honest.
-     *
-     * @test
      */
+    #[Test]
     public function the_screen_renders_the_fields_the_handler_reads_back(): void
     {
         $html = $this->capture(fn () => $this->page->renderAdminPage());
@@ -368,7 +362,7 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
         $this->assertStringContainsString('name="reset_to_defaults"', $html);
     }
 
-    /** @test */
+    #[Test]
     public function the_screen_shows_the_current_values_and_the_defaults(): void
     {
         WpState::$options[self::SETTINGS_OPTION] = [
@@ -386,9 +380,8 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
     /**
      * Both checkboxes render from the saved settings, so a ticked box has to
      * survive a page reload.
-     *
-     * @test
      */
+    #[Test]
     public function the_checkboxes_reflect_what_is_saved(): void
     {
         WpState::$options[self::SETTINGS_OPTION] = [
@@ -405,9 +398,8 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
      * The clear button is only worth offering when there is something to
      * clear, and the count is shown twice — once as a warning, once as a
      * caption.
-     *
-     * @test
      */
+    #[Test]
     public function the_clear_button_and_the_count_appear_only_with_a_populated_blocked_list(): void
     {
         WpState::$options[self::BLOCKLIST_OPTION] = ['one@example.org', 'two@example.org'];
@@ -419,7 +411,7 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
         $this->assertStringContainsString('one@example.org', $html, 'the textarea should hold the list');
     }
 
-    /** @test */
+    #[Test]
     public function the_clear_button_is_hidden_when_the_blocked_list_is_empty(): void
     {
         $html = $this->capture(fn () => $this->page->renderAdminPage());
@@ -428,7 +420,7 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
         $this->assertStringContainsString('Currently 0 email(s)', $html);
     }
 
-    /** @test */
+    #[Test]
     public function a_corrupt_blocked_list_option_renders_as_empty_rather_than_fatalling(): void
     {
         WpState::$options[self::BLOCKLIST_OPTION] = 'not-an-array';
@@ -439,10 +431,10 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
     }
 
     /**
-     * @test
-     * @dataProvider noticeParameters
      * @param array<string, string> $query
      */
+    #[DataProvider('noticeParameters')]
+    #[Test]
     public function the_screen_reports_back_on_the_last_submission(array $query, string $expected): void
     {
         $_GET = $query;
@@ -463,7 +455,7 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
         ];
     }
 
-    /** @test */
+    #[Test]
     public function no_notice_is_shown_on_a_plain_page_load(): void
     {
         $html = $this->capture(fn () => $this->page->renderAdminPage());

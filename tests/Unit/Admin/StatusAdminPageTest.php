@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Admin;
 
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\DataProvider;
+use function Brain\Monkey\Functions\when;
 use BleedingDeacons\WpMocks\Exceptions\JsonResponseException;
 use BleedingDeacons\WpMocks\Exceptions\WpDieException;
 use BleedingDeacons\WpMocks\WpState;
-use Brain\Monkey\Functions;
 use Confur\Admin\StatusAdminPage;
 use Confur\Config\Constants;
 use ReflectionMethod;
@@ -31,9 +34,8 @@ use WP_Screen;
  *
  * The page builds its own repositories, so meetings and answers are seeded
  * into WpState and the real ones read them.
- *
- * @covers \Confur\Admin\StatusAdminPage
  */
+#[CoversClass(\Confur\Admin\StatusAdminPage::class)]
 final class StatusAdminPageTest extends ConfurTestCase
 {
     private const SCREEN = 'questions-for-conference_page_confur-answer-submissions';
@@ -52,12 +54,12 @@ final class StatusAdminPageTest extends ConfurTestCase
 
         $this->page = new StatusAdminPage();
 
-        Functions\when('get_admin_page_title')->justReturn('Status');
-        Functions\when('get_user_meta')->alias(
+        when('get_admin_page_title')->justReturn('Status');
+        when('get_user_meta')->alias(
             fn (int $userId, string $key, bool $single = false): mixed
                 => $this->userMeta[$userId . '|' . $key] ?? ''
         );
-        Functions\when('update_user_meta')->alias(
+        when('update_user_meta')->alias(
             function (int $userId, string $key, mixed $value): bool {
                 $this->userMeta[$userId . '|' . $key] = $value;
 
@@ -162,8 +164,7 @@ final class StatusAdminPageTest extends ConfurTestCase
     }
 
     // ── registration ──────────────────────────────────────────────────
-
-    /** @test */
+    #[Test]
     public function init_registers_the_menu_the_assets_and_all_three_ajax_endpoints(): void
     {
         $this->page->init();
@@ -182,7 +183,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function nothing_is_registered_on_a_front_end_request(): void
     {
         WpState::$isAdmin = false;
@@ -201,9 +202,8 @@ final class StatusAdminPageTest extends ConfurTestCase
      * including Subscribers, which put that data one URL away from anyone
      * with an account; the rest of this class already gated on
      * 'edit_answers'.
-     *
-     * @test
      */
+    #[Test]
     public function the_page_is_added_under_the_confur_menu_for_answer_editors(): void
     {
         $this->page->addAdminMenu();
@@ -214,7 +214,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         $this->assertSame('edit_answers', WpState::$menus[0]['cap']);
     }
 
-    /** @test */
+    #[Test]
     public function the_page_assets_are_only_loaded_on_this_screen(): void
     {
         $this->page->enqueueAdminAssets('edit.php');
@@ -222,7 +222,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         $this->assertSame([], WpState::$enqueued);
     }
 
-    /** @test */
+    #[Test]
     public function the_page_styles_and_scripts_are_loaded_on_this_screen(): void
     {
         $this->page->enqueueAdminAssets(self::SCREEN);
@@ -237,8 +237,7 @@ final class StatusAdminPageTest extends ConfurTestCase
     }
 
     // ── screen options ────────────────────────────────────────────────
-
-    /** @test */
+    #[Test]
     public function the_screen_options_filter_is_registered_when_the_screen_loads(): void
     {
         $this->page->addScreenOptions();
@@ -246,7 +245,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         $this->assertFilterAdded('screen_settings', false, 'the screen options should be registered');
     }
 
-    /** @test */
+    #[Test]
     public function the_screen_options_are_not_added_to_another_screen(): void
     {
         $screen = new WP_Screen(['id' => 'edit-post']);
@@ -254,7 +253,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         $this->assertSame('existing', $this->page->renderScreenOptions('existing', $screen));
     }
 
-    /** @test */
+    #[Test]
     public function the_screen_options_add_a_show_cancellations_toggle(): void
     {
         $screen = new WP_Screen(['id' => self::SCREEN]);
@@ -269,9 +268,8 @@ final class StatusAdminPageTest extends ConfurTestCase
     /**
      * A user who has never touched the toggle should see cancellations, so an
      * unset preference has to read as on rather than as off.
-     *
-     * @test
      */
+    #[Test]
     public function the_toggle_defaults_to_on_for_a_user_who_has_never_set_it(): void
     {
         $html = $this->page->renderScreenOptions('', new WP_Screen(['id' => self::SCREEN]));
@@ -279,7 +277,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         $this->assertStringContainsString('checked="checked"', $html);
     }
 
-    /** @test */
+    #[Test]
     public function the_toggle_reflects_a_saved_preference_of_off(): void
     {
         $this->userMeta['1|confur_show_cancellations'] = 0;
@@ -289,7 +287,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         $this->assertStringNotContainsString('checked="checked"', $html);
     }
 
-    /** @test */
+    #[Test]
     public function saving_the_screen_option_stores_it_against_the_current_user(): void
     {
         $_POST['show_cancellations'] = '1';
@@ -303,7 +301,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function clearing_the_screen_option_stores_zero(): void
     {
         $_POST['show_cancellations'] = '0';
@@ -317,8 +315,7 @@ final class StatusAdminPageTest extends ConfurTestCase
     }
 
     // ── cancelling a duplicate ────────────────────────────────────────
-
-    /** @test */
+    #[Test]
     public function cancelling_refuses_a_request_without_a_nonce(): void
     {
         try {
@@ -330,7 +327,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function cancelling_refuses_a_user_without_the_capability(): void
     {
         $_POST['nonce'] = 'nonce-confur_cancel_duplicate';
@@ -344,7 +341,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function cancelling_refuses_a_missing_or_unusable_answer_id(): void
     {
         $_POST = ['nonce' => 'nonce-confur_cancel_duplicate'];
@@ -360,9 +357,8 @@ final class StatusAdminPageTest extends ConfurTestCase
     /**
      * The id arrives from the browser, so it is re-checked against the post
      * type rather than trusted to point at an answer.
-     *
-     * @test
      */
+    #[Test]
     public function cancelling_refuses_an_id_that_is_not_an_answer(): void
     {
         $this->makePost(700, 'A meeting', 'publish', 'tsml_meeting');
@@ -376,7 +372,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function cancelling_sets_the_status_to_cancelled(): void
     {
         $this->makePost(700, 'An answer', 'publish', Constants::ANSWER_CUSTOM_TYPE);
@@ -394,11 +390,11 @@ final class StatusAdminPageTest extends ConfurTestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function a_cancellation_that_fails_to_write_is_reported_back(): void
     {
         $this->makePost(700, 'An answer', 'publish', Constants::ANSWER_CUSTOM_TYPE);
-        Functions\when('update_field')->justReturn(false);
+        when('update_field')->justReturn(false);
         $_POST = ['nonce' => 'nonce-confur_cancel_duplicate', 'answer_id' => '700'];
 
         try {
@@ -425,7 +421,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         $_POST = ['nonce' => 'nonce-confur_resend_confirmation', 'answer_id' => (string) $postId];
     }
 
-    /** @test */
+    #[Test]
     public function resending_refuses_a_request_without_a_nonce(): void
     {
         try {
@@ -436,7 +432,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function resending_refuses_a_user_without_the_capability(): void
     {
         $_POST['nonce'] = 'nonce-confur_resend_confirmation';
@@ -450,7 +446,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function resending_refuses_a_missing_answer_id(): void
     {
         $_POST = ['nonce' => 'nonce-confur_resend_confirmation'];
@@ -463,7 +459,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function resending_refuses_an_id_that_is_not_an_answer(): void
     {
         $this->makePost(700, 'A meeting', 'publish', 'tsml_meeting');
@@ -477,10 +473,8 @@ final class StatusAdminPageTest extends ConfurTestCase
         }
     }
 
-    /**
-     * @test
-     * @dataProvider unusableEmails
-     */
+    #[DataProvider('unusableEmails')]
+    #[Test]
     public function resending_refuses_an_answer_without_a_usable_email(mixed $email): void
     {
         $this->seedResendable(700);
@@ -507,7 +501,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         ];
     }
 
-    /** @test */
+    #[Test]
     public function resending_refuses_an_answer_with_no_meeting(): void
     {
         $this->seedResendable(700);
@@ -524,7 +518,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function resending_sends_the_confirmation_to_the_registered_address(): void
     {
         $this->seedResendable(700);
@@ -545,9 +539,8 @@ final class StatusAdminPageTest extends ConfurTestCase
     /**
      * A paired registration's email names both meetings, matching what
      * AnswerHandler sends at registration time.
-     *
-     * @test
      */
+    #[Test]
     public function a_paired_registration_names_both_meetings_in_the_email(): void
     {
         $this->seedResendable(700, 500, 501);
@@ -563,7 +556,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         $this->assertStringContainsString('Monday Group and Tuesday Group', WpState::$mail[0]['message']);
     }
 
-    /** @test */
+    #[Test]
     public function a_confirmation_that_fails_to_send_is_reported_back(): void
     {
         $this->seedResendable(700);
@@ -579,8 +572,7 @@ final class StatusAdminPageTest extends ConfurTestCase
     }
 
     // ── joining meetings against registrations ────────────────────────
-
-    /** @test */
+    #[Test]
     public function a_meeting_with_no_registration_is_listed_as_unregistered(): void
     {
         $this->seedMeeting(500, 'Monday Group');
@@ -595,7 +587,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         $this->assertSame('-', $rows[0]['last_saved']);
     }
 
-    /** @test */
+    #[Test]
     public function a_registered_meeting_carries_its_answer_id_status_and_email(): void
     {
         $this->seedMeeting(500, 'Monday Group');
@@ -615,9 +607,8 @@ final class StatusAdminPageTest extends ConfurTestCase
     /**
      * A paired registration is indexed under both meetings so either one finds
      * it, but it must still produce one row rather than two.
-     *
-     * @test
      */
+    #[Test]
     public function a_paired_registration_is_listed_once_across_both_meetings(): void
     {
         $this->seedMeeting(500, 'Monday Group');
@@ -630,7 +621,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         $this->assertSame('Monday Group and Tuesday Group', $rows[0]['name']);
     }
 
-    /** @test */
+    #[Test]
     public function a_cancelled_registration_is_marked_as_such(): void
     {
         $this->seedMeeting(500, 'Monday Group');
@@ -642,7 +633,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         $this->assertSame('cancelled-row', $rows[0]['row_class']);
     }
 
-    /** @test */
+    #[Test]
     public function a_registration_that_has_never_been_saved_reads_as_not_started(): void
     {
         $this->seedMeeting(500, 'Monday Group');
@@ -654,7 +645,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         $this->assertSame('Not Started', $rows[0]['last_saved']);
     }
 
-    /** @test */
+    #[Test]
     public function a_registration_without_an_email_renders_a_dash(): void
     {
         $this->seedMeeting(500, 'Monday Group');
@@ -666,9 +657,8 @@ final class StatusAdminPageTest extends ConfurTestCase
     /**
      * Registered meetings sort above unregistered ones, and each block sorts
      * by name — the screen is read as "who has signed up" first.
-     *
-     * @test
      */
+    #[Test]
     public function registered_meetings_sort_first_then_alphabetically(): void
     {
         $this->seedMeeting(500, 'Zed Group');
@@ -682,7 +672,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function a_meetings_contacts_are_rendered_as_telephone_links(): void
     {
         $this->seedMeeting(500, 'Monday Group');
@@ -700,7 +690,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         $this->assertStringContainsString('Bob', $row['contact2_html']);
     }
 
-    /** @test */
+    #[Test]
     public function a_meeting_without_contacts_renders_dashes(): void
     {
         $this->seedMeeting(500, 'Monday Group');
@@ -712,14 +702,12 @@ final class StatusAdminPageTest extends ConfurTestCase
     }
 
     // ── day names ─────────────────────────────────────────────────────
-
     /**
      * TSML stores the day as a number with Sunday at 0, and the screen has to
      * show a name. A value that is already a name passes straight through.
-     *
-     * @test
-     * @dataProvider days
      */
+    #[DataProvider('days')]
+    #[Test]
     public function the_day_number_is_rendered_as_a_name(mixed $stored, string $expected): void
     {
         $m = new ReflectionMethod(StatusAdminPage::class, 'getDayName');
@@ -746,9 +734,8 @@ final class StatusAdminPageTest extends ConfurTestCase
      * translated; the hard-coded list above is only the fallback for when that
      * global is not available. This is the path that actually runs in
      * production.
-     *
-     * @test
      */
+    #[Test]
     public function the_day_name_is_taken_from_the_locale_when_one_is_available(): void
     {
         $GLOBALS['wp_locale'] = new class {
@@ -768,14 +755,12 @@ final class StatusAdminPageTest extends ConfurTestCase
     }
 
     // ── statistics ────────────────────────────────────────────────────
-
     /**
      * Totals count distinct meetings, but the status counters count
      * registrations — two registrations against one meeting is one meeting and
      * two completions.
-     *
-     * @test
      */
+    #[Test]
     public function totals_count_meetings_while_status_counters_count_registrations(): void
     {
         $stats = $this->stats([
@@ -791,7 +776,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         $this->assertSame(1, $stats['draft']);
     }
 
-    /** @test */
+    #[Test]
     public function every_status_has_its_own_counter(): void
     {
         $stats = $this->stats([
@@ -807,7 +792,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         $this->assertSame(1, $stats['cancelled']);
     }
 
-    /** @test */
+    #[Test]
     public function an_empty_screen_reports_zero_everywhere(): void
     {
         $this->assertSame(
@@ -817,10 +802,8 @@ final class StatusAdminPageTest extends ConfurTestCase
         );
     }
 
-    /**
-     * @test
-     * @dataProvider statusValues
-     */
+    #[DataProvider('statusValues')]
+    #[Test]
     public function each_stored_status_maps_to_a_label_and_a_css_class(
         string $stored,
         string $label,
@@ -846,8 +829,7 @@ final class StatusAdminPageTest extends ConfurTestCase
     }
 
     // ── duplicate detection ───────────────────────────────────────────
-
-    /** @test */
+    #[Test]
     public function two_registrations_for_the_same_meeting_and_email_are_a_duplicate(): void
     {
         $this->seedMeeting(500, 'Monday Group');
@@ -862,7 +844,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         $this->assertStringContainsString('group@example.org', $duplicates[500]['name']);
     }
 
-    /** @test */
+    #[Test]
     public function a_single_registration_is_not_a_duplicate(): void
     {
         $this->seedMeeting(500, 'Monday Group');
@@ -871,7 +853,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         $this->assertSame([], $this->duplicates());
     }
 
-    /** @test */
+    #[Test]
     public function two_different_addresses_on_one_meeting_are_not_duplicates(): void
     {
         $this->seedMeeting(500, 'Monday Group');
@@ -884,9 +866,8 @@ final class StatusAdminPageTest extends ConfurTestCase
     /**
      * The address is normalised before comparison, so a re-registration typed
      * with different capitalisation still counts as the same person.
-     *
-     * @test
      */
+    #[Test]
     public function addresses_are_compared_case_insensitively(): void
     {
         $this->seedMeeting(500, 'Monday Group');
@@ -899,9 +880,8 @@ final class StatusAdminPageTest extends ConfurTestCase
     /**
      * Cancelling a duplicate is how the screen's own button resolves one, so a
      * cancelled registration must stop counting towards the warning.
-     *
-     * @test
      */
+    #[Test]
     public function a_cancelled_registration_no_longer_counts_as_a_duplicate(): void
     {
         $this->seedMeeting(500, 'Monday Group');
@@ -914,9 +894,8 @@ final class StatusAdminPageTest extends ConfurTestCase
     /**
      * A paired registration only collides with another paired one — a group
      * that also signed up alone is a different registration, not a duplicate.
-     *
-     * @test
      */
+    #[Test]
     public function a_paired_registration_does_not_collide_with_a_single_one(): void
     {
         $this->seedMeeting(500, 'Monday Group');
@@ -930,9 +909,8 @@ final class StatusAdminPageTest extends ConfurTestCase
     /**
      * The pair is compared as a sorted set, so registering Monday+Tuesday and
      * then Tuesday+Monday is the same registration twice.
-     *
-     * @test
      */
+    #[Test]
     public function a_pair_registered_in_either_order_is_the_same_pair(): void
     {
         $this->seedMeeting(500, 'Monday Group');
@@ -946,7 +924,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         $this->assertSame(2, $duplicates[500]['count']);
     }
 
-    /** @test */
+    #[Test]
     public function a_registration_missing_its_email_is_skipped(): void
     {
         $this->seedMeeting(500, 'Monday Group');
@@ -957,8 +935,7 @@ final class StatusAdminPageTest extends ConfurTestCase
     }
 
     // ── the screen ────────────────────────────────────────────────────
-
-    /** @test */
+    #[Test]
     public function the_screen_refuses_a_user_without_the_capability(): void
     {
         WpState::$userCan = false;
@@ -967,7 +944,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         $this->page->renderAdminPage();
     }
 
-    /** @test */
+    #[Test]
     public function an_empty_screen_says_so_rather_than_rendering_an_empty_table(): void
     {
         $html = $this->capture(fn () => $this->page->renderAdminPage());
@@ -976,7 +953,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         $this->assertStringNotContainsString('<table class="confur-answers-table">', $html);
     }
 
-    /** @test */
+    #[Test]
     public function the_screen_renders_a_row_per_meeting_with_its_stats(): void
     {
         $this->seedMeeting(500, 'Monday Group');
@@ -993,7 +970,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         $this->assertStringContainsString('resend-confirmation-btn', $html);
     }
 
-    /** @test */
+    #[Test]
     public function the_screen_warns_about_duplicates_and_offers_a_cancel_button(): void
     {
         $this->seedMeeting(500, 'Monday Group');
@@ -1011,9 +988,8 @@ final class StatusAdminPageTest extends ConfurTestCase
     /**
      * A cancelled registration keeps its row but loses the resend button —
      * there is nothing left to confirm.
-     *
-     * @test
      */
+    #[Test]
     public function a_cancelled_row_offers_no_resend_button(): void
     {
         $this->seedMeeting(500, 'Monday Group');
@@ -1025,7 +1001,7 @@ final class StatusAdminPageTest extends ConfurTestCase
         $this->assertStringNotContainsString('resend-confirmation-btn"', $html);
     }
 
-    /** @test */
+    #[Test]
     public function turning_the_screen_option_off_hides_cancelled_registrations(): void
     {
         $this->userMeta['1|confur_show_cancellations'] = 0;
@@ -1043,9 +1019,8 @@ final class StatusAdminPageTest extends ConfurTestCase
     /**
      * Hiding cancellations is a display filter, not a data filter — the
      * counters still report them so the totals stay honest.
-     *
-     * @test
      */
+    #[Test]
     public function hiding_cancellations_still_counts_them_in_the_statistics(): void
     {
         $this->userMeta['1|confur_show_cancellations'] = 0;

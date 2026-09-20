@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Admin;
 
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\DataProvider;
+use function Brain\Monkey\Functions\when;
 use BleedingDeacons\WpMocks\WpState;
-use Brain\Monkey\Functions;
 use Confur\Admin\AnswerAdmin;
 use Confur\Config\Constants;
 use Tests\ConfurTestCase;
@@ -23,9 +26,8 @@ use WP_Query;
  * captured with ob_start()/ob_get_clean() and asserted on as HTML; the hook
  * registration in the constructor is asserted against Brain Monkey's hook
  * store via assertActionAdded()/assertFilterAdded().
- *
- * @covers \Confur\Admin\AnswerAdmin
  */
+#[CoversClass(\Confur\Admin\AnswerAdmin::class)]
 final class AnswerAdminTest extends ConfurTestCase
 {
     private const COLUMNS_HOOK  = 'manage_answer_posts_columns';
@@ -61,8 +63,7 @@ final class AnswerAdminTest extends ConfurTestCase
     }
 
     // ── registration ──────────────────────────────────────────────────
-
-    /** @test */
+    #[Test]
     public function the_constructor_registers_every_list_table_hook(): void
     {
         new AnswerAdmin();
@@ -80,9 +81,8 @@ final class AnswerAdminTest extends ConfurTestCase
     /**
      * The whole class is admin-only, and says so by bailing out of its own
      * constructor rather than by being conditionally instantiated.
-     *
-     * @test
      */
+    #[Test]
     public function nothing_is_registered_on_a_front_end_request(): void
     {
         WpState::$isAdmin = false;
@@ -94,13 +94,11 @@ final class AnswerAdminTest extends ConfurTestCase
     }
 
     // ── columns ───────────────────────────────────────────────────────
-
     /**
      * The three columns are inserted immediately after the title rather than
      * appended, so they land before the date column WordPress supplies.
-     *
-     * @test
      */
+    #[Test]
     public function the_custom_columns_are_inserted_directly_after_the_title(): void
     {
         $columns = (new AnswerAdmin())->addCustomColumns([
@@ -116,7 +114,7 @@ final class AnswerAdminTest extends ConfurTestCase
         $this->assertSame('Date', $columns['date'], 'the original columns should be preserved');
     }
 
-    /** @test */
+    #[Test]
     public function a_column_set_without_a_title_is_returned_untouched(): void
     {
         $original = ['cb' => 'x', 'date' => 'Date'];
@@ -124,7 +122,7 @@ final class AnswerAdminTest extends ConfurTestCase
         $this->assertSame($original, (new AnswerAdmin())->addCustomColumns($original));
     }
 
-    /** @test */
+    #[Test]
     public function the_custom_columns_are_marked_sortable(): void
     {
         $columns = (new AnswerAdmin())->makeColumnsSortable(['title' => 'title']);
@@ -137,15 +135,13 @@ final class AnswerAdminTest extends ConfurTestCase
     }
 
     // ── column contents ───────────────────────────────────────────────
-
     /**
      * The badge class is what colours the cell, and several spellings of each
      * status reach it — the ACF constant, the human form and the lowercase
      * form all have to land on the same class.
-     *
-     * @test
-     * @dataProvider statuses
      */
+    #[DataProvider('statuses')]
+    #[Test]
     public function the_status_cell_renders_a_badge_for_each_spelling(mixed $stored, string $class, string $label): void
     {
         WpState::$fields['7|' . Constants::STATUS_FIELD] = $stored;
@@ -173,9 +169,8 @@ final class AnswerAdminTest extends ConfurTestCase
     /**
      * An answer that has never been opened has no status field at all, and
      * reads as "Not Started" rather than as a blank cell.
-     *
-     * @test
      */
+    #[Test]
     public function a_missing_status_reads_as_not_started(): void
     {
         $html = $this->capture(fn () => (new AnswerAdmin())->populateCustomColumns('answer_status', 7));
@@ -184,7 +179,7 @@ final class AnswerAdminTest extends ConfurTestCase
         $this->assertStringContainsString('Not Started', $html);
     }
 
-    /** @test */
+    #[Test]
     public function the_email_cell_is_a_mailto_link(): void
     {
         WpState::$fields['8|' . Constants::EMAIL_FIELD] = 'group@example.org';
@@ -194,7 +189,7 @@ final class AnswerAdminTest extends ConfurTestCase
         $this->assertSame('<a href="mailto:group@example.org">group@example.org</a>', $html);
     }
 
-    /** @test */
+    #[Test]
     public function an_absent_email_renders_a_dash(): void
     {
         $this->assertSame(
@@ -203,7 +198,7 @@ final class AnswerAdminTest extends ConfurTestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function the_updated_cell_shows_the_stored_timestamp(): void
     {
         WpState::$fields['9|' . Constants::UPDATED_FIELD] = '2026-07-24 11:00:00';
@@ -214,7 +209,7 @@ final class AnswerAdminTest extends ConfurTestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function an_absent_updated_date_renders_a_dash(): void
     {
         $this->assertSame(
@@ -226,9 +221,8 @@ final class AnswerAdminTest extends ConfurTestCase
     /**
      * The callback is hooked for every column in the table, so it has to stay
      * silent on the ones it does not own.
-     *
-     * @test
      */
+    #[Test]
     public function a_column_the_plugin_does_not_own_renders_nothing(): void
     {
         $this->assertSame(
@@ -248,10 +242,9 @@ final class AnswerAdminTest extends ConfurTestCase
      * pre_get_posts fires for every query on the page, so the handler has to
      * establish it is looking at the answers list table before touching
      * anything.
-     *
-     * @test
-     * @dataProvider sortableColumns
      */
+    #[DataProvider('sortableColumns')]
+    #[Test]
     public function sorting_by_a_custom_column_orders_by_its_meta_value(string $orderby, string $metaKey): void
     {
         $query = (new AnswerAdmin())->handleCustomColumnSorting($this->sortQuery($orderby));
@@ -270,7 +263,7 @@ final class AnswerAdminTest extends ConfurTestCase
         ];
     }
 
-    /** @test */
+    #[Test]
     public function sorting_by_a_built_in_column_is_left_alone(): void
     {
         $query = (new AnswerAdmin())->handleCustomColumnSorting($this->sortQuery('title'));
@@ -279,7 +272,7 @@ final class AnswerAdminTest extends ConfurTestCase
         $this->assertSame('title', $query->get('orderby'));
     }
 
-    /** @test */
+    #[Test]
     public function another_post_types_query_is_left_alone(): void
     {
         $query = (new AnswerAdmin())->handleCustomColumnSorting(
@@ -290,7 +283,7 @@ final class AnswerAdminTest extends ConfurTestCase
         $this->assertSame('answer_status', $query->get('orderby'), 'orderby should be untouched');
     }
 
-    /** @test */
+    #[Test]
     public function a_secondary_query_is_left_alone(): void
     {
         $query = $this->sortQuery('answer_status');
@@ -299,7 +292,7 @@ final class AnswerAdminTest extends ConfurTestCase
         $this->assertSame('', (new AnswerAdmin())->handleCustomColumnSorting($query)->get('meta_key'));
     }
 
-    /** @test */
+    #[Test]
     public function a_front_end_query_is_left_alone(): void
     {
         $admin = new AnswerAdmin();
@@ -312,8 +305,7 @@ final class AnswerAdminTest extends ConfurTestCase
     }
 
     // ── bulk actions ──────────────────────────────────────────────────
-
-    /** @test */
+    #[Test]
     public function the_cancel_bulk_action_is_offered_alongside_the_built_in_ones(): void
     {
         $actions = (new AnswerAdmin())->addBulkActions(['trash' => 'Move to Bin']);
@@ -325,9 +317,8 @@ final class AnswerAdminTest extends ConfurTestCase
      * The count travels back to the notice through the redirect URL, so it has
      * to be the number of answers actually changed rather than the number
      * selected.
-     *
-     * @test
      */
+    #[Test]
     public function cancelling_in_bulk_updates_each_answer_and_reports_the_count(): void
     {
         $redirect = (new AnswerAdmin())->handleBulkActions('https://example.test/edit.php', 'mark_cancelled', [11, 12]);
@@ -337,17 +328,17 @@ final class AnswerAdminTest extends ConfurTestCase
         $this->assertStringContainsString('bulk_cancelled=2', $redirect);
     }
 
-    /** @test */
+    #[Test]
     public function a_failed_update_is_not_counted(): void
     {
-        Functions\when('update_field')->justReturn(false);
+        when('update_field')->justReturn(false);
 
         $redirect = (new AnswerAdmin())->handleBulkActions('https://example.test/edit.php', 'mark_cancelled', [11, 12]);
 
         $this->assertStringContainsString('bulk_cancelled=0', $redirect);
     }
 
-    /** @test */
+    #[Test]
     public function no_answers_selected_still_produces_a_zero_count(): void
     {
         $redirect = (new AnswerAdmin())->handleBulkActions('https://example.test/edit.php', 'mark_cancelled', []);
@@ -358,9 +349,8 @@ final class AnswerAdminTest extends ConfurTestCase
     /**
      * The filter runs for every bulk action, including the ones core owns, so
      * an unrecognised action must hand the redirect straight back untouched.
-     *
-     * @test
      */
+    #[Test]
     public function another_bulk_action_passes_its_redirect_through_unchanged(): void
     {
         $redirect = (new AnswerAdmin())->handleBulkActions('https://example.test/edit.php', 'trash', [11]);
@@ -370,17 +360,14 @@ final class AnswerAdminTest extends ConfurTestCase
     }
 
     // ── the notice ────────────────────────────────────────────────────
-
-    /** @test */
+    #[Test]
     public function no_notice_is_shown_on_an_ordinary_page_load(): void
     {
         $this->assertSame('', $this->capture(fn () => (new AnswerAdmin())->displayBulkActionNotice()));
     }
 
-    /**
-     * @test
-     * @dataProvider noticeCounts
-     */
+    #[DataProvider('noticeCounts')]
+    #[Test]
     public function the_notice_agrees_with_itself_about_singular_and_plural(string $raw, string $expected): void
     {
         $_REQUEST['bulk_cancelled'] = $raw;
@@ -402,8 +389,7 @@ final class AnswerAdminTest extends ConfurTestCase
     }
 
     // ── column styles ─────────────────────────────────────────────────
-
-    /** @test */
+    #[Test]
     public function the_column_styles_are_printed_on_the_answers_screen(): void
     {
         WpState::$screen = (object) ['post_type' => Constants::ANSWER_CUSTOM_TYPE];
@@ -414,7 +400,7 @@ final class AnswerAdminTest extends ConfurTestCase
         $this->assertStringContainsString('.column-answer_updated', $html);
     }
 
-    /** @test */
+    #[Test]
     public function the_column_styles_are_not_printed_on_another_post_types_screen(): void
     {
         WpState::$screen = (object) ['post_type' => 'post'];
@@ -425,9 +411,8 @@ final class AnswerAdminTest extends ConfurTestCase
     /**
      * admin_head fires on screens where get_current_screen() has nothing to
      * report — the styles must not fatal there.
-     *
-     * @test
      */
+    #[Test]
     public function the_column_styles_are_not_printed_without_a_screen(): void
     {
         WpState::$screen = null;

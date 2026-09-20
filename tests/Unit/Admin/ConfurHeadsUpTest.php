@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Admin;
 
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\Test;
 use BleedingDeacons\WpMocks\Exceptions\JsonResponseException;
 use BleedingDeacons\WpMocks\WpState;
 use Confur\Admin\ConfurHeadsUp;
@@ -25,9 +27,8 @@ use Tests\ConfurTestCase;
  * sorts. It is private and its public callers only echo, so it is driven
  * through reflection and asserted on directly; the rendering is checked
  * separately by capturing the echoed markup.
- *
- * @covers \Confur\Admin\ConfurHeadsUp
  */
+#[CoversClass(\Confur\Admin\ConfurHeadsUp::class)]
 final class ConfurHeadsUpTest extends ConfurTestCase
 {
     private ConfurHeadsUp $widget;
@@ -94,8 +95,7 @@ final class ConfurHeadsUpTest extends ConfurTestCase
     }
 
     // ── registration ──────────────────────────────────────────────────
-
-    /** @test */
+    #[Test]
     public function init_registers_the_widget_and_its_refresh_endpoint(): void
     {
         $this->widget->init();
@@ -104,7 +104,7 @@ final class ConfurHeadsUpTest extends ConfurTestCase
         $this->assertActionAdded('wp_ajax_confur_refresh_headsup', false, 'the refresh endpoint should be registered');
     }
 
-    /** @test */
+    #[Test]
     public function nothing_is_registered_on_a_front_end_request(): void
     {
         WpState::$isAdmin = false;
@@ -115,7 +115,7 @@ final class ConfurHeadsUpTest extends ConfurTestCase
         $this->assertActionNotAdded('wp_ajax_confur_refresh_headsup');
     }
 
-    /** @test */
+    #[Test]
     public function the_widget_is_added_to_the_dashboard_under_its_own_id(): void
     {
         $this->widget->registerWidget();
@@ -128,8 +128,7 @@ final class ConfurHeadsUpTest extends ConfurTestCase
     }
 
     // ── the 24-hour window ────────────────────────────────────────────
-
-    /** @test */
+    #[Test]
     public function an_answer_updated_inside_the_window_is_reported(): void
     {
         $this->makePost(500, 'Monday Group');
@@ -146,9 +145,8 @@ final class ConfurHeadsUpTest extends ConfurTestCase
     /**
      * Anything older than 24 hours is the whole point of the widget's filter —
      * the dashboard is meant to show what moved since yesterday.
-     *
-     * @test
      */
+    #[Test]
     public function an_answer_updated_before_the_window_is_ignored(): void
     {
         $this->makePost(500, 'Monday Group');
@@ -157,7 +155,7 @@ final class ConfurHeadsUpTest extends ConfurTestCase
         $this->assertSame([], $this->recentUpdates());
     }
 
-    /** @test */
+    #[Test]
     public function an_unparseable_timestamp_is_ignored_rather_than_treated_as_now(): void
     {
         $this->makePost(500, 'Monday Group');
@@ -170,9 +168,8 @@ final class ConfurHeadsUpTest extends ConfurTestCase
      * Only fields shaped c<committee>_a<question> are committee answers.
      * Anything else with a c prefix reaches the widget through the repository
      * and has to fall out here.
-     *
-     * @test
      */
+    #[Test]
     public function a_field_that_is_not_a_committee_answer_is_ignored(): void
     {
         $this->makePost(500, 'Monday Group');
@@ -188,13 +185,11 @@ final class ConfurHeadsUpTest extends ConfurTestCase
     }
 
     // ── grouping and sorting ──────────────────────────────────────────
-
     /**
      * Committees and questions are keyed by integer and sorted numerically, so
      * committee 10 comes after committee 2 rather than between 1 and 2.
-     *
-     * @test
      */
+    #[Test]
     public function committees_and_questions_are_ordered_numerically(): void
     {
         $this->makePost(500, 'Monday Group');
@@ -213,9 +208,8 @@ final class ConfurHeadsUpTest extends ConfurTestCase
     /**
      * Within a question the most recently updated group is listed first — the
      * widget is read top-down as "what just happened".
-     *
-     * @test
      */
+    #[Test]
     public function groups_within_a_question_are_listed_most_recent_first(): void
     {
         $this->makePost(500, 'Earlier Group');
@@ -229,8 +223,7 @@ final class ConfurHeadsUpTest extends ConfurTestCase
     }
 
     // ── rendering ─────────────────────────────────────────────────────
-
-    /** @test */
+    #[Test]
     public function a_quiet_24_hours_renders_an_explicit_empty_state(): void
     {
         $html = $this->capture(fn () => $this->widget->renderWidget());
@@ -240,7 +233,7 @@ final class ConfurHeadsUpTest extends ConfurTestCase
         $this->assertStringNotContainsString('<ul class="confur-updates-list">', $html);
     }
 
-    /** @test */
+    #[Test]
     public function the_widget_renders_its_styles_script_and_refresh_control(): void
     {
         $html = $this->capture(fn () => $this->widget->renderWidget());
@@ -251,7 +244,7 @@ final class ConfurHeadsUpTest extends ConfurTestCase
         $this->assertStringContainsString('id="confur-update-time"', $html);
     }
 
-    /** @test */
+    #[Test]
     public function each_group_is_rendered_as_a_link_under_its_committee_and_question(): void
     {
         $this->makePost(500, 'Monday Group');
@@ -268,8 +261,7 @@ final class ConfurHeadsUpTest extends ConfurTestCase
     }
 
     // ── the AJAX refresh ──────────────────────────────────────────────
-
-    /** @test */
+    #[Test]
     public function the_refresh_endpoint_refuses_a_request_without_a_nonce(): void
     {
         try {
@@ -281,7 +273,7 @@ final class ConfurHeadsUpTest extends ConfurTestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function the_refresh_endpoint_refuses_a_stale_nonce(): void
     {
         $_POST['nonce'] = 'nonce-something-else';
@@ -293,9 +285,8 @@ final class ConfurHeadsUpTest extends ConfurTestCase
     /**
      * The refresh returns the same partial the widget rendered inline, so the
      * script can swap innerHTML without reloading the dashboard.
-     *
-     * @test
      */
+    #[Test]
     public function the_refresh_endpoint_returns_the_rendered_content_and_a_timestamp(): void
     {
         $_POST['nonce'] = 'nonce-confur_headsup_refresh';
@@ -316,9 +307,8 @@ final class ConfurHeadsUpTest extends ConfurTestCase
      * The refresh must not re-emit the widget's <style> and <script> blocks —
      * they are already on the page, and the response replaces the content
      * div only.
-     *
-     * @test
      */
+    #[Test]
     public function the_refresh_returns_content_without_the_wrapper_styles_and_script(): void
     {
         $_POST['nonce'] = 'nonce-confur_headsup_refresh';

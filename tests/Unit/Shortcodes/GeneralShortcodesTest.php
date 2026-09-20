@@ -2,13 +2,12 @@
 
 namespace Tests\Unit\Shortcodes;
 
-use Brain\Monkey\Functions;
+use PHPUnit\Framework\Attributes\CoversClass;
+use function Brain\Monkey\Functions\when;
 use Confur\Shortcodes\GeneralShortcodes;
 use Tests\ConfurTestCase;
 
-/**
- * @covers \Confur\Shortcodes\GeneralShortcodes
- */
+#[CoversClass(\Confur\Shortcodes\GeneralShortcodes::class)]
 class GeneralShortcodesTest extends ConfurTestCase
 {
     private GeneralShortcodes $sc;
@@ -108,7 +107,7 @@ class GeneralShortcodesTest extends ConfurTestCase
         };
 
         foreach (['esc_attr', 'esc_url', 'esc_html'] as $fn) {
-            Functions\when($fn)->alias($strict);
+            when($fn)->alias($strict);
         }
     }
 

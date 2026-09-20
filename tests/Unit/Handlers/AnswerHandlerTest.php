@@ -2,16 +2,15 @@
 
 namespace Tests\Unit\Handlers;
 
+use PHPUnit\Framework\Attributes\CoversClass;
+use function Brain\Monkey\Functions\when;
 use BleedingDeacons\WpMocks\Exceptions\JsonResponseException;
 use Confur\Config\Constants;
 use Confur\Handlers\AnswerHandler;
 use BleedingDeacons\WpMocks\WpState;
-use Brain\Monkey\Functions;
 use Tests\ConfurTestCase;
 
-/**
- * @covers \Confur\Handlers\AnswerHandler
- */
+#[CoversClass(\Confur\Handlers\AnswerHandler::class)]
 class AnswerHandlerTest extends ConfurTestCase
 {
     private AnswerHandler $handler;
@@ -70,7 +69,7 @@ class AnswerHandlerTest extends ConfurTestCase
     public function testSubmissionRejectsUnresolvableReferer(): void
     {
         $_POST['submit_answers'] = Constants::STATUS_DRAFT;
-        Functions\when('url_to_postid')->justReturn(0);
+        when('url_to_postid')->justReturn(0);
         $r = $this->runSubmission();
         $this->assertFalse($r->success);
     }
@@ -78,7 +77,7 @@ class AnswerHandlerTest extends ConfurTestCase
     public function testSubmissionRejectsMissingPost(): void
     {
         $_POST['submit_answers'] = Constants::STATUS_DRAFT;
-        Functions\when('url_to_postid')->justReturn(50);
+        when('url_to_postid')->justReturn(50);
         $this->statuses[50] = false;
         $r = $this->runSubmission();
         $this->assertFalse($r->success);
@@ -88,7 +87,7 @@ class AnswerHandlerTest extends ConfurTestCase
     {
         $_POST['submit_answers'] = Constants::STATUS_DRAFT;
         $_POST['c1_a1'] = 'My answer';
-        Functions\when('url_to_postid')->justReturn(60);
+        when('url_to_postid')->justReturn(60);
         $this->statuses[60] = 'publish';
         $this->fields[60] = [Constants::EMAIL_FIELD => 'a@b.com'];
 
@@ -102,7 +101,7 @@ class AnswerHandlerTest extends ConfurTestCase
     public function testSubmissionSavesCompleteAndSendsEmail(): void
     {
         $_POST['submit_answers'] = Constants::STATUS_COMPLETED;
-        Functions\when('url_to_postid')->justReturn(61);
+        when('url_to_postid')->justReturn(61);
         $this->statuses[61] = 'publish';
         $this->fields[61] = [Constants::EMAIL_FIELD => 'a@b.com'];
         $this->titles[61] = 'Answers from Group';
@@ -116,7 +115,7 @@ class AnswerHandlerTest extends ConfurTestCase
     public function testSubmissionInvalidStatusDefaultsToDraft(): void
     {
         $_POST['submit_answers'] = 'Bogus'; // not a valid status
-        Functions\when('url_to_postid')->justReturn(62);
+        when('url_to_postid')->justReturn(62);
         $this->statuses[62] = 'publish';
         $this->fields[62] = [Constants::EMAIL_FIELD => 'a@b.com'];
 
@@ -129,11 +128,11 @@ class AnswerHandlerTest extends ConfurTestCase
     {
         $_POST['submit_answers'] = Constants::STATUS_DRAFT;
         $_POST['c1_a1'] = 'A new value';
-        Functions\when('url_to_postid')->justReturn(63);
+        when('url_to_postid')->justReturn(63);
         $this->statuses[63] = 'publish';
         $this->fields[63] = [Constants::EMAIL_FIELD => 'a@b.com'];
         // update_field returns false → the "failed to update field" branch runs.
-        Functions\when('update_field')->justReturn(false);
+        when('update_field')->justReturn(false);
 
         $r = $this->runSubmission();
         $this->assertTrue($r->success);

@@ -2,13 +2,12 @@
 
 namespace Tests\Unit\Repositories;
 
+use PHPUnit\Framework\Attributes\CoversClass;
 use Confur\Repositories\MeetingRepository;
 use BleedingDeacons\WpMocks\WpState;
 use Tests\ConfurTestCase;
 
-/**
- * @covers \Confur\Repositories\MeetingRepository
- */
+#[CoversClass(\Confur\Repositories\MeetingRepository::class)]
 class MeetingRepositoryTest extends ConfurTestCase
 {
     private MeetingRepository $repo;
