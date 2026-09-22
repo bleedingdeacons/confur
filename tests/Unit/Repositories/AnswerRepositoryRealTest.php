@@ -2,33 +2,25 @@
 
 namespace Tests\Unit\Repositories;
 
-use PHPUnit\Framework\Attributes\CoversClass;
+use BleedingDeacons\WpMocks\WpState;
 use Confur\Config\Constants;
 use Confur\Repositories\AnswerRepository;
-use BleedingDeacons\WpMocks\WpState;
-use Tests\ConfurTestCase;
 
-/**
+/*
  * Exercises the real AnswerRepository methods (getValue, getAnswerStatus,
  * getAllAnswers, getRegisteredGroups, findDuplicate, getGroupAnswers) against
  * the controllable ACF/post stubs — as opposed to AnswerRepositoryTest, which
  * drives a re-implemented findDuplicate.
  */
-#[CoversClass(\Confur\Repositories\AnswerRepository::class)]
-class AnswerRepositoryRealTest extends ConfurTestCase
-{
-    private AnswerRepository $repo;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        WpState::$queryPosts = [];
-        $this->repo = new AnswerRepository();
-    }
+covers(AnswerRepository::class);
 
-    /** Register an answer post plus its ACF fields. */
-    private function answer(int $id, array $fields, string $date = '2024-01-01 00:00:00'): void
-    {
+beforeEach(function () {
+    WpState::$queryPosts = [];
+    $this->repo = new AnswerRepository();
+
+    // Register an answer post plus its ACF fields.
+    $this->answer = function (int $id, array $fields, string $date = '2024-01-01 00:00:00'): void {
         // Seed both: get_posts() reads $queryPosts, get_post() reads $posts,
         // and findDuplicate() goes through each in turn.
         $post = (object) [
@@ -45,180 +37,164 @@ class AnswerRepositoryRealTest extends ConfurTestCase
         WpState::$postStatuses[$id] = 'publish';
 
         $this->fields[$id] = $fields;
-    }
+    };
+});
 
-    public function testGetValueSanitises(): void
-    {
-        update_field('c1_a1', '  <b>hi</b>  ', 0);
-        $this->assertSame('hi', $this->repo->getValue('c1_a1'));
-    }
+it('sanitises in getValue', function () {
+    update_field('c1_a1', '  <b>hi</b>  ', 0);
+    expect($this->repo->getValue('c1_a1'))->toBe('hi');
+});
 
-    public function testGetAnswerStatusReturnsExisting(): void
-    {
-        $this->fields[5] = [Constants::STATUS_FIELD => 'Complete', Constants::UPDATED_FIELD => '2024-05-01'];
-        $status = $this->repo->getAnswerStatus(5);
-        $this->assertSame('Complete', $status['state']);
-        $this->assertSame('2024-05-01', $status['updated']);
-    }
+it('returns the existing status from getAnswerStatus', function () {
+    $this->fields[5] = [Constants::STATUS_FIELD => 'Complete', Constants::UPDATED_FIELD => '2024-05-01'];
+    $status = $this->repo->getAnswerStatus(5);
+    expect($status['state'])->toBe('Complete')
+        ->and($status['updated'])->toBe('2024-05-01');
+});
 
-    public function testGetAnswerStatusInitialisesWhenEmpty(): void
-    {
-        $this->fields[6] = [];
-        $status = $this->repo->getAnswerStatus(6);
-        // update_field writes the draft status, which get_field then reads back.
-        $this->assertSame(Constants::STATUS_DRAFT, $status['state']);
-        $this->assertSame('N/A', $status['updated']);
-    }
+it('initialises the status in getAnswerStatus when empty', function () {
+    $this->fields[6] = [];
+    $status = $this->repo->getAnswerStatus(6);
+    // update_field writes the draft status, which get_field then reads back.
+    expect($status['state'])->toBe(Constants::STATUS_DRAFT)
+        ->and($status['updated'])->toBe('N/A');
+});
 
-    public function testGetAllAnswersReturnsIds(): void
-    {
-        $this->answer(1, []);
-        $this->answer(2, []);
-        $this->assertSame([1, 2], array_values($this->repo->getAllAnswers()));
-    }
+it('returns ids from getAllAnswers', function () {
+    ($this->answer)(1, []);
+    ($this->answer)(2, []);
+    expect(array_values($this->repo->getAllAnswers()))->toBe([1, 2]);
+});
 
-    public function testGetRegisteredGroupsIncludesOnlyPostsWithAMeeting(): void
-    {
-        $this->answer(1, [Constants::MEETING_FIELD => 100, Constants::EMAIL_FIELD => 'a@b.com']);
-        $this->answer(2, [Constants::MEETING_FIELD => null, Constants::EMAIL_FIELD => 'c@d.com']);
+it('includes only posts with a meeting in getRegisteredGroups', function () {
+    ($this->answer)(1, [Constants::MEETING_FIELD => 100, Constants::EMAIL_FIELD => 'a@b.com']);
+    ($this->answer)(2, [Constants::MEETING_FIELD => null, Constants::EMAIL_FIELD => 'c@d.com']);
 
-        $groups = $this->repo->getRegisteredGroups();
-        $this->assertCount(1, $groups);
-        $this->assertSame(100, $groups[0]['meetingId']);
-        $this->assertSame('a@b.com', $groups[0]['email']);
-    }
+    $groups = $this->repo->getRegisteredGroups();
+    expect($groups)->toHaveCount(1)
+        ->and($groups[0]['meetingId'])->toBe(100)
+        ->and($groups[0]['email'])->toBe('a@b.com');
+});
 
-    public function testGetRegisteredGroupsNormalisesVariedMeetingShapes(): void
-    {
-        $this->answer(1, [Constants::MEETING_FIELD => (object) ['ID' => 10], Constants::EMAIL_FIELD => 'a@b.com']);
-        $this->answer(2, [Constants::MEETING_FIELD => ['ID' => 20], Constants::EMAIL_FIELD => 'b@b.com']);
-        $this->answer(3, [Constants::MEETING_FIELD => 'not-an-id', Constants::EMAIL_FIELD => 'c@b.com']);
+it('normalises varied meeting shapes in getRegisteredGroups', function () {
+    ($this->answer)(1, [Constants::MEETING_FIELD => (object) ['ID' => 10], Constants::EMAIL_FIELD => 'a@b.com']);
+    ($this->answer)(2, [Constants::MEETING_FIELD => ['ID' => 20], Constants::EMAIL_FIELD => 'b@b.com']);
+    ($this->answer)(3, [Constants::MEETING_FIELD => 'not-an-id', Constants::EMAIL_FIELD => 'c@b.com']);
 
-        $groups = $this->repo->getRegisteredGroups();
+    $groups = $this->repo->getRegisteredGroups();
 
-        // Object and array meetings normalise to their ID; the bogus string
-        // yields null and is dropped.
-        $ids = array_column($groups, 'meetingId');
-        $this->assertContains(10, $ids);
-        $this->assertContains(20, $ids);
-        $this->assertCount(2, $groups);
-    }
+    // Object and array meetings normalise to their ID; the bogus string
+    // yields null and is dropped.
+    $ids = array_column($groups, 'meetingId');
+    expect($ids)->toContain(10, 20)
+        ->and($groups)->toHaveCount(2);
+});
 
-    // ── findDuplicate (real) ─────────────────────────────────────────────
+// ── findDuplicate (real) ─────────────────────────────────────────────
+describe('findDuplicate (real)', function () {
+    it('returns null for empty inputs', function () {
+        expect($this->repo->findDuplicate(null, null, 'x@y.com'))->toBeNull()
+            ->and($this->repo->findDuplicate(100, null, ''))->toBeNull();
+    });
 
-    public function testFindDuplicateReturnsNullForEmptyInputs(): void
-    {
-        $this->assertNull($this->repo->findDuplicate(null, null, 'x@y.com'));
-        $this->assertNull($this->repo->findDuplicate(100, null, ''));
-    }
-
-    public function testFindDuplicateMatchesSingleRegistration(): void
-    {
-        $this->answer(1, [
+    it('matches a single registration', function () {
+        ($this->answer)(1, [
             Constants::MEETING_FIELD => 100,
             Constants::EMAIL_FIELD => 'TEST@example.com',
             Constants::STATUS_FIELD => Constants::STATUS_DRAFT,
         ]);
 
         $result = $this->repo->findDuplicate(100, null, 'test@example.com', 999);
-        $this->assertNotNull($result);
-        $this->assertSame(1, $result['post_id']);
-        $this->assertSame('post-1', $result['slug']);
-    }
+        expect($result)->not->toBeNull()
+            ->and($result['post_id'])->toBe(1)
+            ->and($result['slug'])->toBe('post-1');
+    });
 
-    public function testFindDuplicateSkipsCancelled(): void
-    {
-        $this->answer(1, [
+    it('skips cancelled registrations', function () {
+        ($this->answer)(1, [
             Constants::MEETING_FIELD => 100,
             Constants::EMAIL_FIELD => 'test@example.com',
             Constants::STATUS_FIELD => Constants::STATUS_CANCELLED,
         ]);
-        $this->assertNull($this->repo->findDuplicate(100, null, 'test@example.com', 999));
-    }
+        expect($this->repo->findDuplicate(100, null, 'test@example.com', 999))->toBeNull();
+    });
 
-    public function testFindDuplicateMatchesPairedInSwappedOrder(): void
-    {
-        $this->answer(1, [
+    it('matches a paired registration in swapped order', function () {
+        ($this->answer)(1, [
             Constants::MEETING_FIELD => 200,
             Constants::FELLOW_MEETING_FIELD => 100,
             Constants::EMAIL_FIELD => 'test@example.com',
             Constants::STATUS_FIELD => Constants::STATUS_DRAFT,
         ]);
         $result = $this->repo->findDuplicate(100, 200, 'test@example.com', 999);
-        $this->assertSame(1, $result['post_id']);
-    }
+        expect($result['post_id'])->toBe(1);
+    });
 
-    public function testFindDuplicateDoesNotMatchPairedWithSingle(): void
-    {
-        $this->answer(1, [
+    it('does not match a paired registration with a single one', function () {
+        ($this->answer)(1, [
             Constants::MEETING_FIELD => 100,
             Constants::FELLOW_MEETING_FIELD => null,
             Constants::EMAIL_FIELD => 'test@example.com',
             Constants::STATUS_FIELD => Constants::STATUS_DRAFT,
         ]);
-        $this->assertNull($this->repo->findDuplicate(100, 200, 'test@example.com', 999));
-    }
+        expect($this->repo->findDuplicate(100, 200, 'test@example.com', 999))->toBeNull();
+    });
 
-    public function testFindDuplicateReturnsLatestByUpdated(): void
-    {
-        $this->answer(1, [
+    it('returns the latest by updated', function () {
+        ($this->answer)(1, [
             Constants::MEETING_FIELD => 100, Constants::EMAIL_FIELD => 'test@example.com',
             Constants::STATUS_FIELD => Constants::STATUS_DRAFT, Constants::UPDATED_FIELD => '2024-01-01 10:00:00',
         ]);
-        $this->answer(2, [
+        ($this->answer)(2, [
             Constants::MEETING_FIELD => 100, Constants::EMAIL_FIELD => 'test@example.com',
             Constants::STATUS_FIELD => Constants::STATUS_DRAFT, Constants::UPDATED_FIELD => '2024-06-01 10:00:00',
         ]);
         $result = $this->repo->findDuplicate(100, null, 'test@example.com', 999);
-        $this->assertSame(2, $result['post_id']);
-    }
+        expect($result['post_id'])->toBe(2);
+    });
 
-    public function testFindDuplicateFallsBackToPostDateWhenNoUpdated(): void
-    {
-        $this->answer(1, [
+    it('falls back to the post date when there is no updated', function () {
+        ($this->answer)(1, [
             Constants::MEETING_FIELD => 100, Constants::EMAIL_FIELD => 'test@example.com',
             Constants::STATUS_FIELD => Constants::STATUS_DRAFT,
         ], '2024-01-01 09:00:00');
-        $this->answer(2, [
+        ($this->answer)(2, [
             Constants::MEETING_FIELD => 100, Constants::EMAIL_FIELD => 'test@example.com',
             Constants::STATUS_FIELD => Constants::STATUS_DRAFT,
         ], '2024-09-01 09:00:00');
         $result = $this->repo->findDuplicate(100, null, 'test@example.com', 999);
-        $this->assertSame(2, $result['post_id']);
-    }
+        expect($result['post_id'])->toBe(2);
+    });
 
-    public function testFindDuplicateSkipsDifferentEmail(): void
-    {
-        $this->answer(1, [
+    it('skips a different email', function () {
+        ($this->answer)(1, [
             Constants::MEETING_FIELD => 100, Constants::EMAIL_FIELD => 'other@example.com',
             Constants::STATUS_FIELD => Constants::STATUS_DRAFT,
         ]);
-        $this->assertNull($this->repo->findDuplicate(100, null, 'test@example.com', 999));
-    }
+        expect($this->repo->findDuplicate(100, null, 'test@example.com', 999))->toBeNull();
+    });
 
-    public function testFindDuplicateSkipsDifferentMeeting(): void
-    {
-        $this->answer(1, [
+    it('skips a different meeting', function () {
+        ($this->answer)(1, [
             Constants::MEETING_FIELD => 555, Constants::EMAIL_FIELD => 'test@example.com',
             Constants::STATUS_FIELD => Constants::STATUS_DRAFT,
         ]);
-        $this->assertNull($this->repo->findDuplicate(100, null, 'test@example.com', 999));
-    }
+        expect($this->repo->findDuplicate(100, null, 'test@example.com', 999))->toBeNull();
+    });
 
-    public function testFindDuplicateExcludesGivenPost(): void
-    {
-        $this->answer(5, [
+    it('excludes the given post', function () {
+        ($this->answer)(5, [
             Constants::MEETING_FIELD => 100, Constants::EMAIL_FIELD => 'test@example.com',
             Constants::STATUS_FIELD => Constants::STATUS_DRAFT,
         ]);
-        $this->assertNull($this->repo->findDuplicate(100, null, 'test@example.com', 5));
-    }
+        expect($this->repo->findDuplicate(100, null, 'test@example.com', 5))->toBeNull();
+    });
+});
 
-    // ── getGroupAnswers ──────────────────────────────────────────────────
-
-    public function testGetGroupAnswersCollectsAnsweredCommitteeFields(): void
-    {
-        $this->answer(1, [
+// ── getGroupAnswers ──────────────────────────────────────────────────
+describe('getGroupAnswers', function () {
+    it('collects answered committee fields', function () {
+        ($this->answer)(1, [
             Constants::MEETING_FIELD => 100,
             Constants::EMAIL_FIELD => 'a@b.com',
             Constants::UPDATED_FIELD => '2024-01-01',
@@ -235,22 +211,21 @@ class AnswerRepositoryRealTest extends ConfurTestCase
         $this->seedTitles([100 => 'Monday Group']);
 
         $answers = $this->repo->getGroupAnswers();
-        $this->assertArrayHasKey('c1_a1', $answers);
-        $this->assertArrayNotHasKey('c1_a2', $answers);
-        $this->assertSame('Monday Group', $answers['c1_a1'][0]['meetingName']);
-    }
+        expect($answers)->toHaveKey('c1_a1')
+            ->not->toHaveKey('c1_a2')
+            ->and($answers['c1_a1'][0]['meetingName'])->toBe('Monday Group');
+    });
 
-    public function testGetGroupAnswersSkipsTrashedPosts(): void
-    {
+    it('skips trashed posts', function () {
         // getAllAnswers() already excludes the trash by asking get_posts() for
         // publish/draft/pending/private, so the loop's own trash check is the
         // guard for a post trashed *after* that query ran. Reproduce that: the
         // query still returns it, get_post_status() reports it trashed.
-        $this->answer(1, [Constants::MEETING_FIELD => 100, Constants::UPDATED_FIELD => '2024-01-01']);
+        ($this->answer)(1, [Constants::MEETING_FIELD => 100, Constants::UPDATED_FIELD => '2024-01-01']);
         $this->addFields(1, ['c1_a1' => 'x']);
 
         WpState::$postStatuses[1] = 'trash';
 
-        $this->assertSame([], $this->repo->getGroupAnswers());
-    }
-}
+        expect($this->repo->getGroupAnswers())->toBe([]);
+    });
+});

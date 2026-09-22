@@ -4,16 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Admin;
 
-use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\Test;
 use BleedingDeacons\WpMocks\Exceptions\WpDieException;
 use BleedingDeacons\WpMocks\WpState;
 use Confur\Admin\ResultAdminPage;
 use Confur\Config\Constants;
 use ReflectionMethod;
-use Tests\ConfurTestCase;
 
-/**
+/*
  * Tests for the results report screen.
  *
  * This is the least glue-like page in the layer: it groups every submitted
@@ -26,19 +23,56 @@ use Tests\ConfurTestCase;
  * The page builds its own AnswerRepository, so answers are seeded into WpState
  * and the real repository reads them.
  */
-#[CoversClass(\Confur\Admin\ResultAdminPage::class)]
-final class ResultAdminPageTest extends ConfurTestCase
+
+covers(ResultAdminPage::class);
+
+const RESULT_HOOK = 'questions-for-conference_page_confur-reporting';
+
+/** @param array<string, mixed> $answers */
+function resultAnswerTable(ResultAdminPage $page, array $answers): string
 {
-    private const HOOK = 'questions-for-conference_page_confur-reporting';
+    $m = new ReflectionMethod(ResultAdminPage::class, 'generateAnswerTable');
 
-    private ResultAdminPage $page;
+    return (string) $m->invoke($page, $answers);
+}
 
-    protected function setUp(): void
-    {
-        parent::setUp();
+/** @param array<string, mixed> $answers */
+function resultCoverageTable(ResultAdminPage $page, array $answers): string
+{
+    $m = new ReflectionMethod(ResultAdminPage::class, 'generateCoverageTable');
 
-        $this->page = new ResultAdminPage();
-    }
+    return (string) $m->invoke($page, $answers);
+}
+
+/**
+ * One answer row in the shape AnswerRepository::getGroupAnswers() returns.
+ *
+ * @return array<string, mixed>
+ */
+function resultRow(string $answer, string $status = Constants::STATUS_COMPLETED, array $overrides = []): array
+{
+    return array_merge([
+        'meetingId'       => 500,
+        'fellowMeetingId' => null,
+        'meetingName'     => 'Monday Group',
+        'resultUrl'       => 'https://example.test/?p=1',
+        'email'           => 'group@example.org',
+        'updated'         => '2026-07-24 10:00:00',
+        'answer'          => $answer,
+        'status'          => $status,
+    ], $overrides);
+}
+
+/** @return array<int, string> */
+function resultAnchorOrder(string $html): array
+{
+    preg_match_all('/href="(#c\d+_a\d+)"/', $html, $matches);
+
+    return $matches[1];
+}
+
+beforeEach(function () {
+    $this->page = new ResultAdminPage();
 
     /**
      * Seed one answer post: the metadata the report reads, plus the committee
@@ -46,7 +80,7 @@ final class ResultAdminPageTest extends ConfurTestCase
      *
      * @param array<string, string> $answers Field name => answer text
      */
-    private function seedAnswer(
+    $this->seedAnswer = function (
         int $postId,
         int $meetingId,
         array $answers,
@@ -67,368 +101,255 @@ final class ResultAdminPageTest extends ConfurTestCase
             Constants::EMAIL_FIELD          => 'group@example.org',
             Constants::STATUS_FIELD         => $status,
         ], $answers);
-    }
+    };
+});
 
-    private function capture(callable $fn): string
-    {
-        ob_start();
-        try {
-            $fn();
-        } finally {
-            $html = (string) ob_get_clean();
-        }
-
-        return $html;
-    }
-
-    /** @param array<string, mixed> $answers */
-    private function answerTable(array $answers): string
-    {
-        $m = new ReflectionMethod(ResultAdminPage::class, 'generateAnswerTable');
-
-        return (string) $m->invoke($this->page, $answers);
-    }
-
-    /** @param array<string, mixed> $answers */
-    private function coverageTable(array $answers): string
-    {
-        $m = new ReflectionMethod(ResultAdminPage::class, 'generateCoverageTable');
-
-        return (string) $m->invoke($this->page, $answers);
-    }
-
-    /**
-     * One answer row in the shape AnswerRepository::getGroupAnswers() returns.
-     *
-     * @return array<string, mixed>
-     */
-    private function row(string $answer, string $status = Constants::STATUS_COMPLETED, array $overrides = []): array
-    {
-        return array_merge([
-            'meetingId'       => 500,
-            'fellowMeetingId' => null,
-            'meetingName'     => 'Monday Group',
-            'resultUrl'       => 'https://example.test/?p=1',
-            'email'           => 'group@example.org',
-            'updated'         => '2026-07-24 10:00:00',
-            'answer'          => $answer,
-            'status'          => $status,
-        ], $overrides);
-    }
-
-    // ── registration ──────────────────────────────────────────────────
-    #[Test]
-    public function init_registers_the_menu_and_the_assets(): void
-    {
+// ── registration ──────────────────────────────────────────────────
+describe('registration', function () {
+    it('registers the menu and the assets from init', function () {
         $this->page->init();
 
         $this->assertActionAdded('admin_menu', false, 'the menu should be registered');
         $this->assertActionAdded('admin_enqueue_scripts', false, 'the assets should be registered');
-    }
+    });
 
-    /**
-     * The report is readable by anyone who can reach wp-admin, unlike the
-     * settings screens — the capability is 'read', not 'manage_options'.
-     */
-    #[Test]
-    public function the_page_is_added_under_the_confur_menu_for_any_logged_in_user(): void
-    {
+    // The report is readable by anyone who can reach wp-admin, unlike the
+    // settings screens — the capability is 'read', not 'manage_options'.
+    it('adds the page under the Confur menu for any logged-in user', function () {
         $this->page->registerAdminPage();
 
-        $this->assertCount(1, WpState::$menus);
-        $this->assertSame('confur', WpState::$menus[0]['parent']);
-        $this->assertSame('confur-reporting', WpState::$menus[0]['slug']);
-        $this->assertSame('read', WpState::$menus[0]['cap']);
-    }
+        expect(WpState::$menus)->toHaveCount(1)
+            ->and(WpState::$menus[0]['parent'])->toBe('confur')
+            ->and(WpState::$menus[0]['slug'])->toBe('confur-reporting')
+            ->and(WpState::$menus[0]['cap'])->toBe('read');
+    });
 
-    #[Test]
-    public function the_report_assets_are_only_loaded_on_this_screen(): void
-    {
+    it('only loads the report assets on this screen', function () {
         $this->page->enqueueAdminAssets('edit.php');
 
-        $this->assertSame([], WpState::$enqueued);
-    }
+        expect(WpState::$enqueued)->toBe([]);
+    });
 
-    #[Test]
-    public function the_report_styles_and_scripts_are_registered_inline_on_this_screen(): void
-    {
-        $this->page->enqueueAdminAssets(self::HOOK);
+    it('registers the report styles and scripts inline on this screen', function () {
+        $this->page->enqueueAdminAssets(RESULT_HOOK);
 
-        $this->assertSame(
-            [
-                'wp_register_style',
-                'wp_enqueue_style',
-                'wp_add_inline_style',
-                'wp_register_script',
-                'wp_enqueue_script',
-                'wp_add_inline_script',
-            ],
-            array_column(WpState::$enqueued, 'fn')
-        );
+        expect(array_column(WpState::$enqueued, 'fn'))->toBe([
+            'wp_register_style',
+            'wp_enqueue_style',
+            'wp_add_inline_style',
+            'wp_register_script',
+            'wp_enqueue_script',
+            'wp_add_inline_script',
+        ]);
         foreach (WpState::$enqueued as $call) {
-            $this->assertSame('confur-reporting-admin', $call['handle']);
+            expect($call['handle'])->toBe('confur-reporting-admin');
         }
-    }
+    });
+});
 
-    // ── the screen ────────────────────────────────────────────────────
-    #[Test]
-    public function the_screen_refuses_a_user_without_the_capability(): void
-    {
+// ── the screen ────────────────────────────────────────────────────
+describe('the screen', function () {
+    it('refuses a user without the capability', function () {
         WpState::$userCan = false;
 
-        $this->expectException(WpDieException::class);
         $this->page->renderPage();
-    }
+    })->throws(WpDieException::class);
 
-    #[Test]
-    public function the_screen_renders_its_three_sections_and_its_controls(): void
-    {
-        $html = $this->capture(fn () => $this->page->renderPage());
+    it('renders its three sections and its controls', function () {
+        $html = captureOutput(fn () => $this->page->renderPage());
 
-        $this->assertStringContainsString('id="answer_table"', $html);
-        $this->assertStringContainsString('id="coverage"', $html);
-        $this->assertStringContainsString('id="answer_links"', $html);
-        $this->assertStringContainsString('Print Report', $html);
-        $this->assertStringContainsString('confurReportingRefresh()', $html);
-        $this->assertStringContainsString('Report generated:', $html);
-    }
+        expect($html)->toContain(
+            'id="answer_table"',
+            'id="coverage"',
+            'id="answer_links"',
+            'Print Report',
+            'confurReportingRefresh()',
+            'Report generated:',
+        );
+    });
 
-    #[Test]
-    public function the_screen_renders_the_answers_it_is_given(): void
-    {
+    it('renders the answers it is given', function () {
         $this->makePost(500, 'Monday Group');
-        $this->seedAnswer(1, 500, ['c1_a1' => 'A complete answer']);
+        ($this->seedAnswer)(1, 500, ['c1_a1' => 'A complete answer']);
 
-        $html = $this->capture(fn () => $this->page->renderPage());
+        $html = captureOutput(fn () => $this->page->renderPage());
 
-        $this->assertStringContainsString('A complete answer', $html);
-        $this->assertStringContainsString('Monday Group', $html);
-        $this->assertStringContainsString('group@example.org', $html);
-    }
+        expect($html)->toContain('A complete answer', 'Monday Group', 'group@example.org');
+    });
+});
 
-    // ── the navigation table ──────────────────────────────────────────
-    /**
-     * The navigation table is a fixed shape: committees 1-6 by name with 3, 2,
-     * 2, 2, 2 and 2 questions, then committee 7 rendered as "All Committees"
-     * with one.
-     */
-    #[Test]
-    public function the_navigation_table_lists_every_committee_and_question(): void
-    {
+// ── the navigation table ──────────────────────────────────────────
+describe('the navigation table', function () {
+    // The navigation table is a fixed shape: committees 1-6 by name with 3, 2,
+    // 2, 2, 2 and 2 questions, then committee 7 rendered as "All Committees"
+    // with one.
+    it('lists every committee and question', function () {
         $m = new ReflectionMethod(ResultAdminPage::class, 'generateLinksTable');
         $html = (string) $m->invoke($this->page);
 
-        $this->assertStringContainsString('<strong>Committee 1</strong>', $html);
-        $this->assertStringContainsString('<strong>Committee 6</strong>', $html);
-        $this->assertStringContainsString('<strong>All Committees</strong>', $html);
-        $this->assertStringNotContainsString('<strong>Committee 7</strong>', $html);
+        expect($html)->toContain(
+            '<strong>Committee 1</strong>',
+            '<strong>Committee 6</strong>',
+            '<strong>All Committees</strong>',
+        )
+            ->not->toContain('<strong>Committee 7</strong>')
+            // Committee 1 has three questions, the rest two, the last one.
+            ->toContain('<a href="#c1_a3">Answer 3</a>')
+            ->not->toContain('#c2_a3')
+            ->toContain('<a href="#c7_a1">Answer 1</a>')
+            ->not->toContain('#c7_a2');
+    });
+});
 
-        // Committee 1 has three questions, the rest two, the last one.
-        $this->assertStringContainsString('<a href="#c1_a3">Answer 3</a>', $html);
-        $this->assertStringNotContainsString('#c2_a3', $html);
-        $this->assertStringContainsString('<a href="#c7_a1">Answer 1</a>', $html);
-        $this->assertStringNotContainsString('#c7_a2', $html);
-    }
-
-    // ── the answer table ──────────────────────────────────────────────
-    #[Test]
-    public function committees_are_ordered_and_labelled(): void
-    {
-        $html = $this->answerTable([
-            'c2_a1' => [$this->row('Second')],
-            'c1_a1' => [$this->row('First')],
+// ── the answer table ──────────────────────────────────────────────
+describe('the answer table', function () {
+    it('orders and labels committees', function () {
+        $html = resultAnswerTable($this->page, [
+            'c2_a1' => [resultRow('Second')],
+            'c1_a1' => [resultRow('First')],
         ]);
 
-        $this->assertLessThan(
+        expect(strpos($html, 'Committee 1'))->toBeLessThan(
             strpos($html, 'Committee 2'),
-            strpos($html, 'Committee 1'),
             'committee 1 should come first'
         );
-    }
+    });
 
-    /**
-     * Committee 7 is the "last question", asked of every committee, so it is
-     * labelled differently from the numbered ones.
-     */
-    #[Test]
-    public function committee_seven_is_labelled_all_committees(): void
-    {
-        $html = $this->answerTable(['c7_a1' => [$this->row('The last question')]]);
+    // Committee 7 is the "last question", asked of every committee, so it is
+    // labelled differently from the numbered ones.
+    it('labels committee seven All Committees', function () {
+        $html = resultAnswerTable($this->page, ['c7_a1' => [resultRow('The last question')]]);
 
-        $this->assertStringContainsString('All Committees', $html);
-        $this->assertStringNotContainsString('Committee 7 <', $html);
-    }
+        expect($html)->toContain('All Committees')
+            ->not->toContain('Committee 7 <');
+    });
 
-    /**
-     * The anchor is what the navigation links and the dashboard widget jump
-     * to, so it must appear exactly once per question however many groups
-     * answered it.
-     */
-    #[Test]
-    public function each_question_is_anchored_exactly_once(): void
-    {
-        $html = $this->answerTable([
+    // The anchor is what the navigation links and the dashboard widget jump
+    // to, so it must appear exactly once per question however many groups
+    // answered it.
+    it('anchors each question exactly once', function () {
+        $html = resultAnswerTable($this->page, [
             'c1_a1' => [
-                $this->row('First group'),
-                $this->row('Second group', Constants::STATUS_COMPLETED, ['meetingName' => 'Tuesday Group']),
+                resultRow('First group'),
+                resultRow('Second group', Constants::STATUS_COMPLETED, ['meetingName' => 'Tuesday Group']),
             ],
         ]);
 
-        $this->assertSame(1, substr_count($html, "id='c1_a1'"));
-        $this->assertStringContainsString('First group', $html);
-        $this->assertStringContainsString('Second group', $html);
-    }
+        expect(substr_count($html, "id='c1_a1'"))->toBe(1)
+            ->and($html)->toContain('First group', 'Second group');
+    });
 
-    /**
-     * Only draft and completed answers belong in the report — a cancelled
-     * registration's text must not appear.
-     */
-    #[Test]
-    public function only_draft_and_completed_answers_are_reported(): void
-    {
-        $html = $this->answerTable([
+    // Only draft and completed answers belong in the report — a cancelled
+    // registration's text must not appear.
+    it('reports only draft and completed answers', function () {
+        $html = resultAnswerTable($this->page, [
             'c1_a1' => [
-                $this->row('A completed answer', Constants::STATUS_COMPLETED),
-                $this->row('A draft answer', Constants::STATUS_DRAFT),
-                $this->row('A cancelled answer', Constants::STATUS_CANCELLED),
-                $this->row('An unstarted answer', ''),
+                resultRow('A completed answer', Constants::STATUS_COMPLETED),
+                resultRow('A draft answer', Constants::STATUS_DRAFT),
+                resultRow('A cancelled answer', Constants::STATUS_CANCELLED),
+                resultRow('An unstarted answer', ''),
             ],
         ]);
 
-        $this->assertStringContainsString('A completed answer', $html);
-        $this->assertStringContainsString('A draft answer', $html);
-        $this->assertStringNotContainsString('A cancelled answer', $html);
-        $this->assertStringNotContainsString('An unstarted answer', $html);
-    }
+        expect($html)->toContain('A completed answer', 'A draft answer')
+            ->not->toContain('A cancelled answer')
+            ->not->toContain('An unstarted answer');
+    });
 
-    /**
-     * A paired registration answers on behalf of two groups, and the header
-     * has to name both so the report is not read as one group's answer.
-     */
-    #[Test]
-    public function a_paired_registration_names_both_meetings_in_its_header(): void
-    {
+    // A paired registration answers on behalf of two groups, and the header
+    // has to name both so the report is not read as one group's answer.
+    it('names both meetings in the header of a paired registration', function () {
         $this->makePost(501, 'Tuesday Group');
 
-        $html = $this->answerTable([
-            'c1_a1' => [$this->row('A shared answer', Constants::STATUS_COMPLETED, ['fellowMeetingId' => 501])],
+        $html = resultAnswerTable($this->page, [
+            'c1_a1' => [resultRow('A shared answer', Constants::STATUS_COMPLETED, ['fellowMeetingId' => 501])],
         ]);
 
-        $this->assertStringContainsString('Monday Group & Tuesday Group', $html);
-    }
+        expect($html)->toContain('Monday Group & Tuesday Group');
+    });
 
-    #[Test]
-    public function a_fellow_meeting_that_no_longer_exists_falls_back_to_the_primary_name(): void
-    {
-        $html = $this->answerTable([
-            'c1_a1' => [$this->row('A shared answer', Constants::STATUS_COMPLETED, ['fellowMeetingId' => 999])],
+    it('falls back to the primary name when the fellow meeting no longer exists', function () {
+        $html = resultAnswerTable($this->page, [
+            'c1_a1' => [resultRow('A shared answer', Constants::STATUS_COMPLETED, ['fellowMeetingId' => 999])],
         ]);
 
-        $this->assertStringContainsString('Monday Group - Complete', $html);
-    }
+        expect($html)->toContain('Monday Group - Complete');
+    });
 
-    #[Test]
-    public function a_fellow_meeting_equal_to_the_primary_is_not_repeated(): void
-    {
-        $html = $this->answerTable([
-            'c1_a1' => [$this->row('An answer', Constants::STATUS_COMPLETED, ['fellowMeetingId' => 500])],
+    it('does not repeat a fellow meeting equal to the primary', function () {
+        $html = resultAnswerTable($this->page, [
+            'c1_a1' => [resultRow('An answer', Constants::STATUS_COMPLETED, ['fellowMeetingId' => 500])],
         ]);
 
-        $this->assertStringContainsString('Monday Group - Complete', $html);
-        $this->assertStringNotContainsString(' & ', $html, 'the same meeting should not be named twice');
-    }
+        expect($html)->toContain('Monday Group - Complete')
+            // the same meeting should not be named twice
+            ->not->toContain(' & ');
+    });
 
-    #[Test]
-    public function an_empty_report_still_renders_a_table(): void
-    {
-        $html = $this->answerTable([]);
+    it('still renders a table for an empty report', function () {
+        $html = resultAnswerTable($this->page, []);
 
-        $this->assertStringContainsString('<table id="all_answers"', $html);
-        $this->assertStringContainsString('</table>', $html);
-    }
+        expect($html)->toContain('<table id="all_answers"', '</table>');
+    });
+});
 
-    // ── the coverage table ────────────────────────────────────────────
-    /**
-     * The coverage table is the only arithmetic on the page: response count,
-     * mean word count to two places, and the shortest and longest answers.
-     */
-    #[Test]
-    public function the_coverage_table_counts_responses_and_words(): void
-    {
-        $html = $this->coverageTable([
+// ── the coverage table ────────────────────────────────────────────
+describe('the coverage table', function () {
+    // The coverage table is the only arithmetic on the page: response count,
+    // mean word count to two places, and the shortest and longest answers.
+    it('counts responses and words', function () {
+        $html = resultCoverageTable($this->page, [
             'c1_a1' => [
-                $this->row('one two three'),
-                $this->row('one two three four five six'),
+                resultRow('one two three'),
+                resultRow('one two three four five six'),
             ],
         ]);
 
-        $this->assertStringContainsString('<td>Committee 1</td>', $html);
-        $this->assertStringContainsString('<td>2</td>', $html, 'two responses');
-        $this->assertStringContainsString('<td>4.5</td>', $html, 'the mean of 3 and 6');
-        $this->assertStringContainsString('<td>3</td>', $html, 'the shortest');
-        $this->assertStringContainsString('<td>6</td>', $html, 'the longest');
-    }
-
-    /**
-     * Cancelled answers are excluded from the answer table but not from the
-     * coverage arithmetic, which counts every response the repository
-     * returned. Asserted as-is: this change covers the page, it does not
-     * change what it reports.
-     */
-    #[Test]
-    public function the_coverage_table_counts_every_response_including_cancelled_ones(): void
-    {
-        $html = $this->coverageTable([
-            'c1_a1' => [
-                $this->row('one two three', Constants::STATUS_COMPLETED),
-                $this->row('four five six', Constants::STATUS_CANCELLED),
-            ],
-        ]);
-
-        $this->assertStringContainsString('<td>2</td>', $html);
-    }
-
-    #[Test]
-    public function each_coverage_row_links_to_its_question_anchor(): void
-    {
-        $html = $this->coverageTable(['c3_a2' => [$this->row('An answer')]]);
-
-        $this->assertStringContainsString('<a href="#c3_a2">Answer 2</a>', $html);
-    }
-
-    /**
-     * Rows are sorted by committee then by question, so the table reads in the
-     * same order as the report above it.
-     */
-    #[Test]
-    public function coverage_rows_are_sorted_by_committee_then_question(): void
-    {
-        $html = $this->coverageTable([
-            'c2_a1'  => [$this->row('b')],
-            'c1_a2'  => [$this->row('a')],
-            'c1_a1'  => [$this->row('a')],
-        ]);
-
-        $this->assertSame(
-            ['#c1_a1', '#c1_a2', '#c2_a1'],
-            $this->anchorOrder($html)
+        expect($html)->toContain(
+            '<td>Committee 1</td>',
+            '<td>2</td>',   // two responses
+            '<td>4.5</td>', // the mean of 3 and 6
+            '<td>3</td>',   // the shortest
+            '<td>6</td>',   // the longest
         );
-    }
+    });
 
-    #[Test]
-    public function an_empty_coverage_table_still_renders_its_header_row(): void
-    {
-        $html = $this->coverageTable([]);
+    // Cancelled answers are excluded from the answer table but not from the
+    // coverage arithmetic, which counts every response the repository
+    // returned. Asserted as-is: this change covers the page, it does not
+    // change what it reports.
+    it('counts every response including cancelled ones', function () {
+        $html = resultCoverageTable($this->page, [
+            'c1_a1' => [
+                resultRow('one two three', Constants::STATUS_COMPLETED),
+                resultRow('four five six', Constants::STATUS_CANCELLED),
+            ],
+        ]);
 
-        $this->assertStringContainsString('<th>Committee</th>', $html);
-        $this->assertStringContainsString('<th>Highest Word Count</th>', $html);
-    }
+        expect($html)->toContain('<td>2</td>');
+    });
 
-    /** @return array<int, string> */
-    private function anchorOrder(string $html): array
-    {
-        preg_match_all('/href="(#c\d+_a\d+)"/', $html, $matches);
+    it('links each row to its question anchor', function () {
+        $html = resultCoverageTable($this->page, ['c3_a2' => [resultRow('An answer')]]);
 
-        return $matches[1];
-    }
-}
+        expect($html)->toContain('<a href="#c3_a2">Answer 2</a>');
+    });
+
+    // Rows are sorted by committee then by question, so the table reads in the
+    // same order as the report above it.
+    it('sorts rows by committee then question', function () {
+        $html = resultCoverageTable($this->page, [
+            'c2_a1'  => [resultRow('b')],
+            'c1_a2'  => [resultRow('a')],
+            'c1_a1'  => [resultRow('a')],
+        ]);
+
+        expect(resultAnchorOrder($html))->toBe(['#c1_a1', '#c1_a2', '#c2_a1']);
+    });
+
+    it('still renders its header row when empty', function () {
+        $html = resultCoverageTable($this->page, []);
+
+        expect($html)->toContain('<th>Committee</th>', '<th>Highest Word Count</th>');
+    });
+});

@@ -95,7 +95,7 @@ Output lands in `build/confur-production-<version>.zip` (or `-dev-`). On every b
 
 ## Testing
 
-PHPUnit is wired up via `phpunit.xml`. Run the suite with:
+The suite is written in [Pest](https://pestphp.com) 5, running on PHPUnit and configured by `phpunit.xml` and `tests/Pest.php`. Run it with `composer test` (or `vendor/bin/pest`), or:
 
 ```bash
 # Unix-like

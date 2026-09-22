@@ -2,46 +2,35 @@
 
 namespace Tests\Unit\Shortcodes;
 
-use PHPUnit\Framework\Attributes\CoversClass;
 use Confur\Shortcodes\ResponsibilityPledgeShortcode;
 use Confur\Shortcodes\StepShortcode;
 use Confur\Shortcodes\TraditionShortcode;
-use Tests\ConfurTestCase;
 
-#[CoversClass(\Confur\Shortcodes\StepShortcode::class)]
-#[CoversClass(\Confur\Shortcodes\TraditionShortcode::class)]
-#[CoversClass(\Confur\Shortcodes\ResponsibilityPledgeShortcode::class)]
-class PledgesTest extends ConfurTestCase
-{
-    public function testStepRendersValidNumber(): void
-    {
-        $out = (new StepShortcode())->render(['number' => ' 3 ']);
-        $this->assertStringContainsString('Step 3.', $out);
-        $this->assertStringContainsString('en_step3.pdf', $out);
-    }
+covers(StepShortcode::class);
+covers(TraditionShortcode::class);
+covers(ResponsibilityPledgeShortcode::class);
 
-    public function testStepRejectsUnknownNumber(): void
-    {
-        $this->assertSame('', (new StepShortcode())->render(['number' => '99']));
-        $this->assertSame('', (new StepShortcode())->render([]));
-    }
+it('renders a valid step number', function () {
+    $out = (new StepShortcode())->render(['number' => ' 3 ']);
+    expect($out)->toContain('Step 3.', 'en_step3.pdf');
+});
 
-    public function testTraditionRendersValidNumber(): void
-    {
-        $out = (new TraditionShortcode())->render(['number' => '1']);
-        $this->assertStringContainsString('Tradition 1.', $out);
-        $this->assertStringContainsString('en_tradition1.pdf', $out);
-    }
+it('rejects an unknown step number', function () {
+    expect((new StepShortcode())->render(['number' => '99']))->toBe('')
+        ->and((new StepShortcode())->render([]))->toBe('');
+});
 
-    public function testTraditionRejectsUnknownNumber(): void
-    {
-        $this->assertSame('', (new TraditionShortcode())->render(['number' => '0']));
-    }
+it('renders a valid tradition number', function () {
+    $out = (new TraditionShortcode())->render(['number' => '1']);
+    expect($out)->toContain('Tradition 1.', 'en_tradition1.pdf');
+});
 
-    public function testResponsibilityPledgeRendersAndRejects(): void
-    {
-        $shortcode = new ResponsibilityPledgeShortcode();
-        $this->assertStringContainsString('Step 12.', $shortcode->render(['number' => '12']));
-        $this->assertSame('', $shortcode->render(['number' => '13']));
-    }
-}
+it('rejects an unknown tradition number', function () {
+    expect((new TraditionShortcode())->render(['number' => '0']))->toBe('');
+});
+
+it('renders and rejects responsibility pledge numbers', function () {
+    $shortcode = new ResponsibilityPledgeShortcode();
+    expect($shortcode->render(['number' => '12']))->toContain('Step 12.')
+        ->and($shortcode->render(['number' => '13']))->toBe('');
+});

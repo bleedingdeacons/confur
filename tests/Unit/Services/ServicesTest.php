@@ -2,80 +2,61 @@
 
 namespace Tests\Unit\Services;
 
-use PHPUnit\Framework\Attributes\CoversClass;
+use BleedingDeacons\WpMocks\WpState;
 use Confur\Services\AdminAssetService;
 use Confur\Services\AssetService;
 use Confur\Services\ShortcodeService;
-use BleedingDeacons\WpMocks\WpState;
-use Tests\ConfurTestCase;
 
-#[CoversClass(\Confur\Services\AssetService::class)]
-#[CoversClass(\Confur\Services\AdminAssetService::class)]
-#[CoversClass(\Confur\Services\ShortcodeService::class)]
-class ServicesTest extends ConfurTestCase
-{
-    protected function setUp(): void
-    {
-        parent::setUp();
-        WpState::$isSingular = false;
-        unset($_GET['page']);
+covers(AssetService::class);
+covers(AdminAssetService::class);
+covers(ShortcodeService::class);
+
+beforeEach(function () {
+    WpState::$isSingular = false;
+    unset($_GET['page']);
+});
+
+// injectAdminUrls path executed without error
+it('enqueues the front-end assets on an answer singular', function () {
+    WpState::$isSingular = true;
+    (new AssetService())->enqueueScripts();
+})->throwsNoExceptions();
+
+it('skips the front-end assets when not singular', function () {
+    WpState::$isSingular = false;
+    (new AssetService())->enqueueScripts();
+})->throwsNoExceptions();
+
+it('enqueues the admin assets on the reporting page', function () {
+    $_GET['page'] = 'confur-reporting';
+    (new AdminAssetService())->enqueueScripts();
+})->throwsNoExceptions();
+
+it('skips the admin assets elsewhere', function () {
+    $_GET['page'] = 'something-else';
+    (new AdminAssetService())->enqueueScripts();
+})->throwsNoExceptions();
+
+it('registers all the shortcodes', function () {
+    (new ShortcodeService())->registerShortcodes();
+
+    $registered = $this->registeredShortcodes();
+    expect($registered)->toContain('step', 'tradition', 'answer', 'open_new_link', 'allocated_committee');
+});
+
+it('skips general shortcodes that are already registered', function () {
+    // Simulate Amber having registered the shared general shortcodes
+    // first. shortcode_exists() reads the real registry now, so "already
+    // registered" means actually registering them — and "skipped" means
+    // the callback still belongs to whoever got there first, rather than
+    // the tag being absent as the old boolean-flag stub implied.
+    $incumbent = static fn (): string => 'amber';
+    foreach (['open_new_link', 'open_email', 'pdf_link', 'days_remaining'] as $tag) {
+        add_shortcode($tag, $incumbent);
     }
 
-    public function testAssetServiceEnqueuesOnAnswerSingular(): void
-    {
-        WpState::$isSingular = true;
-        (new AssetService())->enqueueScripts();
-        $this->assertTrue(true); // injectAdminUrls path executed without error
-    }
+    (new ShortcodeService())->registerShortcodes();
 
-    public function testAssetServiceSkipsWhenNotSingular(): void
-    {
-        WpState::$isSingular = false;
-        (new AssetService())->enqueueScripts();
-        $this->assertTrue(true);
-    }
-
-    public function testAdminAssetServiceEnqueuesOnReportingPage(): void
-    {
-        $_GET['page'] = 'confur-reporting';
-        (new AdminAssetService())->enqueueScripts();
-        $this->assertTrue(true);
-    }
-
-    public function testAdminAssetServiceSkipsElsewhere(): void
-    {
-        $_GET['page'] = 'something-else';
-        (new AdminAssetService())->enqueueScripts();
-        $this->assertTrue(true);
-    }
-
-    public function testShortcodeServiceRegistersAllShortcodes(): void
-    {
-        (new ShortcodeService())->registerShortcodes();
-
-        $registered = $this->registeredShortcodes();
-        $this->assertContains('step', $registered);
-        $this->assertContains('tradition', $registered);
-        $this->assertContains('answer', $registered);
-        $this->assertContains('open_new_link', $registered);
-        $this->assertContains('allocated_committee', $registered);
-    }
-
-    public function testShortcodeServiceSkipsGeneralShortcodesAlreadyRegistered(): void
-    {
-        // Simulate Amber having registered the shared general shortcodes
-        // first. shortcode_exists() reads the real registry now, so "already
-        // registered" means actually registering them — and "skipped" means
-        // the callback still belongs to whoever got there first, rather than
-        // the tag being absent as the old boolean-flag stub implied.
-        $incumbent = static fn (): string => 'amber';
-        foreach (['open_new_link', 'open_email', 'pdf_link', 'days_remaining'] as $tag) {
-            add_shortcode($tag, $incumbent);
-        }
-
-        (new ShortcodeService())->registerShortcodes();
-
-        $this->assertSame($incumbent, WpState::$shortcodes['open_new_link']);
-        $this->assertContains('step', $this->registeredShortcodes());
-    }
-}
+    expect(WpState::$shortcodes['open_new_link'])->toBe($incumbent)
+        ->and($this->registeredShortcodes())->toContain('step');
+});

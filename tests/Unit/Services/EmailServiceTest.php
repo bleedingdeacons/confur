@@ -2,93 +2,76 @@
 
 namespace Tests\Unit\Services;
 
-use PHPUnit\Framework\Attributes\CoversClass;
-use Confur\Services\EmailService;
 use BleedingDeacons\WpMocks\WpState;
-use Tests\ConfurTestCase;
+use Confur\Services\EmailService;
 
-#[CoversClass(\Confur\Services\EmailService::class)]
-class EmailServiceTest extends ConfurTestCase
-{
-    protected function setUp(): void
-    {
-        parent::setUp();
-        WpState::$options = [
-            'confur_email_templates' => [
-                'RegistrationConfirmation' => ['subject' => 'Confirmed', 'body' => 'Hello {{MeetingName}} {{Url}} {{AllocationNotice}} {{RegistrationStatus}}'],
-                'AnswersComplete' => ['subject' => 'Done', 'body' => 'Thanks {{MeetingName}}'],
-                'RegistrationBlocked' => ['subject' => 'Blocked', 'body' => 'You are blocked'],
-            ],
-        ];
-        WpState::$mail = [];
-    }
+covers(EmailService::class);
 
-    public function testSendEmailPassesThroughWpMail(): void
-    {
-        $this->assertTrue(EmailService::sendEmail('a@b.com', 'from@b.com', 'Sub', '<p>Body</p>'));
-        $this->assertCount(1, WpState::$mail);
-    }
+beforeEach(function () {
+    WpState::$options = [
+        'confur_email_templates' => [
+            'RegistrationConfirmation' => ['subject' => 'Confirmed', 'body' => 'Hello {{MeetingName}} {{Url}} {{AllocationNotice}} {{RegistrationStatus}}'],
+            'AnswersComplete' => ['subject' => 'Done', 'body' => 'Thanks {{MeetingName}}'],
+            'RegistrationBlocked' => ['subject' => 'Blocked', 'body' => 'You are blocked'],
+        ],
+    ];
+    WpState::$mail = [];
+});
 
-    public function testSendBackupSuccessAndFailure(): void
-    {
-        $this->assertTrue(EmailService::sendBackup('a@b.com', 'from@b.com', 'S', 'B'));
+it('passes sendEmail through wp_mail', function () {
+    expect(EmailService::sendEmail('a@b.com', 'from@b.com', 'Sub', '<p>Body</p>'))->toBeTrue()
+        ->and(WpState::$mail)->toHaveCount(1);
+});
 
-        WpState::$mailResult = false;
-        $this->assertFalse(EmailService::sendBackup('a@b.com', 'from@b.com', 'S', 'B'));
-    }
+it('reports success and failure from sendBackup', function () {
+    expect(EmailService::sendBackup('a@b.com', 'from@b.com', 'S', 'B'))->toBeTrue();
 
-    public function testSendConfirmationRejectsInvalidEmail(): void
-    {
-        $this->assertFalse(EmailService::sendConfirmation('not-an-email', 'Group', 'http://x'));
-    }
+    WpState::$mailResult = false;
+    expect(EmailService::sendBackup('a@b.com', 'from@b.com', 'S', 'B'))->toBeFalse();
+});
 
-    public function testSendConfirmationWithLastQuestionAllocation(): void
-    {
-        $this->assertTrue(EmailService::sendConfirmation('a@b.com', 'Group', 'http://x/a', '7'));
-        $sent = end(WpState::$mail);
-        $this->assertStringContainsString('Last Question', $sent['message']);
-    }
+it('rejects an invalid email in sendConfirmation', function () {
+    expect(EmailService::sendConfirmation('not-an-email', 'Group', 'http://x'))->toBeFalse();
+});
 
-    public function testSendConfirmationWithCommitteeAllocationAndDuplicateFlag(): void
-    {
-        $this->assertTrue(EmailService::sendConfirmation('a@b.com', 'Group', 'http://x/a', '3', true));
-        $sent = end(WpState::$mail);
-        $this->assertStringContainsString('Committee: 3', $sent['message']);
-        $this->assertStringContainsString('already registered', $sent['message']);
-    }
+it('sends a confirmation with a Last Question allocation', function () {
+    expect(EmailService::sendConfirmation('a@b.com', 'Group', 'http://x/a', '7'))->toBeTrue();
+    $sent = end(WpState::$mail);
+    expect($sent['message'])->toContain('Last Question');
+});
 
-    public function testSendCompletionRejectsInvalidEmail(): void
-    {
-        $this->assertFalse(EmailService::sendCompletion('bad', 'Group'));
-    }
+it('sends a confirmation with a committee allocation and the duplicate flag', function () {
+    expect(EmailService::sendConfirmation('a@b.com', 'Group', 'http://x/a', '3', true))->toBeTrue();
+    $sent = end(WpState::$mail);
+    expect($sent['message'])->toContain('Committee: 3', 'already registered');
+});
 
-    public function testSendCompletionSucceeds(): void
-    {
-        $this->assertTrue(EmailService::sendCompletion('a@b.com', 'Group'));
-        $sent = end(WpState::$mail);
-        $this->assertStringContainsString('Thanks Group', $sent['message']);
-    }
+it('rejects an invalid email in sendCompletion', function () {
+    expect(EmailService::sendCompletion('bad', 'Group'))->toBeFalse();
+});
 
-    public function testSendRegistrationBlockedRejectsInvalidEmail(): void
-    {
-        $this->assertFalse(EmailService::sendRegistrationBlocked('bad'));
-    }
+it('sends a completion email', function () {
+    expect(EmailService::sendCompletion('a@b.com', 'Group'))->toBeTrue();
+    $sent = end(WpState::$mail);
+    expect($sent['message'])->toContain('Thanks Group');
+});
 
-    public function testSendRegistrationBlockedSucceeds(): void
-    {
-        $this->assertTrue(EmailService::sendRegistrationBlocked('a@b.com'));
-        $sent = end(WpState::$mail);
-        $this->assertStringContainsString('blocked', strtolower($sent['message']));
-    }
+it('rejects an invalid email in sendRegistrationBlocked', function () {
+    expect(EmailService::sendRegistrationBlocked('bad'))->toBeFalse();
+});
 
-    public function testRenderFallsBackToTheBundledTemplateFile(): void
-    {
-        // No admin-customised template → renderTemplate() reads the packaged
-        // emails/AnswersComplete.html file instead.
-        WpState::$options = [];
+it('sends a registration-blocked email', function () {
+    expect(EmailService::sendRegistrationBlocked('a@b.com'))->toBeTrue();
+    $sent = end(WpState::$mail);
+    expect(strtolower($sent['message']))->toContain('blocked');
+});
 
-        $this->assertTrue(EmailService::sendCompletion('a@b.com', 'Group'));
-        $sent = end(WpState::$mail);
-        $this->assertNotSame('', $sent['message']);
-    }
-}
+it('falls back to the bundled template file', function () {
+    // No admin-customised template → renderTemplate() reads the packaged
+    // emails/AnswersComplete.html file instead.
+    WpState::$options = [];
+
+    expect(EmailService::sendCompletion('a@b.com', 'Group'))->toBeTrue();
+    $sent = end(WpState::$mail);
+    expect($sent['message'])->not->toBe('');
+});
