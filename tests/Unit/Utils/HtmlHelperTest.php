@@ -49,126 +49,97 @@ namespace Confur\Utils {
 namespace Tests\Unit\Utils {
 
     use Confur\Utils\HtmlHelper;
-    use Tests\ConfurTestCase;
 
-    #[\PHPUnit\Framework\Attributes\CoversClass(\Confur\Utils\HtmlHelper::class)]
-    class HtmlHelperTest extends ConfurTestCase
-    {
-        public function testGeneratePdfLink(): void
-        {
-            $html = HtmlHelper::generatePdfLink('http://x/f.pdf', 'f.pdf', 'Download');
-            $this->assertStringContainsString('href="http://x/f.pdf"', $html);
-            $this->assertStringContainsString('download="f.pdf"', $html);
-            $this->assertStringContainsString('>Download</a>', $html);
-        }
+    covers(HtmlHelper::class);
 
-        public function testCreateLink(): void
-        {
-            $html = HtmlHelper::createLink('http://x', 'btn', 'Go');
-            $this->assertStringContainsString('class="btn"', $html);
-            $this->assertStringContainsString('href="http://x"', $html);
-            $this->assertStringContainsString('>Go</a>', $html);
-        }
+    it('generates a PDF link', function () {
+        $html = HtmlHelper::generatePdfLink('http://x/f.pdf', 'f.pdf', 'Download');
+        expect($html)->toContain('href="http://x/f.pdf"', 'download="f.pdf"', '>Download</a>');
+    });
 
-        public function testCreateEmailToAddressWithAndWithoutSubject(): void
-        {
-            $this->assertSame('mailto:a@b.com', HtmlHelper::createEmailToAddress('a@b.com'));
-            $this->assertSame('mailto:a@b.com?subject=Hi', HtmlHelper::createEmailToAddress('a@b.com', 'Hi'));
-        }
+    it('creates a link', function () {
+        $html = HtmlHelper::createLink('http://x', 'btn', 'Go');
+        expect($html)->toContain('class="btn"', 'href="http://x"', '>Go</a>');
+    });
 
-        public function testCreateEmailAnchor(): void
-        {
-            $html = HtmlHelper::createEmailAnchor('a@b.com', 'Hi', 'Mail');
-            $this->assertStringContainsString('mailto:a@b.com?subject=Hi', $html);
-            $this->assertStringContainsString('>Mail</a>', $html);
-        }
+    it('creates an email address with and without a subject', function () {
+        expect(HtmlHelper::createEmailToAddress('a@b.com'))->toBe('mailto:a@b.com')
+            ->and(HtmlHelper::createEmailToAddress('a@b.com', 'Hi'))->toBe('mailto:a@b.com?subject=Hi');
+    });
 
-        public function testCreatePhoneToAddress(): void
-        {
-            $this->assertSame('tel:0123', HtmlHelper::createPhoneToAddress('0123'));
-        }
+    it('creates an email anchor', function () {
+        $html = HtmlHelper::createEmailAnchor('a@b.com', 'Hi', 'Mail');
+        expect($html)->toContain('mailto:a@b.com?subject=Hi', '>Mail</a>');
+    });
 
-        public function testCreateMeetingLink(): void
-        {
-            $this->assertSame('/meetings/?meeting=my-group', HtmlHelper::createMeetingLink('my-group'));
-        }
+    it('creates a phone address', function () {
+        expect(HtmlHelper::createPhoneToAddress('0123'))->toBe('tel:0123');
+    });
 
-        // ── Escaping contract ────────────────────────────────────────────
-        //
-        // These helpers feed the Confur status screen, which renders contact
-        // names, telephone numbers and registration email addresses read from
-        // post meta. createLink() previously interpolated all three of its
-        // arguments raw, so a payload stored in a meeting's contact fields
-        // executed in the browser of anyone who opened that screen.
+    it('creates a meeting link', function () {
+        expect(HtmlHelper::createMeetingLink('my-group'))->toBe('/meetings/?meeting=my-group');
+    });
 
-        public function testCreateLinkEscapesScriptInContent(): void
-        {
+    // ── Escaping contract ────────────────────────────────────────────
+    //
+    // These helpers feed the Confur status screen, which renders contact
+    // names, telephone numbers and registration email addresses read from
+    // post meta. createLink() previously interpolated all three of its
+    // arguments raw, so a payload stored in a meeting's contact fields
+    // executed in the browser of anyone who opened that screen.
+    describe('escaping contract', function () {
+        it('escapes a script in createLink content', function () {
             $html = HtmlHelper::createLink('tel:0117', '', '<script>alert(1)</script>');
 
             // The tags are what matter: kses strips them and leaves the body
             // as inert text, which is the correct outcome rather than a miss.
-            $this->assertStringNotContainsString('<script', $html);
-            $this->assertStringNotContainsString('</script>', $html);
-        }
+            expect($html)->not->toContain('<script')
+                ->not->toContain('</script>');
+        });
 
-        public function testCreateLinkEscapesQuoteBreakoutInHref(): void
-        {
+        it('escapes a quote breakout in the createLink href', function () {
             $html = HtmlHelper::createLink('tel:" onmouseover="alert(1)', '', 'call');
 
-            $this->assertStringNotContainsString('onmouseover="alert(1)"', $html);
-        }
+            expect($html)->not->toContain('onmouseover="alert(1)"');
+        });
 
-        public function testCreateLinkEscapesQuoteBreakoutInClass(): void
-        {
+        it('escapes a quote breakout in the createLink class', function () {
             $html = HtmlHelper::createLink('https://example.org', '" onfocus="alert(1)', 'x');
 
-            $this->assertStringNotContainsString('onfocus="alert(1)"', $html);
-        }
+            expect($html)->not->toContain('onfocus="alert(1)"');
+        });
 
-        public function testCreateLinkRejectsJavascriptScheme(): void
-        {
+        it('rejects the javascript scheme in createLink', function () {
             $html = HtmlHelper::createLink('javascript:alert(1)', '', 'x');
 
-            $this->assertStringNotContainsString('javascript:', $html);
-        }
+            expect($html)->not->toContain('javascript:');
+        });
 
-        public function testCreateLinkPreservesMailtoAndTel(): void
-        {
-            $this->assertStringContainsString(
-                'mailto:a@example.org',
-                HtmlHelper::createLink('mailto:a@example.org', '', 'mail')
-            );
-            $this->assertStringContainsString(
-                'tel:01179',
-                HtmlHelper::createLink('tel:01179', '', 'call')
-            );
-        }
+        it('preserves mailto and tel in createLink', function () {
+            expect(HtmlHelper::createLink('mailto:a@example.org', '', 'mail'))->toContain('mailto:a@example.org')
+                ->and(HtmlHelper::createLink('tel:01179', '', 'call'))->toContain('tel:01179');
+        });
 
-        public function testCreateEmailAnchorEscapesContent(): void
-        {
+        it('escapes createEmailAnchor content', function () {
             $html = HtmlHelper::createEmailAnchor('a@example.org', null, '<script>alert(1)</script>');
 
-            $this->assertStringNotContainsString('<script', $html);
-        }
+            expect($html)->not->toContain('<script');
+        });
 
-        /**
-         * Pure string building — no WordPress function involved, so this one
-         * holds regardless of which escaping doubles are in play.
-         */
-        public function testCreateEmailToAddressEncodesSubject(): void
-        {
+        // Pure string building — no WordPress function involved, so this one
+        // holds regardless of which escaping doubles are in play.
+        it('encodes the subject in createEmailToAddress', function () {
             $url = HtmlHelper::createEmailToAddress('a@example.org', 'Questions & Answers');
 
-            $this->assertStringNotContainsString(' ', $url);
-            $this->assertStringContainsString('Questions%20%26%20Answers', $url);
-        }
+            expect($url)->not->toContain(' ')
+                ->toContain('Questions%20%26%20Answers');
+        });
 
-        public function testGeneratePdfLinkEscapesContentAndUrl(): void
-        {
+        it('escapes the content and URL in generatePdfLink', function () {
             $html = HtmlHelper::generatePdfLink('javascript:alert(1)', 'r.pdf', '<script>alert(1)</script>');
 
-            $this->assertStringNotContainsString('javascript:', $html);
-            $this->assertStringNotContainsString('<script', $html);
-        }
-    }
+            expect($html)->not->toContain('javascript:')
+                ->not->toContain('<script');
+        });
+    });
 }

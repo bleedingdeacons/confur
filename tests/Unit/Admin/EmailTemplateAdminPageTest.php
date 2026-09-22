@@ -4,17 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Admin;
 
-use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\Attributes\DataProvider;
-use function Brain\Monkey\Functions\when;
 use BleedingDeacons\WpMocks\Exceptions\WpDieException;
 use BleedingDeacons\WpMocks\WpState;
+use Brain\Monkey\Functions;
 use Confur\Admin\EmailTemplateAdminPage;
 use ReflectionMethod;
-use Tests\ConfurTestCase;
 
-/**
+/*
  * Tests for the email template editor.
  *
  * Most of this class is not admin glue at all: the static accessors are the
@@ -28,451 +24,335 @@ use Tests\ConfurTestCase;
  * behind them are reached through resolveSubmissionRedirect(), which was split
  * out of it for exactly that reason.
  */
-#[CoversClass(\Confur\Admin\EmailTemplateAdminPage::class)]
-final class EmailTemplateAdminPageTest extends ConfurTestCase
+
+covers(EmailTemplateAdminPage::class);
+
+const TEMPLATES_OPTION = 'confur_email_templates';
+const TEMPLATES_HOOK   = 'questions-for-conference_page_confur-email-templates';
+const TEMPLATES_NONCE  = 'nonce-confur_email_templates_action';
+
+function templatesSubmissionRedirect(EmailTemplateAdminPage $page): string
 {
-    private const OPTION = 'confur_email_templates';
-    private const HOOK   = 'questions-for-conference_page_confur-email-templates';
-    private const NONCE  = 'nonce-confur_email_templates_action';
+    $m = new ReflectionMethod(EmailTemplateAdminPage::class, 'resolveSubmissionRedirect');
 
-    private EmailTemplateAdminPage $page;
+    return (string) $m->invoke($page);
+}
 
-    protected function setUp(): void
-    {
-        parent::setUp();
+beforeEach(function () {
+    $_POST = [];
+    $_GET  = [];
 
-        $_POST = [];
-        $_GET  = [];
+    $this->page = new EmailTemplateAdminPage();
 
-        $this->page = new EmailTemplateAdminPage();
-
-        // Not shipped by wp-mocks: the editor and the form helpers.
-        when('wp_enqueue_editor')->justReturn(null);
-        when('get_admin_page_title')->justReturn('Email Templates');
-        when('wp_editor')->alias(
-            static function (string $content, string $id): void {
-                echo '<textarea id="' . $id . '">' . $content . '</textarea>';
-            }
-        );
-        when('submit_button')->alias(
-            static function (string $text = 'Save', string $type = 'primary', string $name = 'submit'): void {
-                echo '<button type="submit" name="' . $name . '">' . $text . '</button>';
-            }
-        );
-    }
-
-    protected function tearDown(): void
-    {
-        $_POST = [];
-        $_GET  = [];
-
-        parent::tearDown();
-    }
-
-    private function capture(callable $fn): string
-    {
-        ob_start();
-        try {
-            $fn();
-        } finally {
-            $html = (string) ob_get_clean();
+    // Not shipped by wp-mocks: the editor and the form helpers.
+    Functions\when('wp_enqueue_editor')->justReturn(null);
+    Functions\when('get_admin_page_title')->justReturn('Email Templates');
+    Functions\when('wp_editor')->alias(
+        static function (string $content, string $id): void {
+            echo '<textarea id="' . $id . '">' . $content . '</textarea>';
         }
+    );
+    Functions\when('submit_button')->alias(
+        static function (string $text = 'Save', string $type = 'primary', string $name = 'submit'): void {
+            echo '<button type="submit" name="' . $name . '">' . $text . '</button>';
+        }
+    );
+});
 
-        return $html;
-    }
+afterEach(function () {
+    $_POST = [];
+    $_GET  = [];
+});
 
-    private function submissionRedirect(): string
-    {
-        $m = new ReflectionMethod(EmailTemplateAdminPage::class, 'resolveSubmissionRedirect');
-
-        return (string) $m->invoke($this->page);
-    }
-
-    // ── registration ──────────────────────────────────────────────────
-    #[Test]
-    public function init_registers_the_menu_the_form_handler_and_the_assets(): void
-    {
+// ── registration ──────────────────────────────────────────────────
+describe('registration', function () {
+    it('registers the menu, the form handler and the assets from init', function () {
         $this->page->init();
 
         $this->assertActionAdded('admin_menu', false, 'the menu should be registered');
         $this->assertActionAdded('admin_post_confur_update_email_templates', false, 'the form handler should be registered');
         $this->assertActionAdded('admin_enqueue_scripts', false, 'the assets should be registered');
-    }
+    });
 
-    #[Test]
-    public function nothing_is_registered_on_a_front_end_request(): void
-    {
+    it('registers nothing on a front-end request', function () {
         WpState::$isAdmin = false;
 
         $this->page->init();
 
         $this->assertActionNotAdded('admin_menu');
-    }
+    });
 
-    #[Test]
-    public function the_page_is_added_under_the_confur_menu_for_administrators_only(): void
-    {
+    it('adds the page under the Confur menu for administrators only', function () {
         $this->page->addAdminMenu();
 
-        $this->assertCount(1, WpState::$menus);
-        $this->assertSame('confur', WpState::$menus[0]['parent']);
-        $this->assertSame('confur-email-templates', WpState::$menus[0]['slug']);
-        $this->assertSame('manage_options', WpState::$menus[0]['cap']);
-    }
+        expect(WpState::$menus)->toHaveCount(1)
+            ->and(WpState::$menus[0]['parent'])->toBe('confur')
+            ->and(WpState::$menus[0]['slug'])->toBe('confur-email-templates')
+            ->and(WpState::$menus[0]['cap'])->toBe('manage_options');
+    });
 
-    #[Test]
-    public function the_editor_is_only_loaded_on_this_screen(): void
-    {
+    it('only loads the editor on this screen', function () {
         $this->page->enqueueAdminAssets('edit.php');
 
-        $this->assertSame([], WpState::$enqueued);
-    }
+        expect(WpState::$enqueued)->toBe([]);
+    });
 
-    #[Test]
-    public function the_editor_and_the_page_styles_are_loaded_on_this_screen(): void
-    {
-        $this->page->enqueueAdminAssets(self::HOOK);
+    it('loads the editor and the page styles on this screen', function () {
+        $this->page->enqueueAdminAssets(TEMPLATES_HOOK);
 
-        $this->assertSame(
-            [['fn' => 'wp_add_inline_style', 'handle' => 'wp-admin']],
-            WpState::$enqueued
-        );
-    }
+        expect(WpState::$enqueued)->toBe([['fn' => 'wp_add_inline_style', 'handle' => 'wp-admin']]);
+    });
+});
 
-    // ── reading templates ─────────────────────────────────────────────
-    /**
-     * With nothing saved, every template falls back to the HTML file shipped
-     * in /emails — and to the body of that file, not the whole document, since
-     * the result is embedded in an email the plugin composes.
-     */
-    #[Test]
-    public function an_unsaved_template_falls_back_to_the_shipped_html_file(): void
-    {
+// ── reading templates ─────────────────────────────────────────────
+describe('reading templates', function () {
+    // With nothing saved, every template falls back to the HTML file shipped
+    // in /emails — and to the body of that file, not the whole document, since
+    // the result is embedded in an email the plugin composes.
+    it('falls back to the shipped html file for an unsaved template', function () {
         $body = EmailTemplateAdminPage::getBody('RegistrationConfirmation');
 
-        $this->assertStringContainsString('{{MeetingName}}', $body);
-        $this->assertStringNotContainsString('<!DOCTYPE html>', $body, 'only the body content should be returned');
-        $this->assertStringNotContainsString('</html>', $body);
-    }
+        expect($body)->toContain('{{MeetingName}}')
+            // only the body content should be returned
+            ->not->toContain('<!DOCTYPE html>')
+            ->not->toContain('</html>');
+    });
 
-    #[Test]
-    public function every_known_template_is_returned_with_its_metadata(): void
-    {
+    it('returns every known template with its metadata', function () {
         $templates = EmailTemplateAdminPage::getAll();
 
-        $this->assertSame(
-            ['RegistrationConfirmation', 'AnswersComplete', 'RegistrationBlocked'],
-            array_keys($templates)
-        );
+        expect(array_keys($templates))->toBe(['RegistrationConfirmation', 'AnswersComplete', 'RegistrationBlocked']);
 
         foreach ($templates as $key => $template) {
-            $this->assertNotSame('', $template['name'], $key . ' should have a display name');
-            $this->assertNotSame('', $template['subject'], $key . ' should have a subject');
-            $this->assertNotSame('', $template['body'], $key . ' should have a body');
-            $this->assertArrayHasKey('placeholders', $template, $key . ' should list its placeholders');
+            expect($template['name'])->not->toBe('', $key . ' should have a display name')
+                ->and($template['subject'])->not->toBe('', $key . ' should have a subject')
+                ->and($template['body'])->not->toBe('', $key . ' should have a body')
+                ->and($template)->toHaveKey('placeholders', message: $key . ' should list its placeholders');
         }
-    }
+    });
 
-    #[Test]
-    public function a_saved_subject_and_body_override_the_defaults(): void
-    {
-        WpState::$options[self::OPTION] = [
+    it('lets a saved subject and body override the defaults', function () {
+        WpState::$options[TEMPLATES_OPTION] = [
             'AnswersComplete' => ['subject' => 'Nicely done', 'body' => '<p>Thanks</p>'],
         ];
 
-        $this->assertSame('Nicely done', EmailTemplateAdminPage::getSubject('AnswersComplete'));
-        $this->assertSame('<p>Thanks</p>', EmailTemplateAdminPage::getBody('AnswersComplete'));
-    }
+        expect(EmailTemplateAdminPage::getSubject('AnswersComplete'))->toBe('Nicely done')
+            ->and(EmailTemplateAdminPage::getBody('AnswersComplete'))->toBe('<p>Thanks</p>');
+    });
 
-    /**
-     * The two halves are saved independently, so a template with only a custom
-     * subject must still fall back to the shipped body rather than to nothing.
-     */
-    #[Test]
-    public function a_saved_subject_alone_leaves_the_body_at_its_default(): void
-    {
-        WpState::$options[self::OPTION] = ['AnswersComplete' => ['subject' => 'Nicely done']];
+    // The two halves are saved independently, so a template with only a custom
+    // subject must still fall back to the shipped body rather than to nothing.
+    it('leaves the body at its default when only the subject is saved', function () {
+        WpState::$options[TEMPLATES_OPTION] = ['AnswersComplete' => ['subject' => 'Nicely done']];
 
-        $this->assertSame('Nicely done', EmailTemplateAdminPage::getSubject('AnswersComplete'));
-        $this->assertNotSame('', EmailTemplateAdminPage::getBody('AnswersComplete'));
-    }
+        expect(EmailTemplateAdminPage::getSubject('AnswersComplete'))->toBe('Nicely done')
+            ->and(EmailTemplateAdminPage::getBody('AnswersComplete'))->not->toBe('');
+    });
 
-    #[Test]
-    public function an_unknown_template_key_yields_null_and_empty_strings(): void
-    {
-        $this->assertNull(EmailTemplateAdminPage::get('NoSuchTemplate'));
-        $this->assertSame('', EmailTemplateAdminPage::getSubject('NoSuchTemplate'));
-        $this->assertSame('', EmailTemplateAdminPage::getBody('NoSuchTemplate'));
-    }
+    it('yields null and empty strings for an unknown template key', function () {
+        expect(EmailTemplateAdminPage::get('NoSuchTemplate'))->toBeNull()
+            ->and(EmailTemplateAdminPage::getSubject('NoSuchTemplate'))->toBe('')
+            ->and(EmailTemplateAdminPage::getBody('NoSuchTemplate'))->toBe('');
+    });
 
-    /**
-     * The key becomes a filename, so it is sanitised and then re-checked
-     * against a strict pattern before it is used to build a path.
-     */
-    #[DataProvider('hostileKeys')]
-    #[Test]
-    public function a_template_key_cannot_be_used_to_read_another_file(string $key): void
-    {
+    // The key becomes a filename, so it is sanitised and then re-checked
+    // against a strict pattern before it is used to build a path.
+    it('cannot use a template key to read another file', function (string $key) {
         $m = new ReflectionMethod(EmailTemplateAdminPage::class, 'getDefaultBody');
 
-        $this->assertSame('', $m->invoke(null, $key));
-    }
+        expect($m->invoke(null, $key))->toBe('');
+    })->with([
+        'traversal'         => ['../../wp-config'],
+        'absolute path'     => ['/etc/passwd'],
+        'a name with a dot' => ['Registration.Confirmation'],
+        'empty'             => [''],
+        'unknown but valid' => ['NoSuchTemplate'],
+    ]);
+});
 
-    /** @return array<string, array{0: string}> */
-    public static function hostileKeys(): array
-    {
-        return [
-            'traversal'         => ['../../wp-config'],
-            'absolute path'     => ['/etc/passwd'],
-            'a name with a dot' => ['Registration.Confirmation'],
-            'empty'             => [''],
-            'unknown but valid' => ['NoSuchTemplate'],
-        ];
-    }
-
-    // ── writing templates ─────────────────────────────────────────────
-    #[Test]
-    public function saving_stores_only_the_known_templates(): void
-    {
-        $this->assertTrue(EmailTemplateAdminPage::update([
+// ── writing templates ─────────────────────────────────────────────
+describe('writing templates', function () {
+    it('stores only the known templates when saving', function () {
+        expect(EmailTemplateAdminPage::update([
             'AnswersComplete' => ['subject' => 'Done', 'body' => '<p>Body</p>'],
             'NotATemplate'    => ['subject' => 'Ignore me', 'body' => 'Ignore me'],
-        ]));
+        ]))->toBeTrue()
+            ->and(array_keys(WpState::$options[TEMPLATES_OPTION]))->toBe(['AnswersComplete'])
+            ->and(WpState::$options[TEMPLATES_OPTION]['AnswersComplete']['subject'])->toBe('Done');
+    });
 
-        $this->assertSame(['AnswersComplete'], array_keys(WpState::$options[self::OPTION]));
-        $this->assertSame('Done', WpState::$options[self::OPTION]['AnswersComplete']['subject']);
-    }
-
-    #[Test]
-    public function a_template_saved_with_neither_field_stores_empty_strings(): void
-    {
+    it('stores empty strings for a template saved with neither field', function () {
         EmailTemplateAdminPage::update(['AnswersComplete' => []]);
 
-        $this->assertSame(
-            ['subject' => '', 'body' => ''],
-            WpState::$options[self::OPTION]['AnswersComplete']
-        );
-    }
+        expect(WpState::$options[TEMPLATES_OPTION]['AnswersComplete'])->toBe(['subject' => '', 'body' => '']);
+    });
 
-    #[Test]
-    public function resetting_everything_clears_the_saved_option(): void
-    {
-        WpState::$options[self::OPTION] = ['AnswersComplete' => ['subject' => 'Custom']];
+    it('clears the saved option when resetting everything', function () {
+        WpState::$options[TEMPLATES_OPTION] = ['AnswersComplete' => ['subject' => 'Custom']];
 
-        $this->assertTrue(EmailTemplateAdminPage::resetToDefaults());
-        $this->assertArrayNotHasKey(self::OPTION, WpState::$options);
-    }
+        expect(EmailTemplateAdminPage::resetToDefaults())->toBeTrue()
+            ->and(WpState::$options)->not->toHaveKey(TEMPLATES_OPTION);
+    });
 
-    #[Test]
-    public function resetting_one_template_leaves_the_others_saved(): void
-    {
-        WpState::$options[self::OPTION] = [
+    it('leaves the others saved when resetting one template', function () {
+        WpState::$options[TEMPLATES_OPTION] = [
             'AnswersComplete'          => ['subject' => 'Custom'],
             'RegistrationConfirmation' => ['subject' => 'Also custom'],
         ];
 
-        $this->assertTrue(EmailTemplateAdminPage::resetTemplate('AnswersComplete'));
+        expect(EmailTemplateAdminPage::resetTemplate('AnswersComplete'))->toBeTrue()
+            ->and(array_keys(WpState::$options[TEMPLATES_OPTION]))->toBe(['RegistrationConfirmation']);
+    });
 
-        $this->assertSame(['RegistrationConfirmation'], array_keys(WpState::$options[self::OPTION]));
-    }
+    // Resetting the last customised template should leave no option row behind
+    // rather than an empty array, so getAll() takes its "nothing saved" path.
+    it('removes the option entirely when resetting the last customised template', function () {
+        WpState::$options[TEMPLATES_OPTION] = ['AnswersComplete' => ['subject' => 'Custom']];
 
-    /**
-     * Resetting the last customised template should leave no option row behind
-     * rather than an empty array, so getAll() takes its "nothing saved" path.
-     */
-    #[Test]
-    public function resetting_the_last_customised_template_removes_the_option_entirely(): void
-    {
-        WpState::$options[self::OPTION] = ['AnswersComplete' => ['subject' => 'Custom']];
+        expect(EmailTemplateAdminPage::resetTemplate('AnswersComplete'))->toBeTrue()
+            ->and(WpState::$options)->not->toHaveKey(TEMPLATES_OPTION);
+    });
 
-        $this->assertTrue(EmailTemplateAdminPage::resetTemplate('AnswersComplete'));
-        $this->assertArrayNotHasKey(self::OPTION, WpState::$options);
-    }
+    it('quietly succeeds in resetting a template that was never customised', function () {
+        expect(EmailTemplateAdminPage::resetTemplate('AnswersComplete'))->toBeTrue()
+            ->and(WpState::$options)->not->toHaveKey(TEMPLATES_OPTION);
+    });
 
-    #[Test]
-    public function resetting_a_template_that_was_never_customised_succeeds_quietly(): void
-    {
-        $this->assertTrue(EmailTemplateAdminPage::resetTemplate('AnswersComplete'));
-        $this->assertArrayNotHasKey(self::OPTION, WpState::$options);
-    }
+    it('fails to reset an unknown template', function () {
+        expect(EmailTemplateAdminPage::resetTemplate('NoSuchTemplate'))->toBeFalse();
+    });
+});
 
-    #[Test]
-    public function resetting_an_unknown_template_fails(): void
-    {
-        $this->assertFalse(EmailTemplateAdminPage::resetTemplate('NoSuchTemplate'));
-    }
-
-    // ── submission guards ─────────────────────────────────────────────
-    #[Test]
-    public function the_form_handler_refuses_a_user_without_the_capability(): void
-    {
+// ── submission guards ─────────────────────────────────────────────
+describe('submission guards', function () {
+    it('refuses a user without the capability', function () {
         WpState::$userCan = false;
 
-        $this->expectException(WpDieException::class);
         $this->page->handleFormSubmission();
-    }
+    })->throws(WpDieException::class);
 
-    #[Test]
-    public function the_form_handler_refuses_a_submission_with_no_nonce(): void
-    {
-        $this->expectException(WpDieException::class);
+    it('refuses a submission with no nonce', function () {
         $this->page->handleFormSubmission();
-    }
+    })->throws(WpDieException::class);
 
-    #[Test]
-    public function the_form_handler_refuses_a_submission_with_a_stale_nonce(): void
-    {
+    it('refuses a submission with a stale nonce', function () {
         $_POST['confur_email_templates_nonce'] = 'nonce-something-else';
 
-        $this->expectException(WpDieException::class);
         $this->page->handleFormSubmission();
-    }
+    })->throws(WpDieException::class);
+});
 
-    // ── submission outcomes (the caller redirects and exits) ──────────
-    #[Test]
-    public function a_normal_save_writes_every_template_and_reports_success(): void
-    {
+// ── submission outcomes (the caller redirects and exits) ──────────
+describe('submission outcomes', function () {
+    it('writes every template and reports success on a normal save', function () {
         $_POST = [
-            'confur_email_templates_nonce'      => self::NONCE,
+            'confur_email_templates_nonce'      => TEMPLATES_NONCE,
             'template_AnswersComplete_subject'  => 'Nicely done',
             'template_AnswersComplete_body'     => '<p>Thanks</p>',
         ];
 
-        $redirect = $this->submissionRedirect();
+        $redirect = templatesSubmissionRedirect($this->page);
 
-        $this->assertStringContainsString('page=confur-email-templates', $redirect);
-        $this->assertStringContainsString('updated=1', $redirect);
-        $this->assertSame('Nicely done', WpState::$options[self::OPTION]['AnswersComplete']['subject']);
-        $this->assertSame(
-            ['RegistrationConfirmation', 'AnswersComplete', 'RegistrationBlocked'],
-            array_keys(WpState::$options[self::OPTION]),
-            'the untouched templates should be written too, as empty overrides'
-        );
-    }
+        expect($redirect)->toContain('page=confur-email-templates', 'updated=1')
+            ->and(WpState::$options[TEMPLATES_OPTION]['AnswersComplete']['subject'])->toBe('Nicely done')
+            ->and(array_keys(WpState::$options[TEMPLATES_OPTION]))->toBe(
+                ['RegistrationConfirmation', 'AnswersComplete', 'RegistrationBlocked'],
+                'the untouched templates should be written too, as empty overrides'
+            );
+    });
 
-    #[Test]
-    public function a_save_that_fails_to_write_reports_an_error(): void
-    {
-        when('update_option')->justReturn(false);
-        $_POST['confur_email_templates_nonce'] = self::NONCE;
+    it('reports an error when a save fails to write', function () {
+        Functions\when('update_option')->justReturn(false);
+        $_POST['confur_email_templates_nonce'] = TEMPLATES_NONCE;
 
-        $this->assertStringContainsString('error=1', $this->submissionRedirect());
-    }
+        expect(templatesSubmissionRedirect($this->page))->toContain('error=1');
+    });
 
-    #[Test]
-    public function the_reset_all_button_clears_everything(): void
-    {
-        WpState::$options[self::OPTION] = ['AnswersComplete' => ['subject' => 'Custom']];
+    it('clears everything from the reset all button', function () {
+        WpState::$options[TEMPLATES_OPTION] = ['AnswersComplete' => ['subject' => 'Custom']];
         $_POST = [
-            'confur_email_templates_nonce' => self::NONCE,
+            'confur_email_templates_nonce' => TEMPLATES_NONCE,
             'reset_all_defaults'           => 'Reset All to Defaults',
         ];
 
-        $redirect = $this->submissionRedirect();
+        $redirect = templatesSubmissionRedirect($this->page);
 
-        $this->assertStringContainsString('updated=reset_all', $redirect);
-        $this->assertArrayNotHasKey(self::OPTION, WpState::$options);
-    }
+        expect($redirect)->toContain('updated=reset_all')
+            ->and(WpState::$options)->not->toHaveKey(TEMPLATES_OPTION);
+    });
 
-    #[Test]
-    public function the_per_template_reset_button_clears_only_that_template(): void
-    {
-        WpState::$options[self::OPTION] = [
+    it('clears only that template from the per-template reset button', function () {
+        WpState::$options[TEMPLATES_OPTION] = [
             'AnswersComplete'          => ['subject' => 'Custom'],
             'RegistrationConfirmation' => ['subject' => 'Also custom'],
         ];
         $_POST = [
-            'confur_email_templates_nonce' => self::NONCE,
+            'confur_email_templates_nonce' => TEMPLATES_NONCE,
             'reset_template'               => 'AnswersComplete',
         ];
 
-        $redirect = $this->submissionRedirect();
+        $redirect = templatesSubmissionRedirect($this->page);
 
-        $this->assertStringContainsString('updated=reset_single', $redirect);
-        $this->assertSame(['RegistrationConfirmation'], array_keys(WpState::$options[self::OPTION]));
-    }
+        expect($redirect)->toContain('updated=reset_single')
+            ->and(array_keys(WpState::$options[TEMPLATES_OPTION]))->toBe(['RegistrationConfirmation']);
+    });
 
-    #[Test]
-    public function resetting_an_unknown_template_from_the_form_reports_an_error(): void
-    {
+    it('reports an error when resetting an unknown template from the form', function () {
         $_POST = [
-            'confur_email_templates_nonce' => self::NONCE,
+            'confur_email_templates_nonce' => TEMPLATES_NONCE,
             'reset_template'               => 'NoSuchTemplate',
         ];
 
-        $this->assertStringContainsString('error=1', $this->submissionRedirect());
-    }
+        expect(templatesSubmissionRedirect($this->page))->toContain('error=1');
+    });
+});
 
-    // ── the screen ────────────────────────────────────────────────────
-    #[Test]
-    public function the_screen_refuses_a_user_without_the_capability(): void
-    {
+// ── the screen ────────────────────────────────────────────────────
+describe('the screen', function () {
+    it('refuses a user without the capability', function () {
         WpState::$userCan = false;
 
-        $this->expectException(WpDieException::class);
         $this->page->renderAdminPage();
-    }
+    })->throws(WpDieException::class);
 
-    /**
-     * Driving the render for real is what proves the form field names match
-     * the ones handleFormSubmission() reads back out of $_POST — a rename on
-     * one side alone would silently stop saving.
-     */
-    #[Test]
-    public function the_screen_renders_a_card_per_template_with_matching_field_names(): void
-    {
-        $html = $this->capture(fn () => $this->page->renderAdminPage());
+    // Driving the render for real is what proves the form field names match
+    // the ones handleFormSubmission() reads back out of $_POST — a rename on
+    // one side alone would silently stop saving.
+    it('renders a card per template with matching field names', function () {
+        $html = captureOutput(fn () => $this->page->renderAdminPage());
 
         foreach (['RegistrationConfirmation', 'AnswersComplete', 'RegistrationBlocked'] as $key) {
-            $this->assertStringContainsString('name="template_' . $key . '_subject"', $html);
-            $this->assertStringContainsString('id="template_' . $key . '_body"', $html);
-            $this->assertStringContainsString('value="' . $key . '"', $html, $key . ' should have a reset button');
+            expect($html)->toContain('name="template_' . $key . '_subject"', 'id="template_' . $key . '_body"')
+                // each template should have a reset button
+                ->toContain('value="' . $key . '"');
         }
 
-        $this->assertStringContainsString('name="action" value="confur_update_email_templates"', $html);
-        $this->assertStringContainsString('name="reset_all_defaults"', $html);
-    }
+        expect($html)->toContain('name="action" value="confur_update_email_templates"', 'name="reset_all_defaults"');
+    });
 
-    #[Test]
-    public function the_screen_lists_the_placeholders_a_template_accepts(): void
-    {
-        $html = $this->capture(fn () => $this->page->renderAdminPage());
+    it('lists the placeholders a template accepts', function () {
+        $html = captureOutput(fn () => $this->page->renderAdminPage());
 
-        $this->assertStringContainsString('<code>{{MeetingName}}</code>', $html);
-        $this->assertStringContainsString('<code>{{AllocationNotice}}</code>', $html);
-    }
+        expect($html)->toContain('<code>{{MeetingName}}</code>', '<code>{{AllocationNotice}}</code>');
+    });
 
-    /**
-     * @param array<string, string> $query
-     */
-    #[DataProvider('noticeParameters')]
-    #[Test]
-    public function the_screen_reports_back_on_the_last_submission(array $query, string $expected): void
-    {
+    it('reports back on the last submission', function (array $query, string $expected) {
         $_GET = $query;
 
-        $html = $this->capture(fn () => $this->page->renderAdminPage());
+        $html = captureOutput(fn () => $this->page->renderAdminPage());
 
-        $this->assertStringContainsString($expected, $html);
-    }
+        expect($html)->toContain($expected);
+    })->with([
+        'saved'            => [['updated' => '1'], 'Email templates updated successfully.'],
+        'all reset'        => [['updated' => 'reset_all'], 'All email templates reset to defaults.'],
+        'one reset'        => [['updated' => 'reset_single'], 'Email template reset to default.'],
+        'failed'           => [['error' => '1'], 'Failed to update email templates.'],
+    ]);
 
-    /** @return array<string, array{0: array<string, string>, 1: string}> */
-    public static function noticeParameters(): array
-    {
-        return [
-            'saved'            => [['updated' => '1'], 'Email templates updated successfully.'],
-            'all reset'        => [['updated' => 'reset_all'], 'All email templates reset to defaults.'],
-            'one reset'        => [['updated' => 'reset_single'], 'Email template reset to default.'],
-            'failed'           => [['error' => '1'], 'Failed to update email templates.'],
-        ];
-    }
+    it('shows no notice on a plain page load', function () {
+        $html = captureOutput(fn () => $this->page->renderAdminPage());
 
-    #[Test]
-    public function no_notice_is_shown_on_a_plain_page_load(): void
-    {
-        $html = $this->capture(fn () => $this->page->renderAdminPage());
-
-        $this->assertStringNotContainsString('confur-notice error', $html);
-        $this->assertStringNotContainsString('updated successfully', $html);
-    }
-}
+        expect($html)->not->toContain('confur-notice error')
+            ->not->toContain('updated successfully');
+    });
+});

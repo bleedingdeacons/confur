@@ -2,118 +2,104 @@
 
 namespace Tests\Unit\Utils;
 
-use PHPUnit\Framework\Attributes\CoversClass;
-use function Brain\Monkey\Functions\when;
+use Brain\Monkey\Functions;
 use Confur\Utils\AcfHelper;
-use Tests\ConfurTestCase;
 
-#[CoversClass(\Confur\Utils\AcfHelper::class)]
-class AcfHelperTest extends ConfurTestCase
+covers(AcfHelper::class);
+
+/**
+ * Make acf_get_field() answer for exactly these selectors and false for
+ * anything else, which is what the real ACF does for an unknown name.
+ *
+ * @param array<string, array<string, mixed>> $fields
+ */
+function knownFields(array $fields): void
 {
-    protected function setUp(): void
-    {
-        parent::setUp();
-        unset($_POST['acf']);
+    Functions\when('acf_get_field')->alias(
+        static fn (string $selector): array|false => $fields[$selector] ?? false
+    );
+}
 
-        // AcfHelper's whole job is refusing to write a field ACF does not
-        // know, so acf_get_field() has to be able to answer "no". wp-mocks'
-        // default invents a field object for any selector, which would make
-        // that branch unreachable, so every test here declares the fields it
-        // considers to exist through knownFields().
-        $this->knownFields([]);
-    }
+beforeEach(function () {
+    unset($_POST['acf']);
 
-    /**
-     * Make acf_get_field() answer for exactly these selectors and false for
-     * anything else, which is what the real ACF does for an unknown name.
-     *
-     * @param array<string, array<string, mixed>> $fields
-     */
-    private function knownFields(array $fields): void
-    {
-        when('acf_get_field')->alias(
-            static fn (string $selector): array|false => $fields[$selector] ?? false
-        );
-    }
+    // AcfHelper's whole job is refusing to write a field ACF does not
+    // know, so acf_get_field() has to be able to answer "no". wp-mocks'
+    // default invents a field object for any selector, which would make
+    // that branch unreachable, so every test here declares the fields it
+    // considers to exist through knownFields().
+    knownFields([]);
+});
 
-    // ── updateAcfField ─────────────────────────────────────────────────
+// ── updateAcfField ─────────────────────────────────────────────────
+describe('updateAcfField', function () {
+    it('rejects empty arguments', function () {
+        expect(AcfHelper::updateAcfField(0, 'name', 'v'))->toBeFalse()
+            ->and(AcfHelper::updateAcfField(5, '', 'v'))->toBeFalse();
+    });
 
-    public function testUpdateFieldRejectsEmptyArguments(): void
-    {
-        $this->assertFalse(AcfHelper::updateAcfField(0, 'name', 'v'));
-        $this->assertFalse(AcfHelper::updateAcfField(5, '', 'v'));
-    }
+    it('returns false when the field is unknown', function () {
+        expect(AcfHelper::updateAcfField(5, 'unknown', 'v'))->toBeFalse();
+    });
 
-    public function testUpdateFieldReturnsFalseWhenFieldUnknown(): void
-    {
-        $this->assertFalse(AcfHelper::updateAcfField(5, 'unknown', 'v'));
-    }
+    it('succeeds', function () {
+        knownFields(['price' => ['key' => 'field_abc']]);
+        expect(AcfHelper::updateAcfField(5, 'price', '10'))->toBeTrue()
+            ->and($_POST)->not->toHaveKey('acf');
+    });
+});
 
-    public function testUpdateFieldSucceeds(): void
-    {
-        $this->knownFields(['price' => ['key' => 'field_abc']]);
-        $this->assertTrue(AcfHelper::updateAcfField(5, 'price', '10'));
-        $this->assertArrayNotHasKey('acf', $_POST);
-    }
+// ── updateAcfFields ────────────────────────────────────────────────
+describe('updateAcfFields', function () {
+    it('rejects invalid input', function () {
+        expect(AcfHelper::updateAcfFields(0, ['a' => 1]))->toBeFalse()
+            ->and(AcfHelper::updateAcfFields(5, []))->toBeFalse();
+    });
 
-    // ── updateAcfFields ────────────────────────────────────────────────
+    it('returns false when none resolve', function () {
+        expect(AcfHelper::updateAcfFields(5, ['unknown' => 'v']))->toBeFalse();
+    });
 
-    public function testUpdateFieldsRejectsInvalidInput(): void
-    {
-        $this->assertFalse(AcfHelper::updateAcfFields(0, ['a' => 1]));
-        $this->assertFalse(AcfHelper::updateAcfFields(5, []));
-    }
-
-    public function testUpdateFieldsReturnsFalseWhenNoneResolve(): void
-    {
-        $this->assertFalse(AcfHelper::updateAcfFields(5, ['unknown' => 'v']));
-    }
-
-    public function testUpdateFieldsSucceedsForKnownFields(): void
-    {
-        $this->knownFields([
+    it('succeeds for known fields', function () {
+        knownFields([
             'price' => ['key' => 'field_price'],
             'name'  => ['key' => 'field_name'],
         ]);
-        $this->assertTrue(AcfHelper::updateAcfFields(5, ['price' => '10', 'name' => 'x', 'unknown' => 'y']));
-    }
+        expect(AcfHelper::updateAcfFields(5, ['price' => '10', 'name' => 'x', 'unknown' => 'y']))->toBeTrue();
+    });
+});
 
-    // ── updateAcfField2 ────────────────────────────────────────────────
+// ── updateAcfField2 ────────────────────────────────────────────────
+describe('updateAcfField2', function () {
+    it('rejects empty arguments', function () {
+        expect(AcfHelper::updateAcfField2(0, 'name', 'v'))->toBeFalse();
+    });
 
-    public function testUpdateField2RejectsEmptyArguments(): void
-    {
-        $this->assertFalse(AcfHelper::updateAcfField2(0, 'name', 'v'));
-    }
-
-    public function testUpdateField2ReturnsFalseWhenPostMissing(): void
-    {
+    it('returns false when the post is missing', function () {
         // Nothing seeded, so get_post() answers null.
-        $this->assertFalse(AcfHelper::updateAcfField2(999, 'price', 'v'));
-    }
+        expect(AcfHelper::updateAcfField2(999, 'price', 'v'))->toBeFalse();
+    });
 
-    public function testUpdateField2ReturnsFalseWhenFieldUnknown(): void
-    {
+    it('returns false when the field is unknown', function () {
         $this->makePost(5, '', 'publish', 'answer');
-        $this->assertFalse(AcfHelper::updateAcfField2(5, 'unknown', 'v'));
-    }
+        expect(AcfHelper::updateAcfField2(5, 'unknown', 'v'))->toBeFalse();
+    });
 
-    public function testUpdateField2Succeeds(): void
-    {
+    it('succeeds', function () {
         $this->makePost(5, '', 'publish', 'answer');
-        $this->knownFields(['price' => ['key' => 'field_price']]);
-        $this->assertTrue(AcfHelper::updateAcfField2(5, 'price', '10'));
-    }
+        knownFields(['price' => ['key' => 'field_price']]);
+        expect(AcfHelper::updateAcfField2(5, 'price', '10'))->toBeTrue();
+    });
 
-    public function testUpdateField2ReturnsFalseWhenSaveThrows(): void
-    {
+    it('returns false when the save throws', function () {
         $this->makePost(5, '', 'publish', 'answer');
-        $this->knownFields(['price' => ['key' => 'field_price']]);
-        when('acf_save_post')->alias(static function (): bool {
+        knownFields(['price' => ['key' => 'field_price']]);
+        Functions\when('acf_save_post')->alias(static function (): bool {
             throw new \RuntimeException('acf save failed');
         });
         try {
-            $this->assertFalse(AcfHelper::updateAcfField2(5, 'price', '10'));
+            expect(AcfHelper::updateAcfField2(5, 'price', '10'))->toBeFalse();
         } finally {
         }
-    }
-}
+    });
+});

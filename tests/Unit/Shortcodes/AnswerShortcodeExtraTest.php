@@ -2,64 +2,52 @@
 
 namespace Tests\Unit\Shortcodes;
 
-use PHPUnit\Framework\Attributes\CoversClass;
 use Confur\Config\Constants;
 use Confur\Shortcodes\AnswerShortcode;
-use Tests\ConfurTestCase;
 
-/**
+/*
  * Covers AnswerShortcode paths the main suite misses: the allocated-committee
  * display and the header's paired-meeting branch.
  */
-#[CoversClass(\Confur\Shortcodes\AnswerShortcode::class)]
-class AnswerShortcodeExtraTest extends ConfurTestCase
-{
-    private AnswerShortcode $sc;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->sc = new AnswerShortcode();
-    }
+covers(AnswerShortcode::class);
 
-    public function testAllocatedCommitteeEmptyWhenNoMeeting(): void
-    {
-        $this->fields[0] = [Constants::MEETING_FIELD => null];
-        $this->assertSame('', $this->sc->generateAllocatedCommittee());
-    }
+beforeEach(function () {
+    $this->sc = new AnswerShortcode();
+});
 
-    public function testAllocatedCommitteeEmptyWhenNoAllocation(): void
-    {
-        $this->fields[0] = [Constants::MEETING_FIELD => 100];
-        $this->fields[100] = [Constants::ALLOCATION_FIELD => ''];
-        $this->assertSame('', $this->sc->generateAllocatedCommittee());
-    }
+it('renders no allocated committee when there is no meeting', function () {
+    $this->fields[0] = [Constants::MEETING_FIELD => null];
+    expect($this->sc->generateAllocatedCommittee())->toBe('');
+});
 
-    public function testAllocatedCommitteeCommitteeSeven(): void
-    {
-        $this->fields[0] = [Constants::MEETING_FIELD => 100];
-        $this->fields[100] = [Constants::ALLOCATION_FIELD => '7'];
-        $out = $this->sc->generateAllocatedCommittee();
-        $this->assertStringContainsString('Last Question', $out);
-    }
+it('renders no allocated committee when there is no allocation', function () {
+    $this->fields[0] = [Constants::MEETING_FIELD => 100];
+    $this->fields[100] = [Constants::ALLOCATION_FIELD => ''];
+    expect($this->sc->generateAllocatedCommittee())->toBe('');
+});
 
-    public function testAllocatedCommitteeNumericCommittee(): void
-    {
-        $this->fields[0] = [Constants::MEETING_FIELD => 100];
-        $this->fields[100] = [Constants::ALLOCATION_FIELD => '3'];
-        $out = $this->sc->generateAllocatedCommittee();
-        $this->assertStringContainsString('Committee 3', $out);
-    }
+it('renders committee seven as the Last Question', function () {
+    $this->fields[0] = [Constants::MEETING_FIELD => 100];
+    $this->fields[100] = [Constants::ALLOCATION_FIELD => '7'];
+    $out = $this->sc->generateAllocatedCommittee();
+    expect($out)->toContain('Last Question');
+});
 
-    public function testHeaderIncludesFellowMeeting(): void
-    {
-        $this->fields[0] = [
-            Constants::MEETING_FIELD => 100,
-            Constants::FELLOW_MEETING_FIELD => 200,
-        ];
-        $this->seedTitles([100 => 'Monday Group', 200 => 'Tuesday Group']);
+it('renders a numeric allocated committee', function () {
+    $this->fields[0] = [Constants::MEETING_FIELD => 100];
+    $this->fields[100] = [Constants::ALLOCATION_FIELD => '3'];
+    $out = $this->sc->generateAllocatedCommittee();
+    expect($out)->toContain('Committee 3');
+});
 
-        $out = $this->sc->generateHeader();
-        $this->assertStringContainsString('Monday Group and Tuesday Group', $out);
-    }
-}
+it('includes the fellow meeting in the header', function () {
+    $this->fields[0] = [
+        Constants::MEETING_FIELD => 100,
+        Constants::FELLOW_MEETING_FIELD => 200,
+    ];
+    $this->seedTitles([100 => 'Monday Group', 200 => 'Tuesday Group']);
+
+    $out = $this->sc->generateHeader();
+    expect($out)->toContain('Monday Group and Tuesday Group');
+});

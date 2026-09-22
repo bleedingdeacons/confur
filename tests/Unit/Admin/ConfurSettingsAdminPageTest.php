@@ -4,17 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Admin;
 
-use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\Attributes\DataProvider;
-use function Brain\Monkey\Functions\when;
 use BleedingDeacons\WpMocks\Exceptions\WpDieException;
 use BleedingDeacons\WpMocks\WpState;
+use Brain\Monkey\Functions;
 use Confur\Admin\ConfurSettingsAdminPage;
 use ReflectionMethod;
-use Tests\ConfurTestCase;
 
-/**
+/*
  * Tests for the plugin settings screen.
  *
  * Like the email template page, this ends in wp_redirect() followed by a bare
@@ -28,322 +24,246 @@ use Tests\ConfurTestCase;
  * on this screen is that the field names the form renders are the ones the
  * handler reads back, and that only holds if both sides run for real.
  */
-#[CoversClass(\Confur\Admin\ConfurSettingsAdminPage::class)]
-final class ConfurSettingsAdminPageTest extends ConfurTestCase
+
+covers(ConfurSettingsAdminPage::class);
+
+const SETTINGS_OPTION           = 'confur_email_settings';
+const SETTINGS_BLOCKLIST_OPTION = 'confur_email_blocklist';
+const SETTINGS_HOOK             = 'questions-for-conference_page_confur-settings';
+const SETTINGS_NONCE            = 'nonce-confur_settings_action';
+
+function settingsSubmissionRedirect(ConfurSettingsAdminPage $page): string
 {
-    private const SETTINGS_OPTION  = 'confur_email_settings';
-    private const BLOCKLIST_OPTION = 'confur_email_blocklist';
-    private const HOOK             = 'questions-for-conference_page_confur-settings';
-    private const NONCE            = 'nonce-confur_settings_action';
+    $m = new ReflectionMethod(ConfurSettingsAdminPage::class, 'resolveSubmissionRedirect');
 
-    private ConfurSettingsAdminPage $page;
+    return (string) $m->invoke($page);
+}
 
-    protected function setUp(): void
-    {
-        parent::setUp();
+/** A complete, valid settings form, as the screen renders it. */
+function validSettingsForm(): array
+{
+    return [
+        'confur_settings_nonce'    => SETTINGS_NONCE,
+        'registration_reply_email' => 'conference@example.org',
+        'support_email'            => 'support@example.org',
+        'backup_email'             => 'backup@example.org',
+    ];
+}
 
-        $_POST = [];
-        $_GET  = [];
+beforeEach(function () {
+    $_POST = [];
+    $_GET  = [];
 
-        $this->page = new ConfurSettingsAdminPage();
+    $this->page = new ConfurSettingsAdminPage();
 
-        when('get_admin_page_title')->justReturn('Confur Settings');
-        when('submit_button')->alias(
-            static function (string $text = 'Save', string $type = 'primary', string $name = 'submit'): void {
-                echo '<button type="submit" name="' . $name . '">' . $text . '</button>';
-            }
-        );
-    }
-
-    protected function tearDown(): void
-    {
-        $_POST = [];
-        $_GET  = [];
-
-        parent::tearDown();
-    }
-
-    private function capture(callable $fn): string
-    {
-        ob_start();
-        try {
-            $fn();
-        } finally {
-            $html = (string) ob_get_clean();
+    Functions\when('get_admin_page_title')->justReturn('Confur Settings');
+    Functions\when('submit_button')->alias(
+        static function (string $text = 'Save', string $type = 'primary', string $name = 'submit'): void {
+            echo '<button type="submit" name="' . $name . '">' . $text . '</button>';
         }
+    );
+});
 
-        return $html;
-    }
+afterEach(function () {
+    $_POST = [];
+    $_GET  = [];
+});
 
-    private function submissionRedirect(): string
-    {
-        $m = new ReflectionMethod(ConfurSettingsAdminPage::class, 'resolveSubmissionRedirect');
-
-        return (string) $m->invoke($this->page);
-    }
-
-    /** A complete, valid settings form, as the screen renders it. */
-    private function validForm(): array
-    {
-        return [
-            'confur_settings_nonce'    => self::NONCE,
-            'registration_reply_email' => 'conference@example.org',
-            'support_email'            => 'support@example.org',
-            'backup_email'             => 'backup@example.org',
-        ];
-    }
-
-    // ── registration ──────────────────────────────────────────────────
-    #[Test]
-    public function init_registers_the_menu_the_form_handler_and_the_assets(): void
-    {
+// ── registration ──────────────────────────────────────────────────
+describe('registration', function () {
+    it('registers the menu, the form handler and the assets from init', function () {
         $this->page->init();
 
         $this->assertActionAdded('admin_menu', false, 'the menu should be registered');
         $this->assertActionAdded('admin_post_confur_update_settings', false, 'the form handler should be registered');
         $this->assertActionAdded('admin_enqueue_scripts', false, 'the assets should be registered');
-    }
+    });
 
-    #[Test]
-    public function nothing_is_registered_on_a_front_end_request(): void
-    {
+    it('registers nothing on a front-end request', function () {
         WpState::$isAdmin = false;
 
         $this->page->init();
 
         $this->assertActionNotAdded('admin_menu');
-    }
+    });
 
-    #[Test]
-    public function the_page_is_added_under_the_confur_menu_for_administrators_only(): void
-    {
+    it('adds the page under the Confur menu for administrators only', function () {
         $this->page->addAdminMenu();
 
-        $this->assertCount(1, WpState::$menus);
-        $this->assertSame('confur', WpState::$menus[0]['parent']);
-        $this->assertSame('confur-settings', WpState::$menus[0]['slug']);
-        $this->assertSame('manage_options', WpState::$menus[0]['cap']);
-    }
+        expect(WpState::$menus)->toHaveCount(1)
+            ->and(WpState::$menus[0]['parent'])->toBe('confur')
+            ->and(WpState::$menus[0]['slug'])->toBe('confur-settings')
+            ->and(WpState::$menus[0]['cap'])->toBe('manage_options');
+    });
 
-    #[Test]
-    public function the_page_styles_are_only_loaded_on_this_screen(): void
-    {
+    it('only loads the page styles on this screen', function () {
         $this->page->enqueueAdminAssets('edit.php');
 
-        $this->assertSame([], WpState::$enqueued);
-    }
+        expect(WpState::$enqueued)->toBe([]);
+    });
 
-    #[Test]
-    public function the_page_styles_are_loaded_on_this_screen(): void
-    {
-        $this->page->enqueueAdminAssets(self::HOOK);
+    it('loads the page styles on this screen', function () {
+        $this->page->enqueueAdminAssets(SETTINGS_HOOK);
 
-        $this->assertSame(
-            [['fn' => 'wp_add_inline_style', 'handle' => 'wp-admin']],
-            WpState::$enqueued
-        );
-    }
+        expect(WpState::$enqueued)->toBe([['fn' => 'wp_add_inline_style', 'handle' => 'wp-admin']]);
+    });
+});
 
-    // ── submission guards ─────────────────────────────────────────────
-    #[Test]
-    public function the_form_handler_refuses_a_user_without_the_capability(): void
-    {
+// ── submission guards ─────────────────────────────────────────────
+describe('submission guards', function () {
+    it('refuses a user without the capability', function () {
         WpState::$userCan = false;
 
-        $this->expectException(WpDieException::class);
         $this->page->handleFormSubmission();
-    }
+    })->throws(WpDieException::class);
 
-    #[Test]
-    public function the_form_handler_refuses_a_submission_with_no_nonce(): void
-    {
-        $this->expectException(WpDieException::class);
+    it('refuses a submission with no nonce', function () {
         $this->page->handleFormSubmission();
-    }
+    })->throws(WpDieException::class);
 
-    #[Test]
-    public function the_form_handler_refuses_a_submission_with_a_stale_nonce(): void
-    {
+    it('refuses a submission with a stale nonce', function () {
         $_POST['confur_settings_nonce'] = 'nonce-something-else';
 
-        $this->expectException(WpDieException::class);
         $this->page->handleFormSubmission();
-    }
+    })->throws(WpDieException::class);
+});
 
-    // ── saving settings (the caller redirects and exits) ──────────────
-    #[Test]
-    public function a_valid_save_stores_every_field_and_reports_success(): void
-    {
-        $_POST = $this->validForm() + [
+// ── saving settings (the caller redirects and exits) ──────────────
+describe('saving settings', function () {
+    it('stores every field and reports success on a valid save', function () {
+        $_POST = validSettingsForm() + [
             'delete_blocked_posts'       => '1',
             'enable_duplicate_detection' => '1',
         ];
 
-        $redirect = $this->submissionRedirect();
+        $redirect = settingsSubmissionRedirect($this->page);
 
-        $this->assertStringContainsString('page=confur-settings', $redirect);
-        $this->assertStringContainsString('updated=1', $redirect);
+        expect($redirect)->toContain('page=confur-settings', 'updated=1');
 
-        $saved = WpState::$options[self::SETTINGS_OPTION];
-        $this->assertSame('conference@example.org', $saved['registration_reply']);
-        $this->assertSame('support@example.org', $saved['support']);
-        $this->assertSame('backup@example.org', $saved['backup']);
-        $this->assertTrue($saved['delete_blocked_posts']);
-        $this->assertTrue($saved['enable_duplicate_detection']);
-    }
+        $saved = WpState::$options[SETTINGS_OPTION];
+        expect($saved['registration_reply'])->toBe('conference@example.org')
+            ->and($saved['support'])->toBe('support@example.org')
+            ->and($saved['backup'])->toBe('backup@example.org')
+            ->and($saved['delete_blocked_posts'])->toBeTrue()
+            ->and($saved['enable_duplicate_detection'])->toBeTrue();
+    });
 
-    /**
-     * Unticked checkboxes are absent from $_POST rather than sent as "0", so
-     * "not present" has to mean false and not "leave as it was".
-     */
-    #[Test]
-    public function unticked_checkboxes_are_saved_as_false(): void
-    {
-        WpState::$options[self::SETTINGS_OPTION] = [
+    // Unticked checkboxes are absent from $_POST rather than sent as "0", so
+    // "not present" has to mean false and not "leave as it was".
+    it('saves unticked checkboxes as false', function () {
+        WpState::$options[SETTINGS_OPTION] = [
             'delete_blocked_posts'       => true,
             'enable_duplicate_detection' => true,
         ];
-        $_POST = $this->validForm();
+        $_POST = validSettingsForm();
 
-        $this->submissionRedirect();
+        settingsSubmissionRedirect($this->page);
 
-        $saved = WpState::$options[self::SETTINGS_OPTION];
-        $this->assertFalse($saved['delete_blocked_posts']);
-        $this->assertFalse($saved['enable_duplicate_detection']);
-    }
+        $saved = WpState::$options[SETTINGS_OPTION];
+        expect($saved['delete_blocked_posts'])->toBeFalse()
+            ->and($saved['enable_duplicate_detection'])->toBeFalse();
+    });
 
-    /**
-     * An invalid email address is rejected by ConfurSettings::updateAll(), so
-     * nothing is written.
-     *
-     * The redirect still says updated=1, which is not what you would expect.
-     * The branch is `if ($settingsUpdated || $blocklistUpdated)`, and the
-     * blocklist is written by the same submission — an empty textarea still
-     * counts as a successful write, so the OR is satisfied and the screen
-     * reports success over a settings save that did not happen. Asserted as-is
-     * rather than corrected: this change is about covering the layer, not
-     * altering it.
-     */
-    #[Test]
-    public function an_invalid_email_address_is_not_saved(): void
-    {
-        $_POST = $this->validForm();
+    // An invalid email address is rejected by ConfurSettings::updateAll(), so
+    // nothing is written.
+    //
+    // The redirect still says updated=1, which is not what you would expect.
+    // The branch is `if ($settingsUpdated || $blocklistUpdated)`, and the
+    // blocklist is written by the same submission — an empty textarea still
+    // counts as a successful write, so the OR is satisfied and the screen
+    // reports success over a settings save that did not happen. Asserted as-is
+    // rather than corrected: this change is about covering the layer, not
+    // altering it.
+    it('does not save an invalid email address', function () {
+        $_POST = validSettingsForm();
         $_POST['support_email'] = 'not-an-email';
 
-        $redirect = $this->submissionRedirect();
+        $redirect = settingsSubmissionRedirect($this->page);
 
-        $this->assertArrayNotHasKey(self::SETTINGS_OPTION, WpState::$options, 'nothing should have been saved');
-        $this->assertStringContainsString(
-            'updated=1',
-            $redirect,
-            'the successful blocklist write currently masks the rejected settings save'
-        );
-    }
+        expect(WpState::$options)->not->toHaveKey(SETTINGS_OPTION, message: 'nothing should have been saved')
+            // the successful blocklist write currently masks the rejected settings save
+            ->and($redirect)->toContain('updated=1');
+    });
 
-    #[Test]
-    public function a_save_where_nothing_could_be_written_reports_an_error(): void
-    {
-        when('update_option')->justReturn(false);
-        $_POST = $this->validForm();
+    it('reports an error when nothing could be written', function () {
+        Functions\when('update_option')->justReturn(false);
+        $_POST = validSettingsForm();
         $_POST['support_email'] = 'not-an-email';
 
-        $this->assertStringContainsString('error=1', $this->submissionRedirect());
-    }
+        expect(settingsSubmissionRedirect($this->page))->toContain('error=1');
+    });
 
-    /**
-     * The blocked list is saved by the same submission as the settings, from
-     * a textarea holding one address per line.
-     */
-    #[Test]
-    public function the_blocked_list_textarea_is_split_sorted_and_saved(): void
-    {
-        $_POST = $this->validForm();
+    // The blocked list is saved by the same submission as the settings, from
+    // a textarea holding one address per line.
+    it('splits, sorts and saves the blocked list textarea', function () {
+        $_POST = validSettingsForm();
         $_POST['email_blocklist'] = "  zed@example.org  \n\nalice@example.org\n";
 
-        $this->submissionRedirect();
+        settingsSubmissionRedirect($this->page);
 
-        $this->assertSame(
-            ['alice@example.org', 'zed@example.org'],
-            WpState::$options[self::BLOCKLIST_OPTION]
-        );
-    }
+        expect(WpState::$options[SETTINGS_BLOCKLIST_OPTION])->toBe(['alice@example.org', 'zed@example.org']);
+    });
 
-    #[Test]
-    public function the_reset_button_restores_the_shipped_defaults(): void
-    {
-        WpState::$options[self::SETTINGS_OPTION] = ['support' => 'custom@example.org'];
+    it('restores the shipped defaults from the reset button', function () {
+        WpState::$options[SETTINGS_OPTION] = ['support' => 'custom@example.org'];
         $_POST = [
-            'confur_settings_nonce' => self::NONCE,
+            'confur_settings_nonce' => SETTINGS_NONCE,
             'reset_to_defaults'     => 'Reset to Defaults',
         ];
 
-        $redirect = $this->submissionRedirect();
+        $redirect = settingsSubmissionRedirect($this->page);
 
-        $this->assertStringContainsString('updated=1', $redirect);
-        $this->assertSame(
-            'support@aa-bristol.org',
-            WpState::$options[self::SETTINGS_OPTION]['support']
-        );
-    }
+        expect($redirect)->toContain('updated=1')
+            ->and(WpState::$options[SETTINGS_OPTION]['support'])->toBe('support@aa-bristol.org');
+    });
 
-    #[Test]
-    public function a_reset_that_fails_to_write_reports_an_error(): void
-    {
-        when('update_option')->justReturn(false);
+    it('reports an error when a reset fails to write', function () {
+        Functions\when('update_option')->justReturn(false);
         $_POST = [
-            'confur_settings_nonce' => self::NONCE,
+            'confur_settings_nonce' => SETTINGS_NONCE,
             'reset_to_defaults'     => 'Reset to Defaults',
         ];
 
-        $this->assertStringContainsString('error=1', $this->submissionRedirect());
-    }
+        expect(settingsSubmissionRedirect($this->page))->toContain('error=1');
+    });
 
-    #[Test]
-    public function the_clear_button_empties_the_blocked_list(): void
-    {
-        WpState::$options[self::BLOCKLIST_OPTION] = ['blocked@example.org'];
+    it('empties the blocked list from the clear button', function () {
+        WpState::$options[SETTINGS_BLOCKLIST_OPTION] = ['blocked@example.org'];
         $_POST = [
-            'confur_settings_nonce' => self::NONCE,
+            'confur_settings_nonce' => SETTINGS_NONCE,
             'clear_blocklist'       => 'Clear Blocked List',
         ];
 
-        $redirect = $this->submissionRedirect();
+        $redirect = settingsSubmissionRedirect($this->page);
 
-        $this->assertStringContainsString('updated=blocklist_cleared', $redirect);
-        $this->assertSame([], WpState::$options[self::BLOCKLIST_OPTION]);
-    }
+        expect($redirect)->toContain('updated=blocklist_cleared')
+            ->and(WpState::$options[SETTINGS_BLOCKLIST_OPTION])->toBe([]);
+    });
 
-    #[Test]
-    public function a_clear_that_fails_to_write_reports_an_error(): void
-    {
-        when('update_option')->justReturn(false);
+    it('reports an error when a clear fails to write', function () {
+        Functions\when('update_option')->justReturn(false);
         $_POST = [
-            'confur_settings_nonce' => self::NONCE,
+            'confur_settings_nonce' => SETTINGS_NONCE,
             'clear_blocklist'       => 'Clear Blocked List',
         ];
 
-        $this->assertStringContainsString('error=blocklist', $this->submissionRedirect());
-    }
+        expect(settingsSubmissionRedirect($this->page))->toContain('error=blocklist');
+    });
+});
 
-    // ── the screen ────────────────────────────────────────────────────
-    #[Test]
-    public function the_screen_refuses_a_user_without_the_capability(): void
-    {
+// ── the screen ────────────────────────────────────────────────────
+describe('the screen', function () {
+    it('refuses a user without the capability', function () {
         WpState::$userCan = false;
 
-        $this->expectException(WpDieException::class);
         $this->page->renderAdminPage();
-    }
+    })->throws(WpDieException::class);
 
-    /**
-     * The names rendered here are the ones resolveSubmissionRedirect() reads
-     * back out of $_POST, so rendering for real is what keeps the two halves
-     * of the form honest.
-     */
-    #[Test]
-    public function the_screen_renders_the_fields_the_handler_reads_back(): void
-    {
-        $html = $this->capture(fn () => $this->page->renderAdminPage());
+    // The names rendered here are the ones resolveSubmissionRedirect() reads
+    // back out of $_POST, so rendering for real is what keeps the two halves
+    // of the form honest.
+    it('renders the fields the handler reads back', function () {
+        $html = captureOutput(fn () => $this->page->renderAdminPage());
 
         foreach (
             [
@@ -355,112 +275,85 @@ final class ConfurSettingsAdminPageTest extends ConfurTestCase
             'enable_duplicate_detection',
             ] as $field
         ) {
-            $this->assertStringContainsString('name="' . $field . '"', $html, $field . ' should be on the form');
+            // each field should be on the form
+            expect($html)->toContain('name="' . $field . '"');
         }
 
-        $this->assertStringContainsString('name="action" value="confur_update_settings"', $html);
-        $this->assertStringContainsString('name="reset_to_defaults"', $html);
-    }
+        expect($html)->toContain('name="action" value="confur_update_settings"', 'name="reset_to_defaults"');
+    });
 
-    #[Test]
-    public function the_screen_shows_the_current_values_and_the_defaults(): void
-    {
-        WpState::$options[self::SETTINGS_OPTION] = [
+    it('shows the current values and the defaults', function () {
+        WpState::$options[SETTINGS_OPTION] = [
             'registration_reply' => 'current@example.org',
             'support'            => 'support@example.org',
             'backup'             => 'backup@example.org',
         ];
 
-        $html = $this->capture(fn () => $this->page->renderAdminPage());
+        $html = captureOutput(fn () => $this->page->renderAdminPage());
 
-        $this->assertStringContainsString('value="current@example.org"', $html);
-        $this->assertStringContainsString('conference@aa-bristol.org', $html, 'the defaults box should list the shipped value');
-    }
+        expect($html)->toContain('value="current@example.org"')
+            // the defaults box should list the shipped value
+            ->toContain('conference@aa-bristol.org');
+    });
 
-    /**
-     * Both checkboxes render from the saved settings, so a ticked box has to
-     * survive a page reload.
-     */
-    #[Test]
-    public function the_checkboxes_reflect_what_is_saved(): void
-    {
-        WpState::$options[self::SETTINGS_OPTION] = [
+    // Both checkboxes render from the saved settings, so a ticked box has to
+    // survive a page reload.
+    it('reflects what is saved in the checkboxes', function () {
+        WpState::$options[SETTINGS_OPTION] = [
             'delete_blocked_posts'       => true,
             'enable_duplicate_detection' => true,
         ];
 
-        $html = $this->capture(fn () => $this->page->renderAdminPage());
+        $html = captureOutput(fn () => $this->page->renderAdminPage());
 
-        $this->assertSame(2, substr_count($html, 'checked="checked"'), 'both checkboxes should be ticked');
-    }
+        expect(substr_count($html, 'checked="checked"'))->toBe(2, 'both checkboxes should be ticked');
+    });
 
-    /**
-     * The clear button is only worth offering when there is something to
-     * clear, and the count is shown twice — once as a warning, once as a
-     * caption.
-     */
-    #[Test]
-    public function the_clear_button_and_the_count_appear_only_with_a_populated_blocked_list(): void
-    {
-        WpState::$options[self::BLOCKLIST_OPTION] = ['one@example.org', 'two@example.org'];
+    // The clear button is only worth offering when there is something to
+    // clear, and the count is shown twice — once as a warning, once as a
+    // caption.
+    it('shows the clear button and the count only with a populated blocked list', function () {
+        WpState::$options[SETTINGS_BLOCKLIST_OPTION] = ['one@example.org', 'two@example.org'];
 
-        $html = $this->capture(fn () => $this->page->renderAdminPage());
+        $html = captureOutput(fn () => $this->page->renderAdminPage());
 
-        $this->assertStringContainsString('name="clear_blocklist"', $html);
-        $this->assertStringContainsString('Currently 2 email(s)', $html);
-        $this->assertStringContainsString('one@example.org', $html, 'the textarea should hold the list');
-    }
+        expect($html)->toContain('name="clear_blocklist"', 'Currently 2 email(s)')
+            // the textarea should hold the list
+            ->toContain('one@example.org');
+    });
 
-    #[Test]
-    public function the_clear_button_is_hidden_when_the_blocked_list_is_empty(): void
-    {
-        $html = $this->capture(fn () => $this->page->renderAdminPage());
+    it('hides the clear button when the blocked list is empty', function () {
+        $html = captureOutput(fn () => $this->page->renderAdminPage());
 
-        $this->assertStringNotContainsString('name="clear_blocklist"', $html);
-        $this->assertStringContainsString('Currently 0 email(s)', $html);
-    }
+        expect($html)->not->toContain('name="clear_blocklist"')
+            ->toContain('Currently 0 email(s)');
+    });
 
-    #[Test]
-    public function a_corrupt_blocked_list_option_renders_as_empty_rather_than_fatalling(): void
-    {
-        WpState::$options[self::BLOCKLIST_OPTION] = 'not-an-array';
+    it('renders a corrupt blocked list option as empty rather than fatalling', function () {
+        WpState::$options[SETTINGS_BLOCKLIST_OPTION] = 'not-an-array';
 
-        $html = $this->capture(fn () => $this->page->renderAdminPage());
+        $html = captureOutput(fn () => $this->page->renderAdminPage());
 
-        $this->assertStringContainsString('Currently 0 email(s)', $html);
-    }
+        expect($html)->toContain('Currently 0 email(s)');
+    });
 
-    /**
-     * @param array<string, string> $query
-     */
-    #[DataProvider('noticeParameters')]
-    #[Test]
-    public function the_screen_reports_back_on_the_last_submission(array $query, string $expected): void
-    {
+    it('reports back on the last submission', function (array $query, string $expected) {
         $_GET = $query;
 
-        $html = $this->capture(fn () => $this->page->renderAdminPage());
+        $html = captureOutput(fn () => $this->page->renderAdminPage());
 
-        $this->assertStringContainsString($expected, $html);
-    }
+        expect($html)->toContain($expected);
+    })->with([
+        'saved'            => [['updated' => '1'], 'Settings updated successfully.'],
+        'reset'            => [['updated' => 'reset'], 'Settings reset to defaults successfully.'],
+        'blocked list'     => [['updated' => 'blocklist_cleared'], 'Email blocked list cleared successfully.'],
+        'failed'           => [['error' => '1'], 'Failed to update settings.'],
+    ]);
 
-    /** @return array<string, array{0: array<string, string>, 1: string}> */
-    public static function noticeParameters(): array
-    {
-        return [
-            'saved'            => [['updated' => '1'], 'Settings updated successfully.'],
-            'reset'            => [['updated' => 'reset'], 'Settings reset to defaults successfully.'],
-            'blocked list'     => [['updated' => 'blocklist_cleared'], 'Email blocked list cleared successfully.'],
-            'failed'           => [['error' => '1'], 'Failed to update settings.'],
-        ];
-    }
+    it('shows no notice on a plain page load', function () {
+        $html = captureOutput(fn () => $this->page->renderAdminPage());
 
-    #[Test]
-    public function no_notice_is_shown_on_a_plain_page_load(): void
-    {
-        $html = $this->capture(fn () => $this->page->renderAdminPage());
-
-        $this->assertStringNotContainsString('confur-notice error', $html);
-        $this->assertStringNotContainsString('updated successfully', $html);
-    }
-}
+        expect($html)->not->toContain('confur-notice error')
+            ->not->toContain('updated successfully');
+    });
+});

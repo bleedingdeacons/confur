@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# PHPUnit Quick Start Script
+# Pest Quick Start Script
 # This script helps you quickly run tests with common options
 
 echo "========================================="
-echo "PHPUnit Test Runner"
+echo "Pest Test Runner"
 echo "========================================="
 echo ""
 
@@ -40,29 +40,29 @@ while true; do
     case $choice in
         1)
             echo "▶️  Running all tests..."
-            ./vendor/bin/phpunit
+            ./vendor/bin/pest
             ;;
         2)
             echo "▶️  Running tests with HTML coverage..."
-            ./vendor/bin/phpunit --coverage-html coverage
+            ./vendor/bin/pest --coverage-html coverage
             echo ""
             echo "✅ Coverage report generated!"
             echo "📊 Open coverage/html/index.html to view"
             ;;
         3)
             echo "▶️  Running tests with text coverage..."
-            ./vendor/bin/phpunit --coverage-text
+            ./vendor/bin/pest --coverage-text
             ;;
         4)
             read -p "Enter test name to filter: " test_name
             echo "▶️  Running filtered tests..."
-            ./vendor/bin/phpunit --filter "$test_name"
+            ./vendor/bin/pest --filter "$test_name"
             ;;
         5)
             echo "▶️  Starting watch mode (requires fswatch)..."
             echo "Press Ctrl+C to stop"
             if command -v fswatch &> /dev/null; then
-                fswatch -o tests/ src/ | xargs -n1 -I{} ./vendor/bin/phpunit
+                fswatch -o tests/ src/ | xargs -n1 -I{} ./vendor/bin/pest
             else
                 echo "❌ fswatch not installed. Install with:"
                 echo "   macOS: brew install fswatch"
@@ -71,7 +71,7 @@ while true; do
             ;;
         6)
             echo "▶️  Checking coverage percentage..."
-            ./vendor/bin/phpunit --coverage-text | grep -A 3 "Code Coverage"
+            ./vendor/bin/pest --coverage-text | grep -A 3 "Code Coverage"
             ;;
         7)
             echo "▶️  Running code style check..."

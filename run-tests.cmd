@@ -1,9 +1,9 @@
 @echo off
-REM PHPUnit Quick Start Script for Windows
+REM Pest Quick Start Script for Windows
 REM This script helps you quickly run tests with common options
 
 echo =========================================
-echo PHPUnit Test Runner
+echo Pest Test Runner
 echo =========================================
 echo.
 
@@ -45,13 +45,13 @@ goto menu
 
 :run_all
 echo [*] Running all tests...
-vendor\bin\phpunit
+vendor\bin\pest
 echo.
 goto menu
 
 :run_coverage_html
 echo [*] Running tests with HTML coverage...
-vendor\bin\phpunit --coverage-html coverage
+vendor\bin\pest --coverage-html coverage
 echo.
 echo [✓] Coverage report generated!
 echo [*] Open coverage\html\index.html to view
@@ -60,20 +60,20 @@ goto menu
 
 :run_coverage_text
 echo [*] Running tests with text coverage...
-vendor\bin\phpunit --coverage-text
+vendor\bin\pest --coverage-text
 echo.
 goto menu
 
 :run_filtered
 set /p test_name="Enter test name to filter: "
 echo [*] Running filtered tests...
-vendor\bin\phpunit --filter "%test_name%"
+vendor\bin\pest --filter "%test_name%"
 echo.
 goto menu
 
 :check_coverage
 echo [*] Checking coverage percentage...
-vendor\bin\phpunit --coverage-text | findstr /C:"Code Coverage"
+vendor\bin\pest --coverage-text | findstr /C:"Code Coverage"
 echo.
 goto menu
 
