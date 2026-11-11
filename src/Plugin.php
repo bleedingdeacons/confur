@@ -102,10 +102,9 @@ class Plugin
             // Shortcode hooks
             add_action('init', [$this->shortcodeService, 'registerShortcodes']);
 
-            // Answer submission hooks
-            add_action('admin_post_nopriv_answer_submission', [$this->answerHandler, 'handleSubmission']);
-            add_action('admin_post_answer_submission', [$this->answerHandler, 'handleSubmission']);
-            add_action('df_after_insert_post', [$this->answerHandler, 'handleRegistration' ], 10, 2);
+            // Registration form. Answers are saved through the REST API
+            // (AnswerAPI), registered below.
+            add_action('df_after_insert_post', [$this->answerHandler, 'handleRegistration'], 10, 2);
 
             // REST API hooks
             add_action('rest_api_init', [$this->answerAPI, 'registerRoutes']);

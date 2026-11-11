@@ -2,14 +2,17 @@
 
 namespace Tests\Unit\Handlers;
 
-use BleedingDeacons\WpMocks\Exceptions\JsonResponseException;
 use BleedingDeacons\WpMocks\WpState;
-use Brain\Monkey\Functions;
 use Confur\Config\Constants;
-use Confur\Domain\QuestionSet;
 use Confur\Handlers\AnswerHandler;
 
 covers(AnswerHandler::class);
+
+/*
+ * The registration hook, driven end to end through WordPress state. Saving
+ * answers is the REST endpoint's job and is tested in AnswerAPITest and
+ * SaveAnswersTest.
+ */
 
 /**
  * Seed an answer post through both stores get_posts() and get_post() read,
@@ -32,14 +35,6 @@ function seedAnswer(int $id, string $slug, string $date = '2024-01-01 00:00:00')
     return $post;
 }
 
-/** Put an answer to every question in the set into $_POST. */
-function answerEveryQuestion(): void
-{
-    foreach (QuestionSet::current()->fieldNames() as $field) {
-        $_POST[$field] = "Answer to $field";
-    }
-}
-
 beforeEach(function () {
     WpState::$options = [
         'confur_email_settings' => [
@@ -57,240 +52,7 @@ beforeEach(function () {
     ];
     // parent::setUp() has cleared WpState, so the queries, deletions and
     // sent mail all start empty.
-    //
-    // url_to_postid() is deliberately NOT stubbed here. Brain Monkey keeps
-    // one stub per function per test and the first registered answers every
-    // call, so a default set in setUp would silently shadow every per-test
-    // override — the failure being a wrong post id several assertions
-    // later, not an error. Each test states the id it means.
-    $_POST = [];
-    $_SERVER['REQUEST_METHOD'] = 'POST';
-    $_SERVER['HTTP_REFERER'] = 'http://example.test/answer/x';
     $this->handler = new AnswerHandler();
-
-    // Run handleSubmission and return the JsonResponseException it terminates with.
-    $this->runSubmission = function (): JsonResponseException {
-        try {
-            $this->handler->handleSubmission();
-            $this->fail('Expected a wp_send_json response.');
-        } catch (JsonResponseException $r) {
-            return $r;
-        }
-    };
-});
-
-// ── handleSubmission ─────────────────────────────────────────────────
-describe('handleSubmission', function () {
-    it('rejects a non-POST request', function () {
-        $_SERVER['REQUEST_METHOD'] = 'GET';
-        $r = ($this->runSubmission)();
-        expect($r->success)->toBeFalse();
-    });
-
-    it('rejects an unresolvable referer', function () {
-        $_POST['submit_answers'] = Constants::STATUS_DRAFT;
-        Functions\when('url_to_postid')->justReturn(0);
-        $r = ($this->runSubmission)();
-        expect($r->success)->toBeFalse();
-    });
-
-    it('rejects a missing post', function () {
-        $_POST['submit_answers'] = Constants::STATUS_DRAFT;
-        Functions\when('url_to_postid')->justReturn(50);
-        $this->statuses[50] = false;
-        $r = ($this->runSubmission)();
-        expect($r->success)->toBeFalse();
-    });
-
-    it('saves a draft', function () {
-        $_POST['submit_answers'] = Constants::STATUS_DRAFT;
-        $_POST['c1_a1'] = 'My answer';
-        Functions\when('url_to_postid')->justReturn(60);
-        $this->statuses[60] = 'publish';
-        WpState::$postTypes[60] = Constants::ANSWER_CUSTOM_TYPE;
-        $this->fields[60] = [Constants::EMAIL_FIELD => 'a@b.com'];
-
-        $r = ($this->runSubmission)();
-        expect($r->success)->toBeTrue()
-            ->and($r->data['state'])->toBe(Constants::STATUS_DRAFT)
-            // The answer field was written.
-            ->and(get_field('c1_a1', 60))->toBe('My answer');
-    });
-
-    it('saves a completed submission and sends the email', function () {
-        $_POST['submit_answers'] = Constants::STATUS_COMPLETED;
-        answerEveryQuestion();
-        Functions\when('url_to_postid')->justReturn(61);
-        $this->statuses[61] = 'publish';
-        WpState::$postTypes[61] = Constants::ANSWER_CUSTOM_TYPE;
-        $this->fields[61] = [Constants::EMAIL_FIELD => 'a@b.com'];
-        $this->titles[61] = 'Answers from Group';
-
-        $r = ($this->runSubmission)();
-        expect($r->success)->toBeTrue()
-            ->and($r->data['state'])->toBe(Constants::STATUS_COMPLETED)
-            ->and(WpState::$mail)->not->toBeEmpty();
-    });
-
-    it('defaults an invalid status to draft', function () {
-        $_POST['submit_answers'] = 'Bogus'; // not a valid status
-        Functions\when('url_to_postid')->justReturn(62);
-        $this->statuses[62] = 'publish';
-        WpState::$postTypes[62] = Constants::ANSWER_CUSTOM_TYPE;
-        $this->fields[62] = [Constants::EMAIL_FIELD => 'a@b.com'];
-
-        $r = ($this->runSubmission)();
-        expect($r->success)->toBeTrue()
-            ->and($r->data['state'])->toBe(Constants::STATUS_DRAFT);
-    });
-
-    it('logs when a field update fails', function () {
-        $_POST['submit_answers'] = Constants::STATUS_DRAFT;
-        $_POST['c1_a1'] = 'A new value';
-        Functions\when('url_to_postid')->justReturn(63);
-        $this->statuses[63] = 'publish';
-        WpState::$postTypes[63] = Constants::ANSWER_CUSTOM_TYPE;
-        $this->fields[63] = [Constants::EMAIL_FIELD => 'a@b.com'];
-        // update_field returns false → the "failed to update field" branch runs.
-        Functions\when('update_field')->justReturn(false);
-
-        $r = ($this->runSubmission)();
-        expect($r->success)->toBeTrue();
-    });
-
-    it('rejects a post that is not an answer', function () {
-        $_POST['submit_answers'] = Constants::STATUS_DRAFT;
-        $_POST['c1_a1'] = 'Injected';
-        Functions\when('url_to_postid')->justReturn(64);
-        $this->statuses[64] = 'publish';
-        WpState::$postTypes[64] = 'page';
-
-        $r = ($this->runSubmission)();
-        expect($r->success)->toBeFalse()
-            ->and($r->status)->toBe(404)
-            ->and(get_field('c1_a1', 64))->toBeNull();
-    });
-
-    it('rejects a cancelled registration', function () {
-        $_POST['submit_answers'] = Constants::STATUS_DRAFT;
-        $_POST['c1_a1'] = 'Late edit';
-        Functions\when('url_to_postid')->justReturn(65);
-        $this->statuses[65] = 'publish';
-        WpState::$postTypes[65] = Constants::ANSWER_CUSTOM_TYPE;
-        $this->fields[65] = [Constants::STATUS_FIELD => Constants::STATUS_CANCELLED];
-
-        $r = ($this->runSubmission)();
-        expect($r->success)->toBeFalse()
-            ->and($r->status)->toBe(403)
-            ->and(get_field('c1_a1', 65))->toBeNull()
-            ->and(get_field(Constants::STATUS_FIELD, 65))->toBe(Constants::STATUS_CANCELLED);
-    });
-
-    it('compares against the submitted post, not the current one', function () {
-        // admin-post.php has no current post. The change check used to read
-        // there, so a value matching whatever it found was never saved.
-        $_POST['submit_answers'] = Constants::STATUS_DRAFT;
-        $_POST['c1_a1'] = 'New';
-        Functions\when('url_to_postid')->justReturn(66);
-        $this->statuses[66] = 'publish';
-        WpState::$postTypes[66] = Constants::ANSWER_CUSTOM_TYPE;
-        $this->fields[66] = ['c1_a1' => 'Old'];
-        update_field('c1_a1', 'New');
-
-        ($this->runSubmission)();
-        expect(get_field('c1_a1', 66))->toBe('New');
-    });
-
-    it('stores the status and timestamp unescaped', function () {
-        $_POST['submit_answers'] = Constants::STATUS_COMPLETED;
-        answerEveryQuestion();
-        Functions\when('url_to_postid')->justReturn(67);
-        Functions\when('current_time')->justReturn('Monday, 2024-01-01 01:02:03 PM');
-        $this->statuses[67] = 'publish';
-        WpState::$postTypes[67] = Constants::ANSWER_CUSTOM_TYPE;
-        $this->fields[67] = [Constants::EMAIL_FIELD => 'a@b.com'];
-
-        ($this->runSubmission)();
-        expect(get_field(Constants::UPDATED_FIELD, 67))->toBe('Monday, 2024-01-01 01:02:03 PM')
-            ->and(get_field(Constants::COMPLETION_FIELD, 67))->toBe('Monday, 2024-01-01 01:02:03 PM')
-            ->and(get_field(Constants::STATUS_FIELD, 67))->toBe(Constants::STATUS_COMPLETED);
-    });
-
-    it('keeps an incomplete set as a draft when Complete is asked for', function () {
-        $_POST['submit_answers'] = Constants::STATUS_COMPLETED;
-        answerEveryQuestion();
-        $_POST['c2_a2'] = '   '; // blank once trimmed
-        unset($_POST['c7_a1']);
-        Functions\when('url_to_postid')->justReturn(68);
-        $this->statuses[68] = 'publish';
-        WpState::$postTypes[68] = Constants::ANSWER_CUSTOM_TYPE;
-        $this->fields[68] = [Constants::EMAIL_FIELD => 'a@b.com'];
-
-        $r = ($this->runSubmission)();
-        expect($r->success)->toBeTrue()
-            ->and($r->data['state'])->toBe(Constants::STATUS_DRAFT)
-            ->and($r->data['message'])->toBe('Answers Saved as Draft: 2 questions still need an answer.')
-            // The answers given are still saved.
-            ->and(get_field('c1_a1', 68))->toBe('Answer to c1_a1')
-            ->and(get_field(Constants::STATUS_FIELD, 68))->toBe(Constants::STATUS_DRAFT)
-            ->and(get_field(Constants::COMPLETION_FIELD, 68))->toBe('')
-            // No completion email for a set that is not complete.
-            ->and(WpState::$mail)->toHaveCount(1); // the backup copy only
-    });
-
-    it('completes when earlier saves supplied the remaining answers', function () {
-        $_POST['submit_answers'] = Constants::STATUS_COMPLETED;
-        $_POST['c7_a1'] = 'The last one';
-        Functions\when('url_to_postid')->justReturn(69);
-        $this->statuses[69] = 'publish';
-        WpState::$postTypes[69] = Constants::ANSWER_CUSTOM_TYPE;
-
-        $saved = [Constants::EMAIL_FIELD => 'a@b.com'];
-        foreach (QuestionSet::current()->fieldNames() as $field) {
-            if ($field !== 'c7_a1') {
-                $saved[$field] = "Saved $field";
-            }
-        }
-        $this->fields[69] = $saved;
-
-        $r = ($this->runSubmission)();
-        expect($r->data['state'])->toBe(Constants::STATUS_COMPLETED)
-            ->and($r->data['message'])->toBe('Answers Saved as Complete');
-    });
-
-    it('counts an answer of "0" as answered', function () {
-        $_POST['submit_answers'] = Constants::STATUS_COMPLETED;
-        answerEveryQuestion();
-        $_POST['c3_a1'] = '0';
-        Functions\when('url_to_postid')->justReturn(72);
-        $this->statuses[72] = 'publish';
-        WpState::$postTypes[72] = Constants::ANSWER_CUSTOM_TYPE;
-        $this->fields[72] = [Constants::EMAIL_FIELD => 'a@b.com'];
-
-        $r = ($this->runSubmission)();
-        expect($r->data['state'])->toBe(Constants::STATUS_COMPLETED);
-    });
-
-    it('does not let a group mark itself cancelled', function () {
-        $_POST['submit_answers'] = Constants::STATUS_CANCELLED;
-        Functions\when('url_to_postid')->justReturn(70);
-        $this->statuses[70] = 'publish';
-        WpState::$postTypes[70] = Constants::ANSWER_CUSTOM_TYPE;
-
-        $r = ($this->runSubmission)();
-        expect($r->data['state'])->toBe(Constants::STATUS_DRAFT);
-    });
-
-    it('treats a lower-case cancelled state as cancelled', function () {
-        $_POST['submit_answers'] = Constants::STATUS_DRAFT;
-        Functions\when('url_to_postid')->justReturn(71);
-        $this->statuses[71] = 'publish';
-        WpState::$postTypes[71] = Constants::ANSWER_CUSTOM_TYPE;
-        $this->fields[71] = [Constants::STATUS_FIELD => 'cancelled'];
-
-        $r = ($this->runSubmission)();
-        expect($r->status)->toBe(403);
-    });
 });
 
 // ── handleRegistration ───────────────────────────────────────────────
@@ -430,27 +192,13 @@ describe('handleRegistration', function () {
     });
 });
 
+
 // ── the error boundary ───────────────────────────────────────────────
 describe('the error boundary', function () {
-    it('turns an unexpected failure while saving into a generic 500', function () {
-        $save = \Mockery::mock(\Confur\Application\SaveAnswers::class);
-        $save->shouldReceive('save')->andThrow(new \RuntimeException('database went away'));
-        $this->handler = new AnswerHandler($save);
-
-        $_POST['submit_answers'] = Constants::STATUS_DRAFT;
-        Functions\when('url_to_postid')->justReturn(60);
-
-        $r = ($this->runSubmission)();
-        expect($r->success)->toBeFalse()
-            ->and($r->status)->toBe(500)
-            // The internal error is logged, not shown to the group.
-            ->and($r->data['message'])->not->toContain('database');
-    });
-
     it('emails the registrant when registration fails unexpectedly', function () {
         $register = \Mockery::mock(\Confur\Application\RegisterGroup::class);
         $register->shouldReceive('register')->andThrow(new \RuntimeException('boom'));
-        $this->handler = new AnswerHandler(null, $register);
+        $this->handler = new AnswerHandler($register);
         $this->fields[95] = [Constants::REGISTRATION_RECIPIENT_EMAIL => 'a@b.com'];
 
         $this->handler->handleRegistration(Constants::REGISTER_QUESTION_FORM, 95);
@@ -463,7 +211,7 @@ describe('the error boundary', function () {
     it('does not run registration for another form', function () {
         $register = \Mockery::mock(\Confur\Application\RegisterGroup::class);
         $register->shouldNotReceive('register');
-        $this->handler = new AnswerHandler(null, $register);
+        $this->handler = new AnswerHandler($register);
 
         $this->handler->handleRegistration('some-other-form', 96);
     });

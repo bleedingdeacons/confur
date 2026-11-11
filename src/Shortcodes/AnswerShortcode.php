@@ -187,17 +187,18 @@ class AnswerShortcode
     }
 
     /**
-     * Configure custom form
+     * [configure_form] — retired; renders nothing.
      *
-     * @param array<string, mixed> $atts Shortcode attributes
-     * @return string Rendered HTML
+     * It added the hidden "action" field the old admin-post.php submission
+     * needed. Answers now save through the REST API, so the field has no
+     * use, but existing answer pages still contain the shortcode: it stays
+     * registered so they do not show the raw "[configure_form …]" text.
+     *
+     * @param array<string, mixed>|string $atts Shortcode attributes (unused)
      */
-    public function configureCustomForm(array $atts): string
+    public function configureCustomForm(array|string $atts = []): string
     {
-        return sprintf(
-            '<input type="hidden" name="action" value="%s">',
-            esc_attr((string) ($atts['action'] ?? ''))
-        );
+        return '';
     }
 
     /**

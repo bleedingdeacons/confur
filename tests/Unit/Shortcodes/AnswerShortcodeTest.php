@@ -202,12 +202,12 @@ it('generates a header with a single meeting', function () {
     expect($result)->toContain('<h2>', 'Answers from', '</h2>');
 });
 
-it('configures a custom form', function () {
-    $result = $this->shortcode->configureCustomForm(['action' => 'save_answers']);
-
-    // Check for action hidden field
-    expect($result)->toContain('<input type="hidden" name="action" value="save_answers">')
-        ->not->toContain('answer_submission_nonce');
+it('renders nothing for the retired configure_form shortcode', function () {
+    // Existing pages still contain [configure_form action="…"]; it must
+    // disappear quietly rather than add a field nothing reads — including
+    // when WordPress passes '' for a shortcode with no attributes.
+    expect($this->shortcode->configureCustomForm(['action' => 'answer_submission']))->toBe('')
+        ->and($this->shortcode->configureCustomForm(''))->toBe('');
 });
 
 it('generates the status', function () {

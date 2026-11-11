@@ -62,8 +62,9 @@ Under the **Questions for Conference** sidebar menu:
 [progress_table]                             Per-committee progress table
 [control position="top"]                     Save controls (Draft / Complete)
 [status position="top"]                      Unsaved-changes notice
-[configure_form action="answer_submission"]  Hidden form action field
 ```
+
+`[configure_form]` is retired and renders nothing; it is still registered so older answer pages that contain it do not show the raw shortcode.
 
 ### AA programme content
 
@@ -93,8 +94,6 @@ POST /wp-json/confur/v1/answers/{slug}    Save: {"state": "Draft"|"Complete", "a
 ```
 
 A save returns `{"message", "updated", "state"}`. "Complete" is only granted when every question has an answer; otherwise the answers are saved as a Draft and `message` says how many remain. A cancelled registration answers 403, an unknown slug 404.
-
-The older `admin-post.php?action=answer_submission` route still works for one release, and logs each use.
 
 ## Building a release
 

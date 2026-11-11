@@ -56,8 +56,8 @@ describe('what it refuses', function () {
         }
     });
 
-    it('refuses a cancelled registration, with a 403', function () {
-        ($this->answerPost)(7, [Constants::STATUS_FIELD => 'Cancelled']);
+    it('refuses a cancelled registration, with a 403, however the state is spelled', function (string $stored) {
+        ($this->answerPost)(7, [Constants::STATUS_FIELD => $stored]);
 
         try {
             $this->service->save(7, ['c1_a1' => 'Late'], 'Draft');
@@ -66,7 +66,7 @@ describe('what it refuses', function () {
             expect($e->status)->toBe(403)
                 ->and(get_field('c1_a1', 7))->toBeNull();
         }
-    });
+    })->with(['Cancelled', 'cancelled']);
 });
 
 describe('saving', function () {
@@ -98,6 +98,24 @@ describe('saving', function () {
             ->and(get_field('meeting', 12))->toBeNull()
             ->and(get_field('c1_q1', 12))->toBeNull()
             ->and(get_field('c2_a1', 12))->toBeNull();
+    });
+
+    it('compares against the post being saved, not the current post', function () {
+        // A REST request has no current post. If the change check read
+        // there, a value matching whatever it found would never be saved.
+        ($this->answerPost)(15, ['c1_a1' => 'Old']);
+        update_field('c1_a1', 'New'); // the "current post" already holds the new text
+
+        $this->service->save(15, ['c1_a1' => 'New'], 'Draft');
+
+        expect(get_field('c1_a1', 15))->toBe('New');
+    });
+
+    it('carries on and logs when an answer cannot be written', function () {
+        ($this->answerPost)(16);
+        Functions\when('update_field')->justReturn(false);
+
+        expect($this->service->save(16, ['c1_a1' => 'Lost'], 'Draft')->state)->toBe(AnswerState::Draft);
     });
 
     it('records the time and state, and publishes the post', function () {
@@ -145,6 +163,22 @@ describe('completing', function () {
         expect($result->state)->toBe(AnswerState::Draft)
             ->and($result->message)->toBe('Answers Saved as Draft: 1 question still needs an answer.')
             ->and($this->mailer->calls('sendCompletion'))->toBe([]);
+    });
+
+    it('counts an answer of "0" as answered', function () {
+        ($this->answerPost)(24);
+        $answers = ($this->everyAnswer)();
+        $answers['c3_a1'] = '0';
+
+        expect($this->service->save(24, $answers, 'Complete')->state)->toBe(AnswerState::Complete);
+    });
+
+    it('completes when earlier saves supplied the remaining answers', function () {
+        $saved = ($this->everyAnswer)();
+        unset($saved['c7_a1']);
+        ($this->answerPost)(25, $saved);
+
+        expect($this->service->save(25, ['c7_a1' => 'The last one'], 'Complete')->state)->toBe(AnswerState::Complete);
     });
 
     it('still completes when the thank-you email fails', function () {
