@@ -120,14 +120,16 @@ describe('saving', function () {
 
     it('records the time and state, and publishes the post', function () {
         ($this->answerPost)(13);
-        Functions\when('current_time')->justReturn('Monday, 2024-01-01 01:02:03 PM');
+        Functions\expect('current_time')->with('mysql')->andReturn('2024-01-01 13:02:03');
         Functions\expect('wp_publish_post')->once()->with(13);
 
         $result = $this->service->save(13, [], 'Draft');
 
-        expect($result->updated)->toBe('Monday, 2024-01-01 01:02:03 PM')
+        // Stored in the date-time picker's own format; shown as the field
+        // formats it, matching the status endpoint.
+        expect($result->updated)->toBe('Monday, January 1, 2024 1:02 PM')
             ->and($result->message)->toBe('Answers Saved as Draft')
-            ->and(get_field(Constants::UPDATED_FIELD, 13))->toBe('Monday, 2024-01-01 01:02:03 PM')
+            ->and(get_field(Constants::UPDATED_FIELD, 13))->toBe('2024-01-01 13:02:03')
             ->and(get_field(Constants::STATUS_FIELD, 13))->toBe('Draft')
             ->and(get_field(Constants::COMPLETION_FIELD, 13))->toBe('');
     });
@@ -143,13 +145,13 @@ describe('completing', function () {
     it('completes a full set, records when, and thanks the group', function () {
         ($this->answerPost)(20);
         $this->titles[20] = 'Answers from Monday Group';
-        Functions\when('current_time')->justReturn('Tuesday, 2024-01-02 09:00:00 AM');
+        Functions\when('current_time')->justReturn('2024-01-02 09:00:00');
 
         $result = $this->service->save(20, ($this->everyAnswer)(), 'Complete');
 
         expect($result->state)->toBe(AnswerState::Complete)
             ->and($result->message)->toBe('Answers Saved as Complete')
-            ->and(get_field(Constants::COMPLETION_FIELD, 20))->toBe('Tuesday, 2024-01-02 09:00:00 AM')
+            ->and(get_field(Constants::COMPLETION_FIELD, 20))->toBe('2024-01-02 09:00:00')
             ->and($this->mailer->calls('sendCompletion'))->toBe([['group@example.org', 'Answers from Monday Group']]);
     });
 

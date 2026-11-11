@@ -2,6 +2,7 @@
 
 namespace Confur;
 
+use Confur\Cli\MigrateDatesCommand;
 use Confur\Config\ConfurSettings;
 use Confur\Services\AssetService;
 use Confur\Services\ShortcodeService;
@@ -103,6 +104,11 @@ class Plugin
 
             // REST API hooks
             add_action('rest_api_init', [$this->answerAPI, 'registerRoutes']);
+
+            // WP-CLI commands, only when running under WP-CLI.
+            if (defined('WP_CLI') && \WP_CLI) {
+                \WP_CLI::add_command('confur migrate-dates', new MigrateDatesCommand());
+            }
 
             // Register Confur parent menu
             add_action('admin_menu', [$this, 'registerConfurMenu'], 5);

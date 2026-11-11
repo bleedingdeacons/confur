@@ -6,6 +6,7 @@ use Confur\Config\Constants;
 use Confur\Domain\AnswerKey;
 use Confur\Domain\AnswerState;
 use Confur\Domain\QuestionSet;
+use Confur\Domain\SaveTime;
 use Confur\Services\Mailer;
 use Confur\Storage\AnswerStore;
 
@@ -50,9 +51,10 @@ class SaveAnswers
 
         [$state, $message] = $this->decideState($postId, $requestedState);
 
-        $updated = current_time('l, Y-m-d h:i:s A');
+        // In the date-time picker's own format (see SaveTime), so it sorts
+        // and the edit screen can read it.
+        $updated = current_time('mysql');
 
-        // Stored raw; escaped where it is output.
         update_field(Constants::UPDATED_FIELD, $updated, $postId);
         update_field(Constants::STATUS_FIELD, $state->value, $postId);
         update_field(Constants::COMPLETION_FIELD, $state === AnswerState::Complete ? $updated : '', $postId);
@@ -67,7 +69,9 @@ class SaveAnswers
             }
         }
 
-        return new SaveResult($state, $updated, $message ?? 'Answers Saved as ' . $state->value);
+        // Shown to the group as the status endpoint shows it (the field's
+        // return format), so the page reads the same before and after a save.
+        return new SaveResult($state, SaveTime::display($updated), $message ?? 'Answers Saved as ' . $state->value);
     }
 
     /** @throws SubmissionRejected */
