@@ -3,6 +3,7 @@
 namespace Confur\Admin;
 
 use Confur\Config\Constants;
+use Confur\Domain\AnswerKey;
 use Confur\Repositories\AnswerRepository;
 
 /**
@@ -355,10 +356,11 @@ class ConfurHeadsUp
         $twentyFourHoursAgo = $now - (24 * 60 * 60);
 
         foreach ($groupAnswers as $fieldName => $answers) {
-            // Parse field name (e.g., "c1_a1" -> Committee 1, Answer 1)
-            if (preg_match('/^c(\d+)_a(\d+)$/', $fieldName, $matches)) {
-                $committeeNum = (int)$matches[1];
-                $questionNum = (int)$matches[2];
+            $key = AnswerKey::parse((string) $fieldName);
+
+            if ($key !== null) {
+                $committeeNum = $key->committee;
+                $questionNum = $key->question;
 
                 foreach ($answers as $answer) {
                     // Check if updated in last 24 hours
