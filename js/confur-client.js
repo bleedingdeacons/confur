@@ -243,12 +243,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ state: requestedState, answers }),
             });
 
-            const body = await response.json().catch(() => ({}));
+            // An error response may not be JSON; read what we can from it.
+            // A success must be: a proxy or login page answering 200 with
+            // HTML is not a save, and treating it as one would clear the
+            // group's local copy of answers the server never received.
+            const body = await response.json().catch(() => null);
 
             if (!response.ok) {
                 const error = new Error('Form submission failed');
-                error.serverMessage = body.message;
+                error.serverMessage = body && body.message;
                 throw error;
+            }
+
+            if (!body || typeof body.state !== 'string') {
+                throw new Error('The server did not confirm the save');
             }
 
             return body;
