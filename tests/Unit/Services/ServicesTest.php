@@ -3,12 +3,12 @@
 namespace Tests\Unit\Services;
 
 use BleedingDeacons\WpMocks\WpState;
-use Confur\Services\AdminAssetService;
+use Confur\Services\AdminAssets;
 use Confur\Services\AssetService;
 use Confur\Services\ShortcodeService;
 
 covers(AssetService::class);
-covers(AdminAssetService::class);
+covers(AdminAssets::class);
 covers(ShortcodeService::class);
 
 beforeEach(function () {
@@ -39,15 +39,33 @@ it('skips the front-end assets when not on an answer page', function () {
         ->and(WpState::$localized)->not->toHaveKey('confurAnswerPage');
 });
 
-it('enqueues the admin assets on the reporting page', function () {
-    $_GET['page'] = 'confur-reporting';
-    (new AdminAssetService())->enqueueScripts();
-})->throwsNoExceptions();
+describe('admin assets', function () {
+    it('enqueues a stylesheet from assets/admin/', function () {
+        AdminAssets::style('status');
 
-it('skips the admin assets elsewhere', function () {
-    $_GET['page'] = 'something-else';
-    (new AdminAssetService())->enqueueScripts();
-})->throwsNoExceptions();
+        expect(WpState::$enqueued)->toBe([['fn' => 'wp_enqueue_style', 'handle' => 'confur-admin-status']]);
+    });
+
+    it('enqueues a script with its config, rather than baking values into it', function () {
+        AdminAssets::script('dashboard', ['jquery'], 'confurDashboard', ['nonce' => 'abc']);
+
+        expect(WpState::$enqueued)->toBe([['fn' => 'wp_enqueue_script', 'handle' => 'confur-admin-dashboard']])
+            ->and(WpState::$localized['confurDashboard'])->toBe(['nonce' => 'abc']);
+    });
+
+    it('ships every file a screen asks for', function (string $file) {
+        expect(dirname(__DIR__, 3) . '/assets/admin/' . $file)->toBeFile();
+    })->with([
+        'status.css', 'status.js', 'settings.css', 'email-templates.css', 'results.css', 'results.js',
+        'dashboard.css', 'dashboard.js', 'answer-list.css',
+    ]);
+
+    it('leaves no PHP-generated values in the scripts', function (string $file) {
+        // Nonces, URLs and user ids come from the localized config objects.
+        expect(file_get_contents(dirname(__DIR__, 3) . '/assets/admin/' . $file))
+            ->not->toMatch('/nonce-|example\.test|<\?php/');
+    })->with(['status.js', 'dashboard.js', 'results.js']);
+});
 
 it('registers all the shortcodes', function () {
     (new ShortcodeService())->registerShortcodes();

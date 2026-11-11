@@ -1,0 +1,35 @@
+/* Answers list table (edit.php?post_type=answer): status badges
+ * Loaded only on that screen. Was inline in the PHP until the Phase 4 refactor. */
+.answer-status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+.answer-status-badge.status-completed {
+    background: #d4edda;
+    color: #155724;
+}
+.answer-status-badge.status-draft {
+    background: #fff3cd;
+    color: #856404;
+}
+.answer-status-badge.status-cancelled {
+    background: #6c757d;
+    color: #ffffff;
+}
+.answer-status-badge.status-not-started {
+    background: #f8d7da;
+    color: #721c24;
+}
+.column-answer_status {
+    width: 100px;
+}
+.column-answer_email {
+    width: 200px;
+}
+.column-answer_updated {
+    width: 180px;
+}

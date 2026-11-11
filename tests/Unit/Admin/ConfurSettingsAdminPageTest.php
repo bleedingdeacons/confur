@@ -105,7 +105,7 @@ describe('registration', function () {
     it('loads the page styles on this screen', function () {
         $this->page->enqueueAdminAssets(SETTINGS_HOOK);
 
-        expect(WpState::$enqueued)->toBe([['fn' => 'wp_add_inline_style', 'handle' => 'wp-admin']]);
+        expect(WpState::$enqueued)->toBe([['fn' => 'wp_enqueue_style', 'handle' => 'confur-admin-settings']]);
     });
 });
 

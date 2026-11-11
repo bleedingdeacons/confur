@@ -3,6 +3,7 @@
 namespace Confur\Admin;
 
 use Confur\Config\Constants;
+use Confur\Services\AdminAssets;
 use WP_Post;
 use WP_Query;
 
@@ -35,7 +36,7 @@ class AnswerAdmin
         add_action('admin_notices', [$this, 'displayBulkActionNotice']);
 
         // Admin styles
-        add_action('admin_head', [$this, 'addAdminColumnStyles']);
+        add_action('admin_enqueue_scripts', [$this, 'enqueueListStyles']);
     }
 
     /**
@@ -286,50 +287,21 @@ class AnswerAdmin
     }
 
     /**
-     * Add admin column styles
+     * admin_enqueue_scripts: the status badge styles, on the answers list only.
+     *
+     * Was an inline <style> printed in admin_head on every admin screen,
+     * checked there against the current screen.
+     *
+     * @param string $hook Current admin page hook suffix.
      */
-    public function addAdminColumnStyles(): void
+    public function enqueueListStyles($hook): void
     {
         $screen = get_current_screen();
 
-        if (!$screen || $screen->post_type !== Constants::ANSWER_CUSTOM_TYPE) {
+        if ($hook !== 'edit.php' || !$screen || $screen->post_type !== Constants::ANSWER_CUSTOM_TYPE) {
             return;
         }
 
-        echo '<style>
-            .answer-status-badge {
-                display: inline-block;
-                padding: 4px 10px;
-                border-radius: 12px;
-                font-size: 12px;
-                font-weight: 600;
-                text-transform: uppercase;
-            }
-            .answer-status-badge.status-completed {
-                background: #d4edda;
-                color: #155724;
-            }
-            .answer-status-badge.status-draft {
-                background: #fff3cd;
-                color: #856404;
-            }
-            .answer-status-badge.status-cancelled {
-                background: #6c757d;
-                color: #ffffff;
-            }
-            .answer-status-badge.status-not-started {
-                background: #f8d7da;
-                color: #721c24;
-            }
-            .column-answer_status {
-                width: 100px;
-            }
-            .column-answer_email {
-                width: 200px;
-            }
-            .column-answer_updated {
-                width: 180px;
-            }
-        </style>';
+        AdminAssets::style('answer-list');
     }
 }

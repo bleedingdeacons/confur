@@ -1,0 +1,92 @@
+/* Questions for Conference → Email Templates
+ * Loaded only on that screen. Was inline in the PHP until the Phase 4 refactor. */
+.confur-templates-container {
+    max-width: 1000px;
+    margin-top: 20px;
+}
+.confur-template-card {
+    background: #fff;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border-radius: 4px;
+}
+.confur-template-card h2 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.confur-template-card .template-description {
+    color: #646970;
+    font-size: 13px;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #f0f0f1;
+    border-radius: 4px;
+}
+.confur-template-card .template-description code {
+    background: #e0e0e0;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+.confur-template-field {
+    margin-bottom: 15px;
+}
+.confur-template-field label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+.confur-template-field input[type='text'] {
+    width: 100%;
+    max-width: 500px;
+}
+.confur-template-field .wp-editor-wrap {
+    margin-top: 5px;
+}
+.confur-form-actions {
+    margin-top: 20px;
+    padding: 20px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    display: flex;
+    gap: 10px;
+    border-radius: 4px;
+}
+.confur-notice {
+    background: #fff;
+    border-left: 4px solid #00a32a;
+    padding: 12px;
+    margin: 20px 0;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.04);
+}
+.confur-notice.error {
+    border-left-color: #d63638;
+}
+.confur-notice p {
+    margin: 0.5em 0;
+    padding: 2px;
+}
+.confur-placeholder-info {
+    margin-top: 5px;
+    font-size: 12px;
+    color: #646970;
+}
+.confur-template-badge {
+    font-size: 11px;
+    background: #2271b1;
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: normal;
+}
+.confur-reset-warning {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding: 12px;
+    margin: 15px 0;
+}
