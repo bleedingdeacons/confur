@@ -2,6 +2,8 @@
 
 namespace Confur\Domain;
 
+use Confur\Config\QuestionSetOption;
+
 /**
  * The questions a conference cycle asks: which committees there are and how
  * many questions each has.
@@ -13,8 +15,12 @@ namespace Confur\Domain;
  * The last committee is special: it holds questions not owned by any single
  * committee, and is shown as "All Committees" rather than "Committee 7".
  *
- * The ACF field group in setup/Acf_Answers.json has to define one field per
- * key here; a test checks the two agree.
+ * Administrators edit it on the Questions screen (QuestionSetOption stores
+ * it). DEFAULT is what the bundled ACF field group in setup/Acf_Answers.json
+ * defines, and a test checks the two agree. A question added beyond that
+ * still saves and reports — AnswerStore reads the set's field names directly
+ * — but has no ACF field, so it is not editable on the answer post's own
+ * edit screen.
  */
 final class QuestionSet
 {
@@ -70,23 +76,51 @@ final class QuestionSet
     }
 
     /**
-     * The set in force for this request.
-     *
-     * Filterable so a site can change the questions for a new cycle without a
-     * plugin release. Whether that moves to an admin-editable option is still
-     * an open decision; this filter is where such an option would plug in.
+     * The set in force for this request: the one saved on the Questions admin
+     * screen, or DEFAULT if none has been saved. The confur_question_set
+     * filter sees the counts last, for code that needs to override the admin.
      */
     public static function current(): self
     {
-        /** @var mixed $counts */
-        $counts = apply_filters('confur_question_set', self::DEFAULT);
+        $saved = QuestionSetOption::load();
 
-        if (!is_array($counts)) {
-            return new self(self::DEFAULT);
+        /** @var mixed $counts */
+        $counts = apply_filters('confur_question_set', $saved->questionCounts());
+
+        if ($counts === $saved->questionCounts()) {
+            return $saved;
         }
 
-        /** @var array<int, int> $counts */
-        return new self($counts);
+        if (!is_array($counts)) {
+            return $saved;
+        }
+
+        try {
+            // Keep the saved All Committees choice if the filter left it in.
+            /** @var array<int, int> $counts */
+            return new self($counts, isset($counts[$saved->allCommittees()]) ? $saved->allCommittees() : null);
+        } catch (\InvalidArgumentException $e) {
+            error_log('QuestionSet::current - confur_question_set filter returned an invalid set: ' . $e->getMessage());
+            return $saved;
+        }
+    }
+
+    /** @return array<int, int> Committee number => question count, ascending. */
+    public function questionCounts(): array
+    {
+        return $this->questionCounts;
+    }
+
+    /** The committee shown as "All Committees". */
+    public function allCommittees(): int
+    {
+        return $this->allCommittees;
+    }
+
+    public function equals(self $other): bool
+    {
+        return $this->questionCounts === $other->questionCounts
+            && $this->allCommittees === $other->allCommittees;
     }
 
     /** @return list<int> Committee numbers, ascending. */

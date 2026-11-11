@@ -5,6 +5,7 @@ namespace Confur\Storage;
 use Confur\Config\Constants;
 use Confur\Domain\Answer;
 use Confur\Domain\AnswerKey;
+use Confur\Domain\QuestionSet;
 
 /**
  * Reads and writes `answer` posts through ACF.
@@ -131,14 +132,21 @@ class AnswerStore
     /**
      * Every answer field on the post that has text in it.
      *
+     * get_fields() only returns fields the ACF field group defines, so a
+     * question added on the Questions screen would be saved but never read
+     * back. The current set's field names are read directly as well.
+     *
      * @return array<string, string>
      */
     private function answerFields(int $postId): array
     {
         $fields = get_fields($postId);
+        $fields = is_array($fields) ? $fields : [];
 
-        if (!is_array($fields)) {
-            return [];
+        foreach (QuestionSet::current()->fieldNames() as $name) {
+            if (!array_key_exists($name, $fields)) {
+                $fields[$name] = get_field($name, $postId);
+            }
         }
 
         $answers = [];

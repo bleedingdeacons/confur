@@ -64,6 +64,32 @@ it('lists the questions without an answer', function () {
         ->and($set->isComplete(['c1_a1' => 'a', 'c1_a2' => 'b', 'c2_a1' => 'c']))->toBeTrue();
 });
 
+it('uses the set saved in the admin', function () {
+    \Confur\Config\QuestionSetOption::save(new QuestionSet([1 => 2, 2 => 2, 3 => 1], 1));
+
+    $set = QuestionSet::current();
+
+    expect($set->committees())->toBe([1, 2, 3])
+        ->and($set->committeeLabel(1))->toBe('All Committees')
+        ->and($set->committeeLabel(3))->toBe('Committee 3');
+});
+
+it('keeps the saved All Committees choice when a filter adjusts the counts', function () {
+    \Confur\Config\QuestionSetOption::save(new QuestionSet([1 => 1, 2 => 1, 3 => 1], 2));
+    Filters\expectApplied('confur_question_set')->once()->andReturn([1 => 1, 2 => 5, 3 => 1]);
+
+    $set = QuestionSet::current();
+
+    expect($set->questionCount(2))->toBe(5)
+        ->and($set->allCommittees())->toBe(2);
+});
+
+it('ignores a filter that returns an invalid set', function () {
+    Filters\expectApplied('confur_question_set')->once()->andReturn([1 => 0]);
+
+    expect(QuestionSet::current()->equals(new QuestionSet(QuestionSet::DEFAULT)))->toBeTrue();
+});
+
 it('lets a site replace the set through a filter', function () {
     Filters\expectApplied('confur_question_set')->once()->andReturn([1 => 1, 2 => 4]);
 

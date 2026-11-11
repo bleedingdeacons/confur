@@ -12,6 +12,7 @@ use Confur\Admin\StatusAdminPage;
 use Confur\Admin\ResultAdminPage;
 use Confur\Admin\ConfurSettingsAdminPage;
 use Confur\Admin\EmailTemplateAdminPage;
+use Confur\Admin\QuestionSetAdminPage;
 use Confur\Admin\AnswerAdmin;
 use Confur\Admin\ConfurHeadsUp;
 
@@ -29,6 +30,7 @@ class Plugin
     private ResultAdminPage $reportingAdminPage;
     private ConfurSettingsAdminPage $confurSettingsAdminPage;
     private EmailTemplateAdminPage $emailTemplateAdminPage;
+    private QuestionSetAdminPage $questionSetAdminPage;
     private ConfurHeadsUp $confurHeadsUp;
 
     /**
@@ -57,6 +59,7 @@ class Plugin
                 $this->reportingAdminPage = new ResultAdminPage();
                 $this->confurSettingsAdminPage = new ConfurSettingsAdminPage();
                 $this->emailTemplateAdminPage = new EmailTemplateAdminPage();
+                $this->questionSetAdminPage = new QuestionSetAdminPage();
                 // Registers its own admin hooks in the constructor.
                 new AnswerAdmin();
             } catch (\Exception $e) {
@@ -117,6 +120,7 @@ class Plugin
                 $this->reportingAdminPage->init();
                 $this->confurSettingsAdminPage->init();
                 $this->emailTemplateAdminPage->init();
+                $this->questionSetAdminPage->init();
             } catch (\Exception $e) {
                 error_log('Plugin::registerHooks - Failed to initialize admin pages: ' . $e->getMessage());
                 // Continue - admin pages are not critical for front-end functionality
