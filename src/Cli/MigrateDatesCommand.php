@@ -46,15 +46,32 @@ final class MigrateDatesCommand
             WP_CLI::warning(sprintf('post %d %s: "%s" is not a time this can read; left as it is', $bad['post'], $bad['field'], $bad['value']));
         }
 
-        WP_CLI::success(sprintf(
-            '%s%d answer posts: %d %s, %d already in the new format, %d empty, %d unreadable.',
+        foreach ($report['changed'] as $moved) {
+            WP_CLI::log(sprintf('post %d %s: saved again while this ran; left as the group wrote it', $moved['post'], $moved['field']));
+        }
+
+        foreach ($report['failed'] as $failed) {
+            WP_CLI::warning(sprintf('post %d %s: could not be written; still "%s". Run again to retry.', $failed['post'], $failed['field'], $failed['value']));
+        }
+
+        $summary = sprintf(
+            '%s%d answer posts: %d %s, %d already in the new format, %d empty, %d unreadable%s.',
             $dryRun ? 'Dry run, nothing written. ' : '',
             $report['posts'],
             count($report['converted']),
             $dryRun ? 'would be converted' : 'converted',
             $report['current'],
             $report['empty'],
-            count($report['unreadable'])
-        ));
+            count($report['unreadable']),
+            $dryRun ? '' : sprintf(', %d saved again meanwhile, %d failed', count($report['changed']), count($report['failed']))
+        );
+
+        // A failed write leaves old values behind: not a success.
+        if ($report['failed'] !== []) {
+            WP_CLI::warning($summary);
+            return;
+        }
+
+        WP_CLI::success($summary);
     }
 }

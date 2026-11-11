@@ -35,8 +35,12 @@ final class DateMigration
      *     converted: list<array{post: int, field: string, from: string, to: string}>,
      *     current: int,
      *     empty: int,
-     *     unreadable: list<array{post: int, field: string, value: string}>
+     *     unreadable: list<array{post: int, field: string, value: string}>,
+     *     changed: list<array{post: int, field: string}>,
+     *     failed: list<array{post: int, field: string, value: string}>
      * }
+     *   changed: saved again by the group while this ran — left as the group wrote it.
+     *   failed:  could not be written; still in the old format.
      */
     public function run(bool $dryRun = true): array
     {
@@ -47,7 +51,15 @@ final class DateMigration
             'fields' => 'ids',
         ]))));
 
-        $report = ['posts' => count($ids), 'converted' => [], 'current' => 0, 'empty' => 0, 'unreadable' => []];
+        $report = [
+            'posts' => count($ids),
+            'converted' => [],
+            'current' => 0,
+            'empty' => 0,
+            'unreadable' => [],
+            'changed' => [],
+            'failed' => [],
+        ];
 
         foreach ($ids as $postId) {
             foreach (self::FIELDS as $field) {
@@ -71,18 +83,37 @@ final class DateMigration
                     continue;
                 }
 
-                if (!$dryRun) {
-                    update_post_meta($postId, $field, $stored);
+                if (!$dryRun && !$this->replace($postId, $field, (string) $raw, $stored)) {
+                    // Either the group saved again since it was read — and
+                    // its newer value must stand — or the write failed.
+                    if (get_post_meta($postId, $field, true) !== $raw) {
+                        $report['changed'][] = ['post' => $postId, 'field' => $field];
+                    } else {
+                        $report['failed'][] = ['post' => $postId, 'field' => $field, 'value' => $value];
+                    }
+                    continue;
                 }
 
                 $report['converted'][] = ['post' => $postId, 'field' => $field, 'from' => $value, 'to' => $stored];
             }
         }
 
-        if (!$dryRun) {
+        // Done means nothing is left in the old format through our own fault.
+        if (!$dryRun && $report['failed'] === []) {
             update_option(self::DONE_OPTION, current_time('mysql'), false);
         }
 
         return $report;
+    }
+
+    /**
+     * Write the converted value only if the stored one is still exactly what
+     * was read. update_post_meta()'s $prev_value makes that one conditional
+     * UPDATE, so a group saving between the read and this write keeps its
+     * newer time — and a Draft save that cleared `completed` stays cleared.
+     */
+    private function replace(int $postId, string $field, string $read, string $converted): bool
+    {
+        return (bool) update_post_meta($postId, $field, $converted, $read);
     }
 }

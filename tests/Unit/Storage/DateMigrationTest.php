@@ -80,7 +80,68 @@ describe('wp confur migrate-dates', function () {
 
         (new MigrateDatesCommand())([], []);
 
-        expect(end(\WP_CLI::$printed))->toBe(['success', '1 answer posts: 1 converted, 0 already in the new format, 1 empty, 0 unreadable.'])
+        expect(end(\WP_CLI::$printed))->toBe(['success', '1 answer posts: 1 converted, 0 already in the new format, 1 empty, 0 unreadable, 0 saved again meanwhile, 0 failed.'])
             ->and(WpState::$postMeta[8]['updated'])->toBe('2024-01-01 13:02:03');
+    });
+});
+
+describe('writing safely', function () {
+    // update_post_meta() honouring $prev_value, as WordPress does: it only
+    // writes when the stored value is still the one given.
+    beforeEach(function () {
+        \Brain\Monkey\Functions\when('update_post_meta')->alias(
+            function (int $postId, string $key, mixed $value, mixed $prev = ''): bool {
+                if ($prev !== '' && (WpState::$postMeta[$postId][$key] ?? null) !== $prev) {
+                    return false;
+                }
+                WpState::$postMeta[$postId][$key] = $value;
+
+                return true;
+            }
+        );
+    });
+
+    it('leaves a time the group saved while the migration ran', function () {
+        ($this->answer)(1, ['updated' => 'Monday, 2024-01-01 01:02:03 PM']);
+
+        // The group saves between the migration's read and its write.
+        \Brain\Monkey\Functions\when('get_post_meta')->alias(function (int $postId, string $key = '', bool $single = false) {
+            static $reads = 0;
+            $value = WpState::$postMeta[$postId][$key] ?? '';
+            if ($key === 'updated' && ++$reads === 1) {
+                WpState::$postMeta[$postId][$key] = '2026-11-11 21:00:00';
+            }
+            return $value;
+        });
+
+        $report = (new DateMigration())->run(false);
+
+        expect(WpState::$postMeta[1]['updated'])->toBe('2026-11-11 21:00:00')
+            ->and($report['changed'])->toBe([['post' => 1, 'field' => 'updated']])
+            ->and($report['converted'])->toBe([]);
+    });
+
+    it('reports a failed write, and does not mark the migration done', function () {
+        ($this->answer)(2, ['updated' => 'Monday, 2024-01-01 01:02:03 PM']);
+        \Brain\Monkey\Functions\when('update_post_meta')->justReturn(false);
+
+        (new MigrateDatesCommand())([], []);
+
+        expect(WpState::$postMeta[2]['updated'])->toBe('Monday, 2024-01-01 01:02:03 PM')
+            ->and(\WP_CLI::$printed)->toContain(
+                ['warning', 'post 2 updated: could not be written; still "Monday, 2024-01-01 01:02:03 PM". Run again to retry.']
+            )
+            ->and(end(\WP_CLI::$printed)[0])->toBe('warning') // the summary is not a success
+            ->and(WpState::$options)->not->toHaveKey(DateMigration::DONE_OPTION);
+    });
+
+    it('converts with a conditional write when nothing interferes', function () {
+        ($this->answer)(3, ['updated' => 'Monday, 2024-01-01 01:02:03 PM']);
+
+        $report = (new DateMigration())->run(false);
+
+        expect(WpState::$postMeta[3]['updated'])->toBe('2024-01-01 13:02:03')
+            ->and(count($report['converted']))->toBe(1)
+            ->and(WpState::$options)->toHaveKey(DateMigration::DONE_OPTION);
     });
 });
