@@ -95,6 +95,19 @@ POST /wp-json/confur/v1/answers/{slug}    Save: {"state": "Draft"|"Complete", "a
 
 A save returns `{"message", "updated", "state"}`. "Complete" is only granted when every question has an answer; otherwise the answers are saved as a Draft and `message` says how many remain. A cancelled registration answers 403, an unknown slug 404.
 
+## Upgrading saved times (one-off)
+
+Before 3.3, an answer's `updated` and `completed` times were stored as text such as `Monday, 2024-01-01 01:02:03 PM`, so sorting by them sorted by weekday name. They are now stored as `2024-01-01 13:02:03`, the date-time picker's own format. Both display the same and both are read correctly, so nothing breaks before the old values are converted; only sorting waits on it.
+
+To convert the old values, back up the database, then:
+
+```bash
+wp confur migrate-dates --dry-run   # list what would change; writes nothing
+wp confur migrate-dates             # convert
+```
+
+It is safe to run more than once. Values it cannot read are reported and left as they are.
+
 ## Building a release
 
 The plugin ships with a cross-platform `build.php` script that packages a distributable zip:

@@ -55,6 +55,8 @@ class PluginBuilder
             '.phpunit.cache',
             'phpstan-baseline.neon',
             '.claude',
+            // PHPStan/test-only WP-CLI symbols; the real ones come from WP-CLI.
+            'stubs',
     ];
 
     // Files and directories to exclude in dev builds

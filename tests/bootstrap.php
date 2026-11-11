@@ -28,6 +28,9 @@ require_once dirname(__DIR__) . '/vendor/autoload.php';
 
 Bootstrap::load(['wordpress', 'acf', 'rest']);
 
+// WP-CLI's symbols, for src/Cli (see the file).
+require_once dirname(__DIR__) . '/stubs/wp-cli.php';
+
 // Makes plugins_url()/plugin_dir_url() answer with Confur's own path.
 WpState::$pluginSlug = 'confur';
 
