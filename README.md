@@ -83,6 +83,19 @@ These four are also shipped by the Amber plugin; whichever loads first registers
 [days_remaining end_date="2024-12-31" extend_by="0"]     Countdown to deadline
 ```
 
+## REST API
+
+The answer page script uses two public endpoints. An answer page's slug has a random prefix and is only sent to the group, so the slug is the credential — there is no nonce, which would expire on cached, logged-out pages.
+
+```text
+GET  /wp-json/answer/v1/status/{slug}     State and last save time
+POST /wp-json/confur/v1/answers/{slug}    Save: {"state": "Draft"|"Complete", "answers": {"c1_a1": "…"}}
+```
+
+A save returns `{"message", "updated", "state"}`. "Complete" is only granted when every question has an answer; otherwise the answers are saved as a Draft and `message` says how many remain. A cancelled registration answers 403, an unknown slug 404.
+
+The older `admin-post.php?action=answer_submission` route still works for one release, and logs each use.
+
 ## Building a release
 
 The plugin ships with a cross-platform `build.php` script that packages a distributable zip:

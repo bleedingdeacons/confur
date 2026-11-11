@@ -34,9 +34,17 @@ class AnswerHandler
 
     /**
      * admin-post.php?action=answer_submission
+     *
+     * Superseded by POST confur/v1/answers/{slug} (AnswerAPI::saveAnswers),
+     * which names its post explicitly instead of trusting the Referer. Kept
+     * for one release so a page whose old script is still cached in a
+     * browser can save; each use is logged so its removal can be confirmed
+     * safe.
      */
     public function handleSubmission(): void
     {
+        error_log('AnswerHandler::handleSubmission - Deprecated admin-post submission received; the answer page script should be using the REST endpoint');
+
         try {
             if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !isset($_POST['submit_answers'])) {
                 error_log('AnswerHandler::handleSubmission - Invalid request method or missing submit_answers field');

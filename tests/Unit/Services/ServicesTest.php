@@ -16,16 +16,28 @@ beforeEach(function () {
     unset($_GET['page']);
 });
 
-// injectAdminUrls path executed without error
-it('enqueues the front-end assets on an answer singular', function () {
+it('gives the answer page script its slug and REST endpoints', function () {
     WpState::$isSingular = true;
-    (new AssetService())->enqueueScripts();
-})->throwsNoExceptions();
+    \Brain\Monkey\Functions\when('get_queried_object')->justReturn((object) ['post_name' => 'abc123_monday_group']);
 
-it('skips the front-end assets when not singular', function () {
-    WpState::$isSingular = false;
     (new AssetService())->enqueueScripts();
-})->throwsNoExceptions();
+
+    expect(array_column(WpState::$enqueued, 'handle'))->toContain(AssetService::CLIENT_HANDLE)
+        ->and(WpState::$localized['confurAnswerPage'])->toBe([
+            'slug' => 'abc123_monday_group',
+            'statusUrl' => 'https://example.test/wp-json/answer/v1/status/abc123_monday_group',
+            'saveUrl' => 'https://example.test/wp-json/confur/v1/answers/abc123_monday_group',
+        ]);
+});
+
+it('skips the front-end assets when not on an answer page', function () {
+    WpState::$isSingular = false;
+
+    (new AssetService())->enqueueScripts();
+
+    expect(WpState::$enqueued)->toBe([])
+        ->and(WpState::$localized)->not->toHaveKey('confurAnswerPage');
+});
 
 it('enqueues the admin assets on the reporting page', function () {
     $_GET['page'] = 'confur-reporting';
