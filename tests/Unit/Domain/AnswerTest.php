@@ -42,12 +42,6 @@ describe('AnswerState', function () {
         expect(AnswerState::orDraft(null))->toBe(AnswerState::Draft)
             ->and(AnswerState::orDraft('Complete'))->toBe(AnswerState::Complete);
     });
-
-    it('lets groups choose only Draft or Complete', function () {
-        expect(AnswerState::Draft->isSubmittable())->toBeTrue()
-            ->and(AnswerState::Complete->isSubmittable())->toBeTrue()
-            ->and(AnswerState::Cancelled->isSubmittable())->toBeFalse();
-    });
 });
 
 describe('Answer', function () {

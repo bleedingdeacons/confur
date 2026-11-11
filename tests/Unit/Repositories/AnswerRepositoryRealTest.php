@@ -7,10 +7,10 @@ use Confur\Config\Constants;
 use Confur\Repositories\AnswerRepository;
 
 /*
- * Exercises the real AnswerRepository methods (getValue, getAnswerStatus,
- * getAllAnswers, getRegisteredGroups, findDuplicate, getGroupAnswers) against
- * the controllable ACF/post stubs — as opposed to AnswerRepositoryTest, which
- * drives a re-implemented findDuplicate.
+ * Exercises the AnswerRepository methods (getValue, getAnswerStatus,
+ * getAllAnswers, getRegisteredGroups, getGroupAnswers) against the
+ * controllable ACF/post stubs. Duplicate detection moved to DuplicateFinder
+ * and is tested there.
  */
 
 covers(AnswerRepository::class);
@@ -95,107 +95,6 @@ it('normalises varied meeting shapes in getRegisteredGroups', function () {
     $ids = array_column($groups, 'meetingId');
     expect($ids)->toContain(10, 20)
         ->and($groups)->toHaveCount(2);
-});
-
-// ── findDuplicate (real) ─────────────────────────────────────────────
-describe('findDuplicate (real)', function () {
-    it('returns null for empty inputs', function () {
-        expect($this->repo->findDuplicate(null, null, 'x@y.com'))->toBeNull()
-            ->and($this->repo->findDuplicate(100, null, ''))->toBeNull();
-    });
-
-    it('matches a single registration', function () {
-        ($this->answer)(1, [
-            Constants::MEETING_FIELD => 100,
-            Constants::EMAIL_FIELD => 'TEST@example.com',
-            Constants::STATUS_FIELD => Constants::STATUS_DRAFT,
-        ]);
-
-        $result = $this->repo->findDuplicate(100, null, 'test@example.com', 999);
-        expect($result)->not->toBeNull()
-            ->and($result['post_id'])->toBe(1)
-            ->and($result['slug'])->toBe('post-1');
-    });
-
-    it('skips cancelled registrations', function () {
-        ($this->answer)(1, [
-            Constants::MEETING_FIELD => 100,
-            Constants::EMAIL_FIELD => 'test@example.com',
-            Constants::STATUS_FIELD => Constants::STATUS_CANCELLED,
-        ]);
-        expect($this->repo->findDuplicate(100, null, 'test@example.com', 999))->toBeNull();
-    });
-
-    it('matches a paired registration in swapped order', function () {
-        ($this->answer)(1, [
-            Constants::MEETING_FIELD => 200,
-            Constants::FELLOW_MEETING_FIELD => 100,
-            Constants::EMAIL_FIELD => 'test@example.com',
-            Constants::STATUS_FIELD => Constants::STATUS_DRAFT,
-        ]);
-        $result = $this->repo->findDuplicate(100, 200, 'test@example.com', 999);
-        expect($result['post_id'])->toBe(1);
-    });
-
-    it('does not match a paired registration with a single one', function () {
-        ($this->answer)(1, [
-            Constants::MEETING_FIELD => 100,
-            Constants::FELLOW_MEETING_FIELD => null,
-            Constants::EMAIL_FIELD => 'test@example.com',
-            Constants::STATUS_FIELD => Constants::STATUS_DRAFT,
-        ]);
-        expect($this->repo->findDuplicate(100, 200, 'test@example.com', 999))->toBeNull();
-    });
-
-    it('returns the latest by updated', function () {
-        ($this->answer)(1, [
-            Constants::MEETING_FIELD => 100, Constants::EMAIL_FIELD => 'test@example.com',
-            Constants::STATUS_FIELD => Constants::STATUS_DRAFT, Constants::UPDATED_FIELD => '2024-01-01 10:00:00',
-        ]);
-        ($this->answer)(2, [
-            Constants::MEETING_FIELD => 100, Constants::EMAIL_FIELD => 'test@example.com',
-            Constants::STATUS_FIELD => Constants::STATUS_DRAFT, Constants::UPDATED_FIELD => '2024-06-01 10:00:00',
-        ]);
-        $result = $this->repo->findDuplicate(100, null, 'test@example.com', 999);
-        expect($result['post_id'])->toBe(2);
-    });
-
-    it('falls back to the post date when there is no updated', function () {
-        ($this->answer)(1, [
-            Constants::MEETING_FIELD => 100, Constants::EMAIL_FIELD => 'test@example.com',
-            Constants::STATUS_FIELD => Constants::STATUS_DRAFT,
-        ], '2024-01-01 09:00:00');
-        ($this->answer)(2, [
-            Constants::MEETING_FIELD => 100, Constants::EMAIL_FIELD => 'test@example.com',
-            Constants::STATUS_FIELD => Constants::STATUS_DRAFT,
-        ], '2024-09-01 09:00:00');
-        $result = $this->repo->findDuplicate(100, null, 'test@example.com', 999);
-        expect($result['post_id'])->toBe(2);
-    });
-
-    it('skips a different email', function () {
-        ($this->answer)(1, [
-            Constants::MEETING_FIELD => 100, Constants::EMAIL_FIELD => 'other@example.com',
-            Constants::STATUS_FIELD => Constants::STATUS_DRAFT,
-        ]);
-        expect($this->repo->findDuplicate(100, null, 'test@example.com', 999))->toBeNull();
-    });
-
-    it('skips a different meeting', function () {
-        ($this->answer)(1, [
-            Constants::MEETING_FIELD => 555, Constants::EMAIL_FIELD => 'test@example.com',
-            Constants::STATUS_FIELD => Constants::STATUS_DRAFT,
-        ]);
-        expect($this->repo->findDuplicate(100, null, 'test@example.com', 999))->toBeNull();
-    });
-
-    it('excludes the given post', function () {
-        ($this->answer)(5, [
-            Constants::MEETING_FIELD => 100, Constants::EMAIL_FIELD => 'test@example.com',
-            Constants::STATUS_FIELD => Constants::STATUS_DRAFT,
-        ]);
-        expect($this->repo->findDuplicate(100, null, 'test@example.com', 5))->toBeNull();
-    });
 });
 
 // ── getGroupAnswers ──────────────────────────────────────────────────

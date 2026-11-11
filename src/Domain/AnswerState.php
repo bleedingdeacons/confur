@@ -42,10 +42,4 @@ enum AnswerState: string
     {
         return self::fromStored($value) ?? self::Draft;
     }
-
-    /** States a group may choose when it saves. Cancelled is admin-only. */
-    public function isSubmittable(): bool
-    {
-        return $this !== self::Cancelled;
-    }
 }

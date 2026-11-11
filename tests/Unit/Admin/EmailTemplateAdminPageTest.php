@@ -14,7 +14,7 @@ use ReflectionMethod;
  * Tests for the email template editor.
  *
  * Most of this class is not admin glue at all: the static accessors are the
- * store the whole email layer reads through, so EmailService::sendConfirmation()
+ * store the whole email layer reads through, so Mailer::sendConfirmation()
  * and friends get their subject and body from here. Those are driven directly
  * against WpState's option store.
  *

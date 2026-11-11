@@ -2,8 +2,11 @@
 
 namespace Confur\Admin;
 
+use Confur\Application\RegisterGroup;
 use Confur\Config\Constants;
 use Confur\Repositories\AnswerRepository;
+use Confur\Services\Mailer;
+use Confur\Storage\AnswerStore;
 use Confur\Repositories\MeetingRepository;
 use Confur\Utils\HtmlHelper;
 
@@ -235,22 +238,20 @@ class StatusAdminPage
 
         // Get the email, meeting info, and answer URL
         $email = get_field(Constants::EMAIL_FIELD, $answerId);
-        $meetingId = get_field(Constants::MEETING_FIELD, $answerId);
-        $fellowMeetingId = get_field(Constants::FELLOW_MEETING_FIELD, $answerId);
+        // Normalised: ACF can return the meeting as a post object or array,
+        // which get_the_title() would not take.
+        $meetingId = AnswerStore::normalizePostId(get_field(Constants::MEETING_FIELD, $answerId));
+        $fellowMeetingId = AnswerStore::normalizePostId(get_field(Constants::FELLOW_MEETING_FIELD, $answerId));
 
         if (empty($email) || !is_email($email)) {
             wp_send_json_error(['message' => 'No valid email address found for this registration']);
         }
 
-        if (empty($meetingId)) {
+        if ($meetingId === null) {
             wp_send_json_error(['message' => 'No meeting associated with this registration']);
         }
 
-        // Build meeting name (same logic as in AnswerHandler)
-        $meetingName = get_the_title($meetingId);
-        if (!empty($fellowMeetingId)) {
-            $meetingName = substr($meetingName, 0, 85) . " and " . substr(get_the_title($fellowMeetingId), 0, 85);
-        }
+        $meetingName = RegisterGroup::meetingName($meetingId, $fellowMeetingId);
 
         // Get the answer URL. get_permalink() is string|false; an unresolvable
         // one means there is no answer page to point the recipient at, so
@@ -262,7 +263,7 @@ class StatusAdminPage
         }
 
         // Send the confirmation email
-        $result = \Confur\Services\EmailService::sendConfirmation($email, $meetingName, $answerUrl);
+        $result = Mailer::fromOptions()->sendConfirmation($email, $meetingName, $answerUrl);
 
         if ($result) {
             wp_send_json_success([
