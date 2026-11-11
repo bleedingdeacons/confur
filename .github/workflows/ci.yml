@@ -99,53 +99,7 @@ jobs:
         # failure without anyone having chosen that.
         run: composer audit --locked --abandoned=report
 
-      - name: Semgrep
-        # Once only: Semgrep scans source, which does not vary by PHP version.
-        # Running it on both legs has them scanning the same ref and uploading
-        # to Semgrep Cloud concurrently, and the blocking determination races.
-        if: matrix.php == '8.4'
-        # A gate, on pull requests and on main alike.
-        #
-        # `semgrep ci` is diff-aware on a PR: it scans against the merge base
-        # and reports only what that PR introduces — the same bargain PHPStan's
-        # baseline strikes below, with the platform holding the existing state
-        # instead of a committed file. On main it runs a full scan, and that
-        # gates the release: release has `needs: ci`, so a blocking finding
-        # means no version is raised and no zip is published.
-        #
-        # Deliberately no continue-on-error. Making the main scan advisory was
-        # tried first, reasoning that a merge is the release here and a
-        # pre-existing finding should not be able to freeze one. That has the
-        # trade backwards: it buys an uninterrupted release cadence by shipping
-        # a zip the scanner has already objected to. If a finding does block a
-        # release, triage it and re-cut with workflow_dispatch, which runs the
-        # gates and publishes exactly as a merge does.
-        #
-        # A run: step rather than semgrep/semgrep-action, for two reasons.
-        # uses: steps ignore defaults.run.working-directory (see the Coveralls
-        # step below), and these jobs check this repo out alongside its
-        # siblings — an action would scan all of them and file the siblings'
-        # findings against this repo, where they would never dedupe against
-        # those repos' own scans and a merge into one of them could fail an
-        # unrelated PR here. Running from inside this repo's own directory
-        # scopes the scan to this git repo. Pinning a third-party action to run
-        # the security scanning is also the trivy-action shape; installing a
-        # pinned semgrep adds no action.
-        #
-        # Some of this suite's findings come from pro rules, which only exist
-        # with a platform token. Without SEMGREP_APP_TOKEN this skips outright
-        # rather than scanning with a quietly smaller ruleset and reporting
-        # green.
-        env:
-          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
-        run: |
-          if [ -z "${SEMGREP_APP_TOKEN:-}" ]; then
-            echo 'SEMGREP_APP_TOKEN is not set - skipping the scan.'
-            echo 'Set it as an organisation secret to enable this gate.'
-            exit 0
-          fi
-          python3 -m pip install --quiet semgrep==1.174.0
-          semgrep ci
+      # Semgrep is its own job (below), running alongside this one.
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
@@ -255,6 +209,60 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   # ---------------------------------------------------------------------------
+  # Semgrep
+  # ---------------------------------------------------------------------------
+  # A gate, on pull requests and on main alike, in a job of its own so it runs
+  # alongside the PHP job rather than in front of it.
+  #
+  # It runs in Semgrep's own image, pinned by version and digest. It used to be
+  # a step in the PHP job that pip-installed semgrep on every run, and that
+  # install was most of the ~2 minutes the step took — longer than every other
+  # gate put together.
+  #
+  # `semgrep ci` is diff-aware on a PR: it scans against the merge base and
+  # reports only what that PR introduces — the same bargain PHPStan's baseline
+  # strikes, with the platform holding the existing state instead of a
+  # committed file. On main it runs a full scan, and that gates the release:
+  # release needs this job, so a blocking finding means no version is raised
+  # and no zip is published.
+  #
+  # Deliberately no continue-on-error. Making the main scan advisory was tried
+  # first, reasoning that a merge is the release here and a pre-existing
+  # finding should not be able to freeze one. That has the trade backwards: it
+  # buys an uninterrupted release cadence by shipping a zip the scanner has
+  # already objected to. If a finding does block a release, triage it and
+  # re-cut with workflow_dispatch, which runs the gates and publishes exactly
+  # as a merge does.
+  #
+  # `semgrep ci` in a run: step, not semgrep/semgrep-action: the checkout
+  # holds only this repo, so the scan is scoped to it, and no third-party
+  # action is added to run the security scanning.
+  #
+  # Some of this suite's findings come from pro rules, which only exist with a
+  # platform token. Without SEMGREP_APP_TOKEN this skips outright rather than
+  # scanning with a quietly smaller ruleset and reporting green.
+  semgrep:
+    name: Semgrep
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep:1.174.0@sha256:f1f7b71861c7b28b6e0f661225a2c4f58a484f5d0f182465c6d6b3b22f972ade
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Semgrep
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+        run: |
+          if [ -z "${SEMGREP_APP_TOKEN:-}" ]; then
+            echo 'SEMGREP_APP_TOKEN is not set - skipping the scan.'
+            echo 'Set it as an organisation secret to enable this gate.'
+            exit 0
+          fi
+          semgrep ci
+
+  # ---------------------------------------------------------------------------
   # Release
   # ---------------------------------------------------------------------------
   # A merge to main is the release. Ported from LifeLines, which piloted this.
@@ -271,9 +279,10 @@ jobs:
   # be in bump.ps1's $ciReleased list, or a second version gets raised on top.
   release:
     name: Release
-    # Every gate must pass first: needs: ci makes the whole release conditional
-    # on a green run, so a failing test can never publish a zip.
-    needs: ci
+    # Every gate must pass first: needs makes the whole release conditional on
+    # a green run, so a failing test or a blocking finding can never publish a
+    # zip.
+    needs: [ci, semgrep]
     # main only. PRs run the gates and stop; a push to develop does too.
     # workflow_dispatch releases as well — a manual trigger that ran the gates
     # and then declined to publish would be useless for the case it exists for.
