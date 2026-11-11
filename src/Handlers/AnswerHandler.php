@@ -4,74 +4,27 @@ namespace Confur\Handlers;
 
 use Confur\Application\DuplicateFinder;
 use Confur\Application\RegisterGroup;
-use Confur\Application\SaveAnswers;
-use Confur\Application\SubmissionRejected;
 use Confur\Config\Constants;
 use Confur\Config\Settings;
 use Confur\Services\Mailer;
 use Confur\Storage\AnswerStore;
 
 /**
- * The WordPress entry points for answers: the admin-post form submission and
- * the registration form's after-insert hook.
+ * The registration form's WordPress entry point: the form plugin's
+ * after-insert hook.
  *
- * Only the HTTP side lives here — which post a request is about, and turning
- * the outcome into a JSON response. The rules are in SaveAnswers and
- * RegisterGroup. This is also where unexpected errors are caught: each entry
- * point is a boundary, and nothing past it needs its own try/catch.
+ * The rules are in RegisterGroup. This is the boundary where an unexpected
+ * error is caught and the registrant told something went wrong. Saving
+ * answers is the REST endpoint's job (AnswerAPI::saveAnswers).
  */
 class AnswerHandler
 {
     /**
-     * Services are built on first use, from the settings in force at that
-     * point, unless they are passed in.
+     * RegisterGroup is built on first use, from the settings in force at
+     * that point, unless it is passed in.
      */
-    public function __construct(
-        private ?SaveAnswers $saveAnswers = null,
-        private ?RegisterGroup $registerGroup = null,
-    ) {
-    }
-
-    /**
-     * admin-post.php?action=answer_submission
-     */
-    public function handleSubmission(): void
+    public function __construct(private ?RegisterGroup $registerGroup = null)
     {
-        try {
-            if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !isset($_POST['submit_answers'])) {
-                error_log('AnswerHandler::handleSubmission - Invalid request method or missing submit_answers field');
-                wp_send_json_error(['message' => 'Unrecognized Action.'], 400);
-            }
-
-            // Submissions are constrained to same-site requests: the target
-            // post is resolved from the referer, and url_to_postid() only
-            // matches URLs on this site, so a cross-site post cannot reach a
-            // valid post ID.
-            $referer = (string) ($_SERVER['HTTP_REFERER'] ?? '');
-            $postId = url_to_postid($referer);
-
-            if ($postId === 0) {
-                error_log("AnswerHandler::handleSubmission - Could not determine post ID from URI: $referer");
-                wp_send_json_error(['message' => 'Invalid referer URL.'], 400);
-            }
-
-            $result = $this->saveAnswers()->save($postId, $_POST, $_POST['submit_answers']);
-
-            wp_send_json_success([
-                'message' => $result->message,
-                'updated' => $result->updated,
-                'state' => $result->state->value,
-            ]);
-        } catch (SubmissionRejected $e) {
-            error_log('AnswerHandler::handleSubmission - Rejected: ' . $e->getMessage());
-            wp_send_json_error(['message' => $e->getMessage()], $e->status);
-        } catch (\Exception $e) {
-            error_log('AnswerHandler::handleSubmission - Unexpected error: ' . $e->getMessage());
-            error_log('AnswerHandler::handleSubmission - Stack trace: ' . $e->getTraceAsString());
-            wp_send_json_error([
-                'message' => 'An error occurred while processing your submission. Please try again.',
-            ], 500);
-        }
     }
 
     /**
@@ -103,11 +56,6 @@ class AnswerHandler
                 }
             }
         }
-    }
-
-    private function saveAnswers(): SaveAnswers
-    {
-        return $this->saveAnswers ??= new SaveAnswers(new AnswerStore(), Mailer::fromOptions());
     }
 
     private function registerGroup(): RegisterGroup

@@ -62,8 +62,9 @@ Under the **Questions for Conference** sidebar menu:
 [progress_table]                             Per-committee progress table
 [control position="top"]                     Save controls (Draft / Complete)
 [status position="top"]                      Unsaved-changes notice
-[configure_form action="answer_submission"]  Hidden form action field
 ```
+
+`[configure_form]` is retired and renders nothing; it is still registered so older answer pages that contain it do not show the raw shortcode.
 
 ### AA programme content
 
@@ -82,6 +83,17 @@ These four are also shipped by the Amber plugin; whichever loads first registers
 [pdf_link url="…" name="file.pdf"]Link[/pdf_link]         Inline PDF download link
 [days_remaining end_date="2024-12-31" extend_by="0"]     Countdown to deadline
 ```
+
+## REST API
+
+The answer page script uses two public endpoints. An answer page's slug has a random prefix and is only sent to the group, so the slug is the credential — there is no nonce, which would expire on cached, logged-out pages.
+
+```text
+GET  /wp-json/answer/v1/status/{slug}     State and last save time
+POST /wp-json/confur/v1/answers/{slug}    Save: {"state": "Draft"|"Complete", "answers": {"c1_a1": "…"}}
+```
+
+A save returns `{"message", "updated", "state"}`. "Complete" is only granted when every question has an answer; otherwise the answers are saved as a Draft and `message` says how many remain. A cancelled registration answers 403, an unknown slug 404.
 
 ## Building a release
 

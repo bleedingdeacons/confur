@@ -2,9 +2,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     (async () => {
 
-        const url = window.location.pathname;
+        // Set by AssetService: this page's slug and its REST endpoints.
+        const config = window.confurAnswerPage || {};
 
-        const pageName = url.split('/').filter(segment => segment).pop();
+        const pageName = config.slug || window.location.pathname.split('/').filter(segment => segment).pop();
 
         const localStorageName = pageName;
 
@@ -79,8 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showProgress('Loading...');
 
         try {
-            const request = '/wp-json/answer/v1/status/' + pageName;
-            const response = await fetch(request);
+            const response = await fetch(config.statusUrl);
             if (response.ok) {
                 const data = await response.json();
                 console.log(data);
@@ -226,30 +226,46 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Handle form submission with promises
-        const postFormData = (formData) => {
-            return new Promise((resolve, reject) => {
-                fetch('/wp-admin/admin-post.php', {
-                    method: 'POST',
-                    body: formData
-                })
-                    .then(response => {
-                        if (response.ok) {
-                            resolve(response.json());
-                        } else {
-                            reject(new Error('Form submission failed'));
-                        }
-                    })
-                    .catch(error => reject(error));
+        // Save to the REST endpoint: the requested state and every answer
+        // field (cN_aM) on the page. A refusal from the server (a cancelled
+        // registration, say) rejects with the server's own message.
+        const saveAnswers = async (requestedState) => {
+            const answers = {};
+            for (const [name, value] of new FormData(form).entries()) {
+                if (/^c\d+_a\d+$/.test(name)) {
+                    answers[name] = value;
+                }
+            }
+
+            const response = await fetch(config.saveUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ state: requestedState, answers }),
             });
+
+            // An error response may not be JSON; read what we can from it.
+            // A success must be: a proxy or login page answering 200 with
+            // HTML is not a save, and treating it as one would clear the
+            // group's local copy of answers the server never received.
+            const body = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                const error = new Error('Form submission failed');
+                error.serverMessage = body && body.message;
+                throw error;
+            }
+
+            if (!body || typeof body.state !== 'string') {
+                throw new Error('The server did not confirm the save');
+            }
+
+            return body;
         };
 
         const handleSubmit = (event) => {
             showProgress('Saving...');
             const button = event.target;
-            const formData = new FormData(form);
-            formData.append(button.name, button.value);
-            postFormData(formData)
+            saveAnswers(button.value)
                 .then(responseData => {
 
                     console.log('Answers submitted successfully:', responseData);
@@ -261,14 +277,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                     });
 
-                    state = responseData.data.state;
-                    updated = responseData.data.updated;
+                    state = responseData.state;
+                    updated = responseData.updated;
 
                     // The server keeps an incomplete set as a draft even when
                     // Complete was asked for; say why rather than silently
                     // showing Draft.
-                    if (button.value !== state && responseData.data.message) {
-                        alert(responseData.data.message);
+                    if (button.value !== state && responseData.message) {
+                        alert(responseData.message);
                     }
 
                     // Reset dirty state
@@ -291,7 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 .catch(error => {
                     hideProgress();
                     console.error('Error submitting form:', error);
-                    alert('Failed to Save Answers. Please try again! Contact Support');
+                    alert(error.serverMessage || 'Failed to Save Answers. Please try again! Contact Support');
                 });
         };
 
