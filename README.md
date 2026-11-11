@@ -19,7 +19,7 @@ Conference cycles are messy. Confur cleans the mess up by separating three thing
 2. **Region reps review** in a centralised admin screen — Status (who's submitted, how complete), Results (the full text, by committee, ready to collate).
 3. **AA programme content** (Steps, Traditions, Responsibility Pledge) is reusable via shortcodes wherever it's needed.
 
-Every question/answer field is backed by Advanced Custom Fields, so the question set itself is editable from the WordPress admin without code changes.
+The question set — committees and how many questions each has — is edited on the **Questions** admin screen, without code changes. Answers are stored in Advanced Custom Fields on the `Answer` post.
 
 ## Requirements
 
@@ -46,6 +46,7 @@ Under the **Questions for Conference** sidebar menu:
 |---|---|
 | **Status** | Submission progress per group/committee — who's filed, who hasn't. |
 | **Results** | The latest answers grouped for collation. |
+| **Questions** | Administrators set the committees, how many questions each has, and which one is shown as "All Committees". "Complete" requires an answer to every question here. Answer pages are built from shortcodes and must be edited to match. |
 
 ## Shortcodes
 

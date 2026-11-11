@@ -5,6 +5,7 @@ namespace Confur\Storage;
 use Confur\Config\Constants;
 use Confur\Domain\Answer;
 use Confur\Domain\AnswerKey;
+use Confur\Domain\QuestionSet;
 
 /**
  * Reads and writes `answer` posts through ACF.
@@ -131,14 +132,27 @@ class AnswerStore
     /**
      * Every answer field on the post that has text in it.
      *
+     * get_fields() only returns fields the ACF field group defines. A
+     * question added on the Questions screen has no ACF field, and neither
+     * does one added and later removed, so relying on get_fields() alone
+     * would hide those answers. Every answer-shaped meta key on the post is
+     * read as well, along with the current set's names (in case meta is
+     * stored somewhere get_post_meta() does not see).
+     *
      * @return array<string, string>
      */
     private function answerFields(int $postId): array
     {
         $fields = get_fields($postId);
+        $fields = is_array($fields) ? $fields : [];
 
-        if (!is_array($fields)) {
-            return [];
+        $meta = get_post_meta($postId);
+        $metaKeys = is_array($meta) ? array_map('strval', array_keys($meta)) : [];
+
+        foreach (array_merge($metaKeys, QuestionSet::current()->fieldNames()) as $name) {
+            if (!array_key_exists($name, $fields) && AnswerKey::parse($name) !== null) {
+                $fields[$name] = get_field($name, $postId);
+            }
         }
 
         $answers = [];
