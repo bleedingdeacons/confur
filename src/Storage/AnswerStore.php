@@ -132,9 +132,12 @@ class AnswerStore
     /**
      * Every answer field on the post that has text in it.
      *
-     * get_fields() only returns fields the ACF field group defines, so a
-     * question added on the Questions screen would be saved but never read
-     * back. The current set's field names are read directly as well.
+     * get_fields() only returns fields the ACF field group defines. A
+     * question added on the Questions screen has no ACF field, and neither
+     * does one added and later removed, so relying on get_fields() alone
+     * would hide those answers. Every answer-shaped meta key on the post is
+     * read as well, along with the current set's names (in case meta is
+     * stored somewhere get_post_meta() does not see).
      *
      * @return array<string, string>
      */
@@ -143,8 +146,11 @@ class AnswerStore
         $fields = get_fields($postId);
         $fields = is_array($fields) ? $fields : [];
 
-        foreach (QuestionSet::current()->fieldNames() as $name) {
-            if (!array_key_exists($name, $fields)) {
+        $meta = get_post_meta($postId);
+        $metaKeys = is_array($meta) ? array_map('strval', array_keys($meta)) : [];
+
+        foreach (array_merge($metaKeys, QuestionSet::current()->fieldNames()) as $name) {
+            if (!array_key_exists($name, $fields) && AnswerKey::parse($name) !== null) {
                 $fields[$name] = get_field($name, $postId);
             }
         }

@@ -41,6 +41,10 @@ it('falls back to the default when the saved value is broken', function (mixed $
     'no committees' => [['all_committees' => 1]],
     'empty committees' => [['committees' => []]],
     'non-numeric count' => [['committees' => [1 => 'x']]],
+    'fractional count' => [['committees' => [1 => '2.7']]],
+    'float count' => [['committees' => [1 => 2.0]]],
+    'negative count' => [['committees' => [1 => '-2']]],
+    'fractional All Committees' => [['committees' => [1 => 1], 'all_committees' => '1.5']],
     'zero questions' => [['committees' => [1 => 0]]],
     'unknown All Committees' => [['committees' => [1 => 1], 'all_committees' => 9]],
 ]);

@@ -62,6 +62,19 @@ it('reads answers to questions the ACF field group does not define', function ()
     expect($this->store->load(1, true)->answers)->toBe(['c1_a1' => 'Known', 'c8_a1' => 'Added later']);
 });
 
+it('still reads an answer after its question is removed from the set', function () {
+    // c8_a1 was added on the Questions screen, answered, then removed. It
+    // has no ACF field and is no longer in the set, but its meta is still
+    // there and the Results page promises to keep showing it.
+    \Confur\Storage\QuestionSetStore::save(new \Confur\Domain\QuestionSet([1 => 1]));
+    ($this->answerPost)(1, ['c1_a1' => 'Known']);
+    \Brain\Monkey\Functions\when('get_fields')->justReturn(['c1_a1' => 'Known']);
+    update_field('c8_a1', 'Answered before removal', 1);
+    WpState::$postMeta[1] = ['c1_a1' => ['Known'], 'c8_a1' => ['Answered before removal'], 'email' => ['a@b.c']];
+
+    expect($this->store->load(1, true)->answers)->toBe(['c1_a1' => 'Known', 'c8_a1' => 'Answered before removal']);
+});
+
 it('lists live registrations, leaving out the excluded one and late-trashed ones', function () {
     ($this->answerPost)(1, []);
     ($this->answerPost)(2, []);

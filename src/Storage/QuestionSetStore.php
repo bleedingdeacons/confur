@@ -70,8 +70,11 @@ final class QuestionSetStore
         $counts = [];
 
         foreach ($committees as $committee => $count) {
-            if (!is_numeric($committee) || !is_numeric($count)) {
-                throw new \InvalidArgumentException('Committee numbers and counts must be numbers.');
+            // Whole numbers only: casting "2.7" to 2 would quietly change
+            // which answers groups must give, where a broken option should
+            // fall back to the default instead.
+            if (!self::isWholeNumber($committee) || !self::isWholeNumber($count)) {
+                throw new \InvalidArgumentException('Committee numbers and counts must be whole numbers.');
             }
 
             $counts[(int) $committee] = (int) $count;
@@ -79,6 +82,16 @@ final class QuestionSetStore
 
         $all = $stored['all_committees'] ?? null;
 
-        return new QuestionSet($counts, is_numeric($all) ? (int) $all : null);
+        if ($all !== null && !self::isWholeNumber($all)) {
+            throw new \InvalidArgumentException('The All Committees choice must be a whole number.');
+        }
+
+        return new QuestionSet($counts, $all !== null ? (int) $all : null);
+    }
+
+    /** An int, or a string of digits (options can come back as strings). */
+    private static function isWholeNumber(mixed $value): bool
+    {
+        return is_int($value) || (is_string($value) && ctype_digit($value));
     }
 }
