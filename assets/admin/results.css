@@ -1,0 +1,265 @@
+/* Questions for Conference → Results
+ * Loaded only on that screen. Was inline in the PHP until the Phase 4 refactor. */
+/* Reporting Admin Page Styles */
+.confur-reporting-admin {
+	background: #fff;
+	padding: 20px;
+	margin: 20px 20px 20px 0;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.confur-reporting-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 20px;
+	flex-wrap: wrap;
+	gap: 15px;
+}
+
+.confur-reporting-header h1 {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin: 0;
+}
+
+.confur-reporting-header .dashicons {
+	font-size: 28px;
+	width: 28px;
+	height: 28px;
+}
+
+.confur-reporting-actions {
+	display: flex;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.confur-reporting-actions .button {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+}
+
+.confur-reporting-actions .button .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+}
+
+.confur-reporting-content {
+	margin-top: 20px;
+}
+
+.confur-reporting-footer {
+	margin-top: 40px;
+	padding-top: 20px;
+	border-top: 1px solid #ddd;
+	text-align: right;
+}
+
+/* Enhanced table styles for admin */
+.confur-reporting-content table {
+	width: 100%;
+	border-collapse: collapse;
+	margin: 20px 0;
+	background: #fff;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.confur-reporting-content table th {
+	background-color: #f0f0f1;
+	font-weight: 600;
+	text-align: left;
+	padding: 12px;
+	border: 1px solid #c3c4c7;
+}
+
+.confur-reporting-content table td {
+	padding: 10px 12px;
+	border: 1px solid #c3c4c7;
+}
+
+.confur-reporting-content table tr:nth-child(even) {
+	background-color: #f9f9f9;
+}
+
+.confur-reporting-content table tr:hover {
+	background-color: #f0f0f1;
+}
+
+/* Committee header styling */
+.confur-reporting-content .committee-header {
+	background-color: #2271b1 !important;
+	color: #fff !important;
+	font-weight: bold;
+	padding: 12px !important;
+}
+
+/* Copy buttons in admin context */
+.confur-reporting-content .copy-btn,
+.confur-reporting-content .copy-all-answers-btn {
+	background-color: #2271b1 !important;
+	color: white !important;
+	border: none !important;
+	border-radius: 3px !important;
+	padding: 6px 12px !important;
+	cursor: pointer;
+	font-size: 12px;
+	margin-left: 10px;
+	transition: background-color 0.2s;
+}
+
+.confur-reporting-content .copy-btn:hover,
+.confur-reporting-content .copy-all-answers-btn:hover {
+	background-color: #135e96 !important;
+}
+
+/* Answer group styling */
+.confur-reporting-content .answer-group {
+	border: 1px solid #c3c4c7;
+	padding: 15px;
+	margin-bottom: 15px;
+	background-color: #fff;
+	border-radius: 4px;
+	box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.confur-reporting-content .question-header {
+	background-color: #f0f0f1;
+	font-weight: 600;
+	padding: 10px;
+	margin: -15px -15px 15px -15px;
+	border-radius: 4px 4px 0 0;
+}
+
+.confur-reporting-content .answer {
+	margin-top: 10px;
+	padding: 10px;
+	background-color: #f9f9f9;
+	border-left: 3px solid #2271b1;
+	line-height: 1.6;
+}
+
+/* Answer links table */
+.confur-reporting-content #answer_links {
+	background: #f0f0f1;
+	margin: 20px 0;
+}
+
+.confur-reporting-content #answer_links td {
+	vertical-align: top;
+	padding: 15px;
+}
+
+.confur-reporting-content #answer_links ul {
+	margin: 5px 0;
+	padding-left: 20px;
+}
+
+.confur-reporting-content #answer_links li {
+	margin: 5px 0;
+}
+
+.confur-reporting-content #answer_links a {
+	color: #2271b1;
+	text-decoration: none;
+}
+
+.confur-reporting-content #answer_links a:hover {
+	color: #135e96;
+	text-decoration: underline;
+}
+
+/* Headings in report */
+.confur-reporting-content h1,
+.confur-reporting-content h2,
+.confur-reporting-content h3 {
+	margin-top: 30px;
+	margin-bottom: 15px;
+	color: #1d2327;
+}
+
+.confur-reporting-content h1 {
+	font-size: 28px;
+	font-weight: 600;
+	border-bottom: 2px solid #2271b1;
+	padding-bottom: 10px;
+}
+
+.confur-reporting-content h2 {
+	font-size: 23px;
+	font-weight: 600;
+	border-bottom: 1px solid #c3c4c7;
+	padding-bottom: 8px;
+}
+
+.confur-reporting-content h3 {
+	font-size: 19px;
+	font-weight: 600;
+}
+
+/* Print styles */
+@media print {
+	.confur-reporting-header,
+	.confur-reporting-actions,
+	.notice,
+	.confur-reporting-footer,
+	.copy-btn,
+	.copy-all-answers-btn {
+		display: none !important;
+	}
+
+	.confur-reporting-admin {
+		box-shadow: none;
+		padding: 0;
+		margin: 0;
+	}
+
+	.confur-reporting-content table {
+		page-break-inside: auto;
+	}
+
+	.confur-reporting-content tr {
+		page-break-inside: avoid;
+		page-break-after: auto;
+	}
+
+	.answer-group {
+		page-break-inside: avoid;
+	}
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 782px) {
+	.confur-reporting-header {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.confur-reporting-actions {
+		width: 100%;
+	}
+
+	.confur-reporting-actions .button {
+		flex: 1;
+		justify-content: center;
+	}
+
+	.confur-reporting-content table {
+		font-size: 14px;
+	}
+
+	.confur-reporting-content table td,
+	.confur-reporting-content table th {
+		padding: 8px;
+	}
+}
+
+
+         .committee-header { background-color: #d9e1f2; font-weight: bold; }
+         .copy-btn { margin-left: 10px; padding: 5px; cursor: pointer; background-color: #4CAF50; color: white; border: none; border-radius: 5px; }
+         .copy-all-answers-btn { margin-left: 10px; padding: 5px; cursor: pointer; background-color: #4CAF50; color: white; border: none; border-radius: 5px; font-size: 12px; }
+         .answer-group { border: 1px solid #ccc; padding: 10px; margin-bottom: 15px; background-color: #f9f9f9; }
+         .question-header { background-color: #f2f2f2; font-weight: bold; padding: 5px; }

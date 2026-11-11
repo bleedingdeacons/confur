@@ -186,13 +186,29 @@ describe('rendering', function () {
             ->not->toContain('<ul class="confur-updates-list">');
     });
 
-    it('renders its styles, script and refresh control', function () {
+    it('renders its refresh control, with no inline styles or script', function () {
         $html = captureOutput(fn () => $this->widget->renderWidget());
 
-        expect($html)->toContain('<style>')
-            // the script should post to the refresh action
-            ->toContain('confur_refresh_headsup')
-            ->toContain('id="confur-refresh-btn"', 'id="confur-update-time"');
+        expect($html)->toContain('id="confur-refresh-btn"', 'id="confur-update-time"')
+            ->not->toContain('<style>')
+            ->not->toContain('<script>');
+    });
+
+    it('loads its styles and script on the dashboard, with their config', function () {
+        $this->widget->enqueueAssets('index.php');
+
+        expect(array_column(WpState::$enqueued, 'handle'))->toBe(['confur-admin-dashboard', 'confur-admin-dashboard'])
+            ->and(WpState::$localized['confurDashboard'])->toBe([
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('confur_headsup_refresh'),
+                'userId' => get_current_user_id(),
+            ]);
+    });
+
+    it('loads nothing on other screens', function () {
+        $this->widget->enqueueAssets('edit.php');
+
+        expect(WpState::$enqueued)->toBe([]);
     });
 
     it('renders each group as a link under its committee and question', function () {

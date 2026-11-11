@@ -1,0 +1,192 @@
+/* Questions for Conference → Status
+ * Loaded only on that screen. Was inline in the PHP until the Phase 4 refactor. */
+.confur-answers-table {
+	width: 100%;
+	border-collapse: collapse;
+	margin-top: 20px;
+	background: #fff;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.confur-answers-table th {
+	background: #f0f0f1;
+	padding: 12px;
+	text-align: left;
+	font-weight: 600;
+	border-bottom: 2px solid #c3c4c7;
+}
+.confur-answers-table td {
+	padding: 12px;
+	border-bottom: 1px solid #e0e0e0;
+}
+.confur-answers-table tr:hover {
+	background: #f6f7f7;
+}
+.confur-answers-table tr.registered-row {
+	background-color: #e8f5e9;
+}
+.confur-answers-table tr.registered-row:hover {
+	background-color: #c8e6c9;
+}
+.confur-answers-table tr.unregistered-row {
+	background-color: #ffebee;
+}
+.confur-answers-table tr.unregistered-row:hover {
+	background-color: #ffcdd2;
+}
+.confur-answers-table tr.duplicate-row {
+	background-color: #fff3e0;
+}
+.confur-answers-table tr.duplicate-row:hover {
+	background-color: #ffe0b2;
+}
+.status-badge {
+	display: inline-block;
+	padding: 4px 12px;
+	border-radius: 12px;
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+}
+.status-completed {
+	background: #d4edda;
+	color: #155724;
+}
+.status-draft {
+	background: #fff3cd;
+	color: #856404;
+}
+.status-not-started {
+	background: #f8d7da;
+	color: #721c24;
+}
+.status-unregistered {
+	background: #f8d7da;
+	color: #721c24;
+}
+.status-cancelled {
+	background: #6c757d;
+	color: #ffffff;
+}
+.confur-answers-table tr.cancelled-row {
+	background-color: #f5f5f5;
+}
+.confur-answers-table tr.cancelled-row:hover {
+	background-color: #e0e0e0;
+}
+.answer-name a {
+	color: #2271b1;
+	text-decoration: none;
+	font-weight: 500;
+}
+.answer-name a:hover {
+	color: #135e96;
+	text-decoration: underline;
+}
+.confur-answers-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 20px;
+}
+.confur-answers-stats {
+	display: flex;
+	gap: 20px;
+	flex-wrap: wrap;
+}
+.stat-box {
+	background: #fff;
+	padding: 15px 20px;
+	border-radius: 4px;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+	text-align: center;
+}
+.stat-box .number {
+	font-size: 24px;
+	font-weight: 700;
+	color: #2271b1;
+}
+.stat-box .label {
+	font-size: 12px;
+	color: #646970;
+	text-transform: uppercase;
+}
+.contact-info {
+	font-size: 13px;
+}
+.contact-info a {
+	color: #2271b1;
+	text-decoration: none;
+}
+.contact-info a:hover {
+	text-decoration: underline;
+}
+.cancel-duplicate-btn {
+	background: #dc3545;
+	color: #fff;
+	border: none;
+	padding: 4px 10px;
+	border-radius: 4px;
+	font-size: 11px;
+	cursor: pointer;
+	margin-left: 8px;
+	transition: background-color 0.2s;
+}
+.cancel-duplicate-btn:hover {
+	background: #c82333;
+}
+.cancel-duplicate-btn:disabled {
+	background: #6c757d;
+	cursor: not-allowed;
+}
+.cancel-duplicate-btn .spinner {
+	display: none;
+	width: 12px;
+	height: 12px;
+	margin-left: 4px;
+}
+.cancel-duplicate-btn.loading .spinner {
+	display: inline-block;
+}
+.duplicate-indicator {
+	display: inline-block;
+	background: #ff9800;
+	color: #fff;
+	font-size: 10px;
+	padding: 2px 6px;
+	border-radius: 3px;
+	margin-left: 6px;
+	font-weight: 600;
+}
+.resend-confirmation-btn {
+	background: #2271b1;
+	color: #fff;
+	border: none;
+	padding: 4px 10px;
+	border-radius: 4px;
+	font-size: 11px;
+	cursor: pointer;
+	transition: background-color 0.2s;
+}
+.resend-confirmation-btn:hover {
+	background: #135e96;
+}
+.resend-confirmation-btn:disabled {
+	background: #6c757d;
+	cursor: not-allowed;
+}
+.resend-confirmation-btn .spinner {
+	display: none;
+	width: 12px;
+	height: 12px;
+	margin-left: 4px;
+}
+.resend-confirmation-btn.loading .spinner {
+	display: inline-block;
+}
+.actions-cell {
+	white-space: nowrap;
+}
+.actions-cell .cancel-duplicate-btn {
+	margin-left: 0;
+	margin-right: 6px;
+}

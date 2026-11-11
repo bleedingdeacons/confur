@@ -56,7 +56,7 @@ describe('registration', function () {
         $this->assertFilterAdded(ANSWER_BULK_HOOK, false, 'the bulk actions filter should be registered');
         $this->assertFilterAdded('handle_bulk_actions-edit-answer', false, 'the bulk handler should be registered');
         $this->assertActionAdded('admin_notices', false, 'the bulk notice should be registered');
-        $this->assertActionAdded('admin_head', false, 'the column styles should be registered');
+        $this->assertActionAdded('admin_enqueue_scripts', false, 'the column styles should be registered');
     });
 
     // The whole class is admin-only, and says so by bailing out of its own
@@ -277,25 +277,36 @@ describe('the notice', function () {
 
 // ── column styles ─────────────────────────────────────────────────
 describe('column styles', function () {
-    it('are printed on the answers screen', function () {
+    it('are loaded on the answers list', function () {
         WpState::$screen = (object) ['post_type' => Constants::ANSWER_CUSTOM_TYPE];
 
-        $html = captureOutput(fn () => (new AnswerAdmin())->addAdminColumnStyles());
+        (new AnswerAdmin())->enqueueListStyles('edit.php');
 
-        expect($html)->toContain('.answer-status-badge', '.column-answer_updated');
+        expect(WpState::$enqueued)->toBe([['fn' => 'wp_enqueue_style', 'handle' => 'confur-admin-answer-list']]);
     });
 
-    it("are not printed on another post type's screen", function () {
+    it("are not loaded on another post type's list", function () {
         WpState::$screen = (object) ['post_type' => 'post'];
 
-        expect(captureOutput(fn () => (new AnswerAdmin())->addAdminColumnStyles()))->toBe('');
+        (new AnswerAdmin())->enqueueListStyles('edit.php');
+
+        expect(WpState::$enqueued)->toBe([]);
     });
 
-    // admin_head fires on screens where get_current_screen() has nothing to
-    // report — the styles must not fatal there.
-    it('are not printed without a screen', function () {
+    it('are not loaded on any other screen', function () {
+        WpState::$screen = (object) ['post_type' => Constants::ANSWER_CUSTOM_TYPE];
+
+        (new AnswerAdmin())->enqueueListStyles('post.php');
+
+        expect(WpState::$enqueued)->toBe([]);
+    });
+
+    // Some admin screens have no current screen to report — that must not fatal.
+    it('are not loaded without a screen', function () {
         WpState::$screen = null;
 
-        expect(captureOutput(fn () => (new AnswerAdmin())->addAdminColumnStyles()))->toBe('');
+        (new AnswerAdmin())->enqueueListStyles('edit.php');
+
+        expect(WpState::$enqueued)->toBe([]);
     });
 });

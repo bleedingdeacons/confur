@@ -3,6 +3,7 @@
 namespace Confur\Admin;
 
 use Confur\Config\ConfurSettings;
+use Confur\Services\AdminAssets;
 
 /**
  * Admin page for managing Confur settings
@@ -51,111 +52,7 @@ class ConfurSettingsAdminPage
             return;
         }
 
-        // Inline CSS for the admin page
-        $custom_css = "
-            .confur-settings-form {
-                max-width: 800px;
-                background: #fff;
-                padding: 20px;
-                margin-top: 20px;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            }
-            .confur-form-table {
-                width: 100%;
-            }
-            .confur-form-table th {
-                width: 200px;
-                text-align: left;
-                padding: 15px 10px 15px 0;
-                font-weight: 600;
-            }
-            .confur-form-table td {
-                padding: 15px 0;
-            }
-            .confur-form-table input[type='email'] {
-                width: 100%;
-                max-width: 400px;
-            }
-            .confur-form-table .description {
-                margin-top: 5px;
-                color: #646970;
-                font-size: 13px;
-            }
-            .confur-form-actions {
-                margin-top: 20px;
-                padding-top: 20px;
-                border-top: 1px solid #e0e0e0;
-                display: flex;
-                gap: 10px;
-            }
-            .confur-notice {
-                background: #fff;
-                border-left: 4px solid #00a32a;
-                padding: 12px;
-                margin: 20px 0;
-                box-shadow: 0 1px 1px rgba(0,0,0,0.04);
-            }
-            .confur-notice.error {
-                border-left-color: #d63638;
-            }
-            .confur-notice p {
-                margin: 0.5em 0;
-                padding: 2px;
-            }
-            .confur-defaults-box {
-                background: #f0f0f1;
-                padding: 15px;
-                margin: 20px 0;
-                border-radius: 4px;
-            }
-            .confur-defaults-box h3 {
-                margin-top: 0;
-                font-size: 14px;
-            }
-            .confur-defaults-box ul {
-                margin: 10px 0 0 20px;
-            }
-            .confur-defaults-box li {
-                margin: 5px 0;
-                font-size: 13px;
-                color: #646970;
-            }
-            .confur-blocklist-section {
-                margin-top: 30px;
-                padding-top: 20px;
-                border-top: 1px solid #e0e0e0;
-            }
-            .confur-blocklist-section h2 {
-                margin-bottom: 15px;
-            }
-            .confur-blocklist-textarea {
-                width: 100%;
-                max-width: 600px;
-                min-height: 150px;
-                font-family: monospace;
-                font-size: 13px;
-            }
-            .confur-blocklist-count {
-                margin-top: 10px;
-                font-size: 13px;
-                color: #646970;
-            }
-            .confur-blocklist-warning {
-                background: #fff3cd;
-                border-left: 4px solid #ffc107;
-                padding: 12px;
-                margin: 15px 0;
-            }
-            .confur-security-section {
-                margin-top: 30px;
-                padding-top: 20px;
-                border-top: 1px solid #e0e0e0;
-            }
-            .confur-security-section h2 {
-                margin-bottom: 15px;
-            }
-        ";
-        wp_add_inline_style('wp-admin', $custom_css);
+        AdminAssets::style('settings');
     }
 
     /**

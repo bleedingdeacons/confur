@@ -203,9 +203,15 @@ describe('registration', function () {
         $this->page->enqueueAdminAssets(STATUS_SCREEN);
 
         expect(WpState::$enqueued)->toBe([
-            ['fn' => 'wp_add_inline_style', 'handle' => 'wp-admin'],
-            ['fn' => 'wp_add_inline_script', 'handle' => 'jquery'],
-        ]);
+            ['fn' => 'wp_enqueue_style', 'handle' => 'confur-admin-status'],
+            ['fn' => 'wp_enqueue_script', 'handle' => 'confur-admin-status'],
+        ])
+            // The nonces the script sends are passed in, not baked into it.
+            ->and(WpState::$localized['confurStatus'])->toBe([
+                'cancelNonce' => wp_create_nonce('confur_cancel_duplicate'),
+                'resendNonce' => wp_create_nonce('confur_resend_confirmation'),
+                'screenOptionsNonce' => wp_create_nonce('confur_screen_options'),
+            ]);
     });
 });
 
@@ -230,8 +236,9 @@ describe('screen options', function () {
 
         expect($html)->toStartWith('existing', 'the existing settings should be preserved')
             ->toContain('id="confur_show_cancellations"')
-            // the toggle should post to the save endpoint
-            ->toContain('confur_save_screen_option');
+            // Its behaviour lives in assets/admin/status.js now.
+            ->not->toContain('<script>')
+            ->and(file_get_contents(dirname(__DIR__, 3) . '/assets/admin/status.js'))->toContain('confur_save_screen_option');
     });
 
     // A user who has never touched the toggle should see cancellations, so an

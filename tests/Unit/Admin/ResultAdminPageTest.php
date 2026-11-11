@@ -130,20 +130,13 @@ describe('registration', function () {
         expect(WpState::$enqueued)->toBe([]);
     });
 
-    it('registers the report styles and scripts inline on this screen', function () {
+    it('loads the report styles and copy-button script on this screen', function () {
         $this->page->enqueueAdminAssets(RESULT_HOOK);
 
-        expect(array_column(WpState::$enqueued, 'fn'))->toBe([
-            'wp_register_style',
-            'wp_enqueue_style',
-            'wp_add_inline_style',
-            'wp_register_script',
-            'wp_enqueue_script',
-            'wp_add_inline_script',
+        expect(WpState::$enqueued)->toBe([
+            ['fn' => 'wp_enqueue_style', 'handle' => 'confur-admin-results'],
+            ['fn' => 'wp_enqueue_script', 'handle' => 'confur-admin-results'],
         ]);
-        foreach (WpState::$enqueued as $call) {
-            expect($call['handle'])->toBe('confur-reporting-admin');
-        }
     });
 });
 
