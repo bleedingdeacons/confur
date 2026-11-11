@@ -4,8 +4,12 @@ namespace Confur\Handlers;
 
 use Confur\Config\Constants;
 use Confur\Config\ConfurSettings;
+use Confur\Domain\AnswerKey;
+use Confur\Domain\AnswerState;
+use Confur\Domain\QuestionSet;
 use Confur\Services\EmailService;
 use Confur\Repositories\AnswerRepository;
+use Confur\Storage\AnswerStore;
 
 /**
  * Handles answer submission and processing
@@ -13,10 +17,12 @@ use Confur\Repositories\AnswerRepository;
 class AnswerHandler
 {
     private AnswerRepository $answerRepository;
+    private AnswerStore $store;
 
-    public function __construct()
+    public function __construct(?AnswerStore $store = null)
     {
-        $this->answerRepository = new AnswerRepository();
+        $this->store = $store ?? new AnswerStore();
+        $this->answerRepository = new AnswerRepository($this->store);
     }
 
     /**
@@ -56,7 +62,7 @@ class AnswerHandler
 
             // A cancelled registration is read-only. The client disables its
             // buttons, but that is a convenience, not the enforcement.
-            if (get_field(Constants::STATUS_FIELD, $postId) === Constants::STATUS_CANCELLED) {
+            if (AnswerState::fromStored(get_field(Constants::STATUS_FIELD, $postId)) === AnswerState::Cancelled) {
                 error_log("AnswerHandler::handleSubmission - Post ID: $postId is cancelled");
                 wp_send_json_error(['message' => 'This registration has been cancelled.'], 403);
             }
@@ -84,11 +90,33 @@ class AnswerHandler
             // Update answer fields
             $this->updateAnswerFields($postId, $_POST);
 
-            // Update status
-            $validStatuses = [Constants::STATUS_DRAFT, Constants::STATUS_COMPLETED];
-            $status = isset($_POST['submit_answers']) && in_array($_POST['submit_answers'], $validStatuses)
-                ? sanitize_text_field($_POST['submit_answers'])
-                : Constants::STATUS_DRAFT;
+            // Update status. A group may ask for Draft or Complete; anything
+            // else, including Cancelled, is saved as a draft.
+            $requested = AnswerState::fromStored($_POST['submit_answers'] ?? null);
+            $state = $requested !== null && $requested->isSubmittable() ? $requested : AnswerState::Draft;
+
+            // Complete means every question has an answer. The client only
+            // enables the button when that holds, but the server decides: the
+            // answers are saved either way, and an incomplete set stays a draft.
+            $message = null;
+
+            if ($state === AnswerState::Complete) {
+                $questions = QuestionSet::current();
+                $unanswered = $questions->unanswered($this->store->load($postId, true)->answers);
+
+                if ($unanswered !== []) {
+                    $state = AnswerState::Draft;
+                    $message = sprintf(
+                        'Answers Saved as Draft: %d %s still %s an answer.',
+                        count($unanswered),
+                        count($unanswered) === 1 ? 'question' : 'questions',
+                        count($unanswered) === 1 ? 'needs' : 'need'
+                    );
+                    error_log("AnswerHandler::handleSubmission - Post ID: $postId asked for Complete with " . count($unanswered) . ' unanswered; saved as Draft');
+                }
+            }
+
+            $status = $state->value;
 
             $updated = current_time('l, Y-m-d h:i:s A');
 
@@ -122,7 +150,7 @@ class AnswerHandler
             }
 
             wp_send_json_success([
-                'message' => "Answers Saved as $status",
+                'message' => $message ?? "Answers Saved as $status",
                 'updated' => $updated,
                 'state' => $status
             ]);
@@ -175,8 +203,8 @@ class AnswerHandler
             }
 
             // Normalize meeting IDs for duplicate check
-            $normalizedMeetingId = $this->normalizePostId($meetingId);
-            $normalizedFellowMeetingId = $this->normalizePostId($fellow_meetingId);
+            $normalizedMeetingId = AnswerStore::normalizePostId($meetingId);
+            $normalizedFellowMeetingId = AnswerStore::normalizePostId($fellow_meetingId);
 
             // Check for duplicate registration (only if feature is enabled)
             if (ConfurSettings::isDuplicateDetectionEnabled()) {
@@ -201,7 +229,7 @@ class AnswerHandler
 
                     // Send confirmation email with duplicate notification
                     $existingUrl = get_permalink($duplicate['post_id']) ?: '';
-                    // normalizePostId() returns null when the meeting field is
+                    // AnswerStore::normalizePostId() returns null when the meeting field is
                     // empty, which get_the_title() will not take.
                     $meetingName = $normalizedMeetingId !== null
                         ? get_the_title($normalizedMeetingId)
@@ -313,21 +341,25 @@ class AnswerHandler
      */
     private function updateAnswerFields(int $postId, array $data): void
     {
-        foreach ($data as $key => $newValue) {
-            if (preg_match('/^c\d+_a\d+$/', $key)) {
-                $sanitizedValue = sanitize_textarea_field($newValue);
+        foreach ($data as $fieldName => $newValue) {
+            $key = AnswerKey::parse((string) $fieldName);
 
-                $existing = $this->answerRepository->getValue($key, $postId);
+            if ($key === null) {
+                continue;
+            }
 
-                // Field keys and post IDs only. The values are conference
-                // answers written by members and must not reach the PHP
-                // error log, which is neither access-controlled nor covered
-                // by Scrutiny's audit trail.
-                if ($existing !== $sanitizedValue) {
-                    if (!update_field($key, $sanitizedValue, $postId)) {
-                        error_log("AnswerHandler::updateAnswerFields - Failed to update field $key for Post ID: $postId");
-                    }
-                }
+            $sanitizedValue = sanitize_textarea_field($newValue);
+
+            // Field keys and post IDs only. The values are conference
+            // answers written by members and must not reach the PHP
+            // error log, which is neither access-controlled nor covered
+            // by Scrutiny's audit trail.
+            if ($this->store->value($key->fieldName(), $postId) === $sanitizedValue) {
+                continue;
+            }
+
+            if (!$this->store->saveAnswer($postId, $key, $sanitizedValue)) {
+                error_log(sprintf("AnswerHandler::updateAnswerFields - Could not save answer c%d_a%d on post %d", $key->committee, $key->question, $postId));
             }
         }
     }
@@ -356,36 +388,5 @@ class AnswerHandler
         $suffix = str_replace('-', '_', $pageTitle);
 
         return $prefix . '_' . $suffix;
-    }
-
-    /**
-     * Normalize post ID from ACF field value
-     * ACF can return post ID as int, object, or array depending on configuration
-     *
-     * @param mixed $value ACF field value
-     * @return int|null Post ID or null
-     */
-    private function normalizePostId($value): ?int
-    {
-        if (empty($value)) {
-            return null;
-        }
-
-        // Already an integer
-        if (is_numeric($value)) {
-            return (int)$value;
-        }
-
-        // Post object
-        if (is_object($value) && isset($value->ID)) {
-            return (int)$value->ID;
-        }
-
-        // Array with ID key
-        if (is_array($value) && isset($value['ID'])) {
-            return (int)$value['ID'];
-        }
-
-        return null;
     }
 }

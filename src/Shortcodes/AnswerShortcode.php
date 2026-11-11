@@ -3,6 +3,7 @@
 namespace Confur\Shortcodes;
 
 use Confur\Config\Constants;
+use Confur\Domain\QuestionSet;
 use Confur\Repositories\AnswerRepository;
 
 /**
@@ -36,12 +37,6 @@ class AnswerShortcode
         return \get_the_ID();  // Calls global
     }
 
-    /**
-     * Generate answer field
-     *
-     * @param array<string, mixed> $atts Shortcode attributes
-     * @return string Rendered HTML
-     */
     /**
      * Generate answer field
      *
@@ -226,22 +221,19 @@ class AnswerShortcode
      */
     public function generateProgressTable(): string
     {
+        $questions = QuestionSet::current();
+
         $html = '<div id="progress">';
         $html .= '<table><tbody>';
 
-        for ($count = 1; $count <= 6; $count++) {
+        // One row per committee; the client fills in each s_cN cell.
+        foreach ($questions->committees() as $committee) {
             $html .= sprintf(
-                '<tr><td><a href="#g_c%1$d" class="status-link"><strong>Committee %1$d</a></strong></td><td class="value" id="s_c%1$d">Not Started</td></tr>',
-                $count
+                '<tr><td><a href="#g_c%1$d" class="status-link"><strong>%2$s</a></strong></td><td class="value" id="s_c%1$d">Not Started</td></tr>',
+                $committee,
+                esc_html($questions->committeeLabel($committee))
             );
         }
-
-        // Work around for extra questions not grouped by 'Committee'
-        $count = 7;
-        $html .= sprintf(
-            '<tr><td><a href="#g_c%1$d" class="status-link"><strong>All Committees</a></strong></td><td class="value" id="s_c%1$d">Not Started</td></tr>',
-            $count
-        );
 
         $html .= '</tbody></table></div>';
 
@@ -278,7 +270,8 @@ class AnswerShortcode
      * Generate allocated committee display
      *
      * Displays "Allocated Committee (Number)" if the associated meeting
-     * has a populated allocation field. Committee 7 displays as "Final Committee".
+     * has a populated allocation field. The All Committees committee displays
+     * as "Last Question".
      *
      * @param array<string, mixed> $atts Shortcode attributes
      * @return string Rendered HTML or empty string if no allocation
@@ -303,8 +296,9 @@ class AnswerShortcode
         // Sanitize the allocation value
         $committeeNumber = is_numeric($allocation) ? intval($allocation) : sanitize_text_field($allocation);
 
-        // Committee 7 is displayed as "Last Question"
-        if ($committeeNumber === 7) {
+        // The All Committees committee holds a single closing question, so
+        // it is described as "Last Question" rather than by number.
+        if (is_int($committeeNumber) && QuestionSet::current()->isAllCommittees($committeeNumber)) {
             return sprintf(
                 '<p class="allocated-committee">To start, your group has been allocated: <a href="#g_c%1$d" class="status-link">Last Question</a> (Under All Committee\'s)</p>',
                 $committeeNumber

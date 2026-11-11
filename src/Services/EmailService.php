@@ -5,6 +5,7 @@ namespace Confur\Services;
 use Confur\Config\Constants;
 use Confur\Config\ConfurSettings;
 use Confur\Admin\EmailTemplateAdminPage;
+use Confur\Domain\QuestionSet;
 
 /**
  * Handles email sending functionality
@@ -86,7 +87,7 @@ class EmailService
 
         $allocationHtml = '';
         if (!empty($allocatedCommittee)) {
-            if ($allocatedCommittee === '7') {
+            if (ctype_digit($allocatedCommittee) && QuestionSet::current()->isAllCommittees((int) $allocatedCommittee)) {
                 $allocationText = "To start, your group has been allocated the Last Question (under All Committee's)";
             } else {
                 $allocationText = 'To start, your group has been allocated Committee: ' . esc_html($allocatedCommittee);

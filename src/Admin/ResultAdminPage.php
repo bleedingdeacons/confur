@@ -3,6 +3,8 @@
 namespace Confur\Admin;
 
 use Confur\Config\Constants;
+use Confur\Domain\AnswerKey;
+use Confur\Domain\QuestionSet;
 use Confur\Repositories\AnswerRepository;
 
 /**
@@ -149,22 +151,20 @@ class ResultAdminPage
         $groupedAnswers = [];
         $addedAnchors = [];
 
-        foreach ($answers as $key => $rows) {
-            [$committeeNumber, $questionNumber] = explode('_', $key);
-            $committeeNumber = str_replace('c', '', $committeeNumber);
-            $questionNumber = str_replace('a', '', $questionNumber);
+        foreach ($answers as $fieldName => $rows) {
+            $key = AnswerKey::parse((string) $fieldName);
 
-            if (!isset($groupedAnswers[$committeeNumber])) {
-                $groupedAnswers[$committeeNumber] = [];
+            if ($key === null) {
+                continue;
             }
 
-            $groupedAnswers[$committeeNumber][$questionNumber] = $rows;
+            $groupedAnswers[$key->committee][$key->question] = $rows;
         }
 
         ksort($groupedAnswers);
 
         foreach ($groupedAnswers as $committeeNumber => $questionsByCommittee) {
-            $html .= $this->renderCommitteeSection($committeeNumber, $questionsByCommittee, $addedAnchors);
+            $html .= $this->renderCommitteeSection((string) $committeeNumber, $questionsByCommittee, $addedAnchors);
         }
 
         $html .= '</table>';
@@ -176,7 +176,7 @@ class ResultAdminPage
      * Render committee section
      *
      * @param string $committeeNumber Committee number
-     * @param array<string, mixed> $questionsByCommittee Questions
+     * @param array<int, mixed> $questionsByCommittee Question number => rows
      * @param array<string, mixed> $addedAnchors Added anchors tracker
      * @return string Rendered HTML
      */
@@ -184,11 +184,10 @@ class ResultAdminPage
     {
         $committeeId = "committee_{$committeeNumber}";
 
-        if ($committeeNumber <= 6) {
-            $html = "<tr><td colspan='2' class='committee-header'>Committee {$committeeNumber} ";
-        } else {
-            $html = "<tr><td colspan='2' class='committee-header'>All Committees";
-        }
+        // "Committee N " keeps its trailing space before the button, as before.
+        $html = QuestionSet::current()->isAllCommittees((int) $committeeNumber)
+            ? "<tr><td colspan='2' class='committee-header'>All Committees"
+            : "<tr><td colspan='2' class='committee-header'>Committee {$committeeNumber} ";
 
         $html .= "<button class='copy-btn' onclick=\"copyCommitteeToClipboard('{$committeeId}', {$committeeNumber})\">📋 Copy Committee</button>";
 
@@ -203,7 +202,7 @@ class ResultAdminPage
             foreach ($rows as $row) {
                 $status = $row['status'];
                 if (Constants::STATUS_DRAFT === $status || Constants::STATUS_COMPLETED === $status) {
-                    $html .= $this->renderAnswerGroup($committeeNumber, $questionNumber, $row, $addedAnchors);
+                    $html .= $this->renderAnswerGroup($committeeNumber, (string) $questionNumber, $row, $addedAnchors);
                 }
             }
         }
@@ -285,10 +284,15 @@ class ResultAdminPage
     {
         $results = [];
 
-        foreach ($data as $committeeAnswer => $answers) {
-            [$committee, $answer] = explode("_", $committeeAnswer);
-            $committee = ltrim($committee, "c");
-            $answer = ltrim($answer, "a");
+        foreach ($data as $fieldName => $answers) {
+            $key = AnswerKey::parse((string) $fieldName);
+
+            if ($key === null) {
+                continue;
+            }
+
+            $committee = (string) $key->committee;
+            $answer = (string) $key->question;
 
             $wordCounts = array_map(function ($response) {
                 return str_word_count($response['answer']);
@@ -350,39 +354,18 @@ class ResultAdminPage
      */
     private function generateLinksTable(): string
     {
-        $html = '<table id="answer_links"><tbody>';
+        $questions = QuestionSet::current();
+        $cells = '';
 
-        $committee1 = $this->createAnswerLinks(1, 3);
-        $committee2 = $this->createAnswerLinks(2, 2);
-        $committee3 = $this->createAnswerLinks(3, 2);
-        $committee4 = $this->createAnswerLinks(4, 2);
-        $committee5 = $this->createAnswerLinks(5, 2);
-        $committee6 = $this->createAnswerLinks(6, 2);
-        $committee7 = $this->createAnswerLinks(7, 1);
+        // One column per committee in the set, linking each question.
+        foreach ($questions->committees() as $committee) {
+            $cells .= sprintf(
+                '<td class="answerLinks">%s</td>',
+                $this->createAnswerLinks($committee, $questions->questionCount($committee))
+            );
+        }
 
-        $class = 'class="answerLinks"';
-
-        $html .= sprintf(
-            "<tr><td %s>%s</td><td %s>%s</td><td %s>%s</td><td %s>%s</td><td %s>%s</td><td %s>%s</td><td %s>%s</td></tr>",
-            $class,
-            $committee1,
-            $class,
-            $committee2,
-            $class,
-            $committee3,
-            $class,
-            $committee4,
-            $class,
-            $committee5,
-            $class,
-            $committee6,
-            $class,
-            $committee7
-        );
-
-        $html .= "</tbody></table>";
-
-        return $html;
+        return '<table id="answer_links"><tbody><tr>' . $cells . '</tr></tbody></table>';
     }
 
     /**
@@ -394,12 +377,7 @@ class ResultAdminPage
      */
     private function createAnswerLinks(int $committeeNumber, int $answerCount): string
     {
-
-        if ($committeeNumber <= 6) {
-            $html = "<strong>Committee {$committeeNumber}</strong><ul>";
-        } else {
-            $html = "<strong>All Committees</strong><ul>";
-        }
+        $html = '<strong>' . esc_html(QuestionSet::current()->committeeLabel($committeeNumber)) . '</strong><ul>';
 
         for ($count = 1; $count <= $answerCount; $count++) {
             $link = $this->createAnswerLink($committeeNumber, $count, 'Answer ' . $count);

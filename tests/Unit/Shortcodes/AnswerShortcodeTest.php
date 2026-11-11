@@ -231,6 +231,15 @@ it('generates the progress table', function () {
         ->toContain('Not Started');
 });
 
+it('builds the progress table from the question set', function () {
+    \Brain\Monkey\Filters\expectApplied('confur_question_set')->andReturn([1 => 2, 2 => 1, 3 => 1]);
+
+    $result = $this->shortcode->generateProgressTable();
+
+    expect($result)->toContain('id="s_c1"', 'id="s_c2"', 'Committee 2', 'id="s_c3"', 'All Committees')
+        ->not->toContain('Committee 3', 's_c4', 's_c7');
+});
+
 it('generates a control with a position', function () {
     $result = $this->shortcode->generateControl(['position' => 'bottom']);
 

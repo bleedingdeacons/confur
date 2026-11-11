@@ -6,6 +6,7 @@ use BleedingDeacons\WpMocks\Exceptions\JsonResponseException;
 use BleedingDeacons\WpMocks\WpState;
 use Brain\Monkey\Functions;
 use Confur\Config\Constants;
+use Confur\Domain\QuestionSet;
 use Confur\Handlers\AnswerHandler;
 
 covers(AnswerHandler::class);
@@ -29,6 +30,14 @@ function seedAnswer(int $id, string $slug, string $date = '2024-01-01 00:00:00')
     WpState::$postStatuses[$id] = 'publish';
 
     return $post;
+}
+
+/** Put an answer to every question in the set into $_POST. */
+function answerEveryQuestion(): void
+{
+    foreach (QuestionSet::current()->fieldNames() as $field) {
+        $_POST[$field] = "Answer to $field";
+    }
 }
 
 beforeEach(function () {
@@ -110,6 +119,7 @@ describe('handleSubmission', function () {
 
     it('saves a completed submission and sends the email', function () {
         $_POST['submit_answers'] = Constants::STATUS_COMPLETED;
+        answerEveryQuestion();
         Functions\when('url_to_postid')->justReturn(61);
         $this->statuses[61] = 'publish';
         WpState::$postTypes[61] = Constants::ANSWER_CUSTOM_TYPE;
@@ -193,6 +203,7 @@ describe('handleSubmission', function () {
 
     it('stores the status and timestamp unescaped', function () {
         $_POST['submit_answers'] = Constants::STATUS_COMPLETED;
+        answerEveryQuestion();
         Functions\when('url_to_postid')->justReturn(67);
         Functions\when('current_time')->justReturn('Monday, 2024-01-01 01:02:03 PM');
         $this->statuses[67] = 'publish';
@@ -203,6 +214,82 @@ describe('handleSubmission', function () {
         expect(get_field(Constants::UPDATED_FIELD, 67))->toBe('Monday, 2024-01-01 01:02:03 PM')
             ->and(get_field(Constants::COMPLETION_FIELD, 67))->toBe('Monday, 2024-01-01 01:02:03 PM')
             ->and(get_field(Constants::STATUS_FIELD, 67))->toBe(Constants::STATUS_COMPLETED);
+    });
+
+    it('keeps an incomplete set as a draft when Complete is asked for', function () {
+        $_POST['submit_answers'] = Constants::STATUS_COMPLETED;
+        answerEveryQuestion();
+        $_POST['c2_a2'] = '   '; // blank once trimmed
+        unset($_POST['c7_a1']);
+        Functions\when('url_to_postid')->justReturn(68);
+        $this->statuses[68] = 'publish';
+        WpState::$postTypes[68] = Constants::ANSWER_CUSTOM_TYPE;
+        $this->fields[68] = [Constants::EMAIL_FIELD => 'a@b.com'];
+
+        $r = ($this->runSubmission)();
+        expect($r->success)->toBeTrue()
+            ->and($r->data['state'])->toBe(Constants::STATUS_DRAFT)
+            ->and($r->data['message'])->toBe('Answers Saved as Draft: 2 questions still need an answer.')
+            // The answers given are still saved.
+            ->and(get_field('c1_a1', 68))->toBe('Answer to c1_a1')
+            ->and(get_field(Constants::STATUS_FIELD, 68))->toBe(Constants::STATUS_DRAFT)
+            ->and(get_field(Constants::COMPLETION_FIELD, 68))->toBe('')
+            // No completion email for a set that is not complete.
+            ->and(WpState::$mail)->toHaveCount(1); // the backup copy only
+    });
+
+    it('completes when earlier saves supplied the remaining answers', function () {
+        $_POST['submit_answers'] = Constants::STATUS_COMPLETED;
+        $_POST['c7_a1'] = 'The last one';
+        Functions\when('url_to_postid')->justReturn(69);
+        $this->statuses[69] = 'publish';
+        WpState::$postTypes[69] = Constants::ANSWER_CUSTOM_TYPE;
+
+        $saved = [Constants::EMAIL_FIELD => 'a@b.com'];
+        foreach (QuestionSet::current()->fieldNames() as $field) {
+            if ($field !== 'c7_a1') {
+                $saved[$field] = "Saved $field";
+            }
+        }
+        $this->fields[69] = $saved;
+
+        $r = ($this->runSubmission)();
+        expect($r->data['state'])->toBe(Constants::STATUS_COMPLETED)
+            ->and($r->data['message'])->toBe('Answers Saved as Complete');
+    });
+
+    it('counts an answer of "0" as answered', function () {
+        $_POST['submit_answers'] = Constants::STATUS_COMPLETED;
+        answerEveryQuestion();
+        $_POST['c3_a1'] = '0';
+        Functions\when('url_to_postid')->justReturn(72);
+        $this->statuses[72] = 'publish';
+        WpState::$postTypes[72] = Constants::ANSWER_CUSTOM_TYPE;
+        $this->fields[72] = [Constants::EMAIL_FIELD => 'a@b.com'];
+
+        $r = ($this->runSubmission)();
+        expect($r->data['state'])->toBe(Constants::STATUS_COMPLETED);
+    });
+
+    it('does not let a group mark itself cancelled', function () {
+        $_POST['submit_answers'] = Constants::STATUS_CANCELLED;
+        Functions\when('url_to_postid')->justReturn(70);
+        $this->statuses[70] = 'publish';
+        WpState::$postTypes[70] = Constants::ANSWER_CUSTOM_TYPE;
+
+        $r = ($this->runSubmission)();
+        expect($r->data['state'])->toBe(Constants::STATUS_DRAFT);
+    });
+
+    it('treats a lower-case cancelled state as cancelled', function () {
+        $_POST['submit_answers'] = Constants::STATUS_DRAFT;
+        Functions\when('url_to_postid')->justReturn(71);
+        $this->statuses[71] = 'publish';
+        WpState::$postTypes[71] = Constants::ANSWER_CUSTOM_TYPE;
+        $this->fields[71] = [Constants::STATUS_FIELD => 'cancelled'];
+
+        $r = ($this->runSubmission)();
+        expect($r->status)->toBe(403);
     });
 });
 

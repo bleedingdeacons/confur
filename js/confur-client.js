@@ -264,6 +264,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     state = responseData.data.state;
                     updated = responseData.data.updated;
 
+                    // The server keeps an incomplete set as a draft even when
+                    // Complete was asked for; say why rather than silently
+                    // showing Draft.
+                    if (button.value !== state && responseData.data.message) {
+                        alert(responseData.data.message);
+                    }
+
                     // Reset dirty state
                     isDirty = false;
                     updateDirtyIndicators();
