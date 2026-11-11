@@ -77,35 +77,11 @@ class ResultAdminPage
             wp_die(__('You do not have sufficient permissions to access this page.', 'confur'));
         }
 
-        // Get report content
-        $reportContent = $this->generateReportContent();
-
-        // Render the admin page
-        ?>
-        <div class="wrap confur-reporting-admin">
-            <div class="confur-reporting-header">
-                <h1 class="wp-heading-inline">
-                    <span class="dashicons dashicons-analytics"></span>
-                    <?php echo esc_html(self::PAGE_TITLE); ?>
-                </h1>
-                <div class="confur-reporting-actions">
-                    <?php $this->renderActionButtons(); ?>
-                </div>
-            </div>
-
-            <hr class="wp-header-end">
-
-            <?php $this->renderNotices(); ?>
-
-            <div class="confur-reporting-content">
-                <?php
-                // Output report content - already contains inline styles/scripts
-                // We output it directly since it's from our own trusted source
-                echo $reportContent; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-                ?>
-            </div>
-        </div>
-        <?php
+        Template::render('admin/results', [
+            'pageTitle' => self::PAGE_TITLE,
+            'generatedAt' => current_time('F j, Y g:i a'),
+            'reportHtml' => $this->generateReportContent(),
+        ]);
     }
 
     /**
@@ -383,40 +359,5 @@ class ResultAdminPage
             $answerNumber,
             $content
         );
-    }
-
-    /**
-     * Render action buttons in the header
-     */
-    private function renderActionButtons(): void
-    {
-        ?>
-        <button type="button" class="button button-primary" onclick="window.print();">
-            <span class="dashicons dashicons-printer"></span>
-            Print Report
-        </button>
-        <button type="button" class="button" onclick="confurReportingRefresh();">
-            <span class="dashicons dashicons-update"></span>
-            Refresh
-        </button>
-        <span style="margin-left: 15px; line-height: 28px;">
-            Report generated: <strong><?php echo esc_html(current_time('F j, Y g:i a')); ?></strong>
-        </span>
-        <?php
-    }
-
-    /**
-     * Render admin notices
-     */
-    private function renderNotices(): void
-    {
-        ?>
-        <div class="notice notice-info is-dismissible">
-            <p>
-                <strong>Tip:</strong> Use the navigation links to jump to different sections of the report.
-                Click the copy buttons to copy committee data to your clipboard.
-            </p>
-        </div>
-        <?php
     }
 }

@@ -10,6 +10,8 @@ use BleedingDeacons\WpMocks\WpState;
 use Brain\Monkey\Functions;
 use Confur\Admin\StatusAdminPage;
 use Confur\Config\Constants;
+use Confur\Repositories\AnswerRepository;
+use Confur\Storage\AnswerStore;
 use ReflectionMethod;
 use WP_Screen;
 
@@ -42,7 +44,7 @@ function statusMeetingsData(StatusAdminPage $page): array
     $m = new ReflectionMethod(StatusAdminPage::class, 'getAllMeetingsData');
 
     /** @var array<int, array<string, mixed>> $data */
-    $data = $m->invoke($page);
+    $data = $m->invoke($page, AnswerRepository::registeredRows((new AnswerStore())->all()));
 
     return $data;
 }
@@ -61,13 +63,13 @@ function statusStats(StatusAdminPage $page, array $meetings): array
     return $stats;
 }
 
-/** @return array<int, array<string, mixed>> */
+/** @return list<array{name: string, count: int, answerIds: list<int>}> */
 function statusDuplicates(StatusAdminPage $page): array
 {
-    $m = new ReflectionMethod(StatusAdminPage::class, 'findDuplicateRegistrations');
+    $m = new ReflectionMethod(StatusAdminPage::class, 'duplicateGroups');
 
-    /** @var array<int, array<string, mixed>> $duplicates */
-    $duplicates = $m->invoke($page, []);
+    /** @var list<array{name: string, count: int, answerIds: list<int>}> $duplicates */
+    $duplicates = $m->invoke($page, (new AnswerStore())->all());
 
     return $duplicates;
 }
@@ -695,9 +697,10 @@ describe('duplicate detection', function () {
 
         $duplicates = statusDuplicates($this->page);
 
-        expect(array_keys($duplicates))->toBe([500])
-            ->and($duplicates[500]['count'])->toBe(2)
-            ->and($duplicates[500]['name'])->toContain('Monday Group', 'group@example.org');
+        expect($duplicates)->toHaveCount(1)
+            ->and($duplicates[0]['count'])->toBe(2)
+            ->and($duplicates[0]['answerIds'])->toBe([1, 2])
+            ->and($duplicates[0]['name'])->toContain('Monday Group', 'group@example.org');
     });
 
     it('does not treat a single registration as a duplicate', function () {
@@ -722,7 +725,7 @@ describe('duplicate detection', function () {
         ($this->seedRegistration)(1, 500, Constants::STATUS_COMPLETED, 'Group@Example.org');
         ($this->seedRegistration)(2, 500, Constants::STATUS_COMPLETED, 'group@example.org');
 
-        expect(statusDuplicates($this->page)[500]['count'])->toBe(2);
+        expect(statusDuplicates($this->page)[0]['count'])->toBe(2);
     });
 
     // Cancelling a duplicate is how the screen's own button resolves one, so a
@@ -756,8 +759,8 @@ describe('duplicate detection', function () {
 
         $duplicates = statusDuplicates($this->page);
 
-        expect(array_keys($duplicates))->toBe([500], 'keyed on the lowest meeting id')
-            ->and($duplicates[500]['count'])->toBe(2);
+        expect($duplicates)->toHaveCount(1)
+            ->and($duplicates[0]['count'])->toBe(2);
     });
 
     it('skips a registration missing its email', function () {
@@ -766,6 +769,33 @@ describe('duplicate detection', function () {
         ($this->seedRegistration)(2, 500, Constants::STATUS_COMPLETED, '');
 
         expect(statusDuplicates($this->page))->toBe([]);
+    });
+
+    // Grouped by registration rather than keyed by meeting, so two groups
+    // each registered twice for the same meeting are two warnings, not one.
+    it('lists every duplicate set, even when they share a meeting', function () {
+        ($this->seedMeeting)(500, 'Monday Group');
+        ($this->seedRegistration)(1, 500, Constants::STATUS_COMPLETED, 'one@example.org');
+        ($this->seedRegistration)(2, 500, Constants::STATUS_COMPLETED, 'one@example.org');
+        ($this->seedRegistration)(3, 500, Constants::STATUS_COMPLETED, 'two@example.org');
+        ($this->seedRegistration)(4, 500, Constants::STATUS_COMPLETED, 'two@example.org');
+
+        expect(array_column(statusDuplicates($this->page), 'answerIds'))->toBe([[1, 2], [3, 4]]);
+    });
+
+    // Another group's single, valid registration for a meeting that has a
+    // duplicate is not itself a duplicate, and must not be offered Cancel.
+    it('flags only the duplicate registrations, not others for the same meeting', function () {
+        ($this->seedMeeting)(500, 'Monday Group');
+        ($this->seedRegistration)(1, 500, Constants::STATUS_COMPLETED, 'one@example.org');
+        ($this->seedRegistration)(2, 500, Constants::STATUS_COMPLETED, 'one@example.org');
+        ($this->seedRegistration)(3, 500, Constants::STATUS_COMPLETED, 'two@example.org');
+
+        $html = captureOutput(fn () => $this->page->renderAdminPage());
+
+        expect(substr_count($html, 'class="duplicate-row"'))->toBe(2)
+            ->and($html)->toContain('data-answer-id="1"', 'data-answer-id="2"')
+            ->and(substr_count($html, 'cancel-duplicate-btn'))->toBe(2);
     });
 });
 

@@ -2,8 +2,10 @@
 
 namespace Confur\Admin;
 
+use Confur\Application\DuplicateFinder;
 use Confur\Application\RegisterGroup;
 use Confur\Config\Constants;
+use Confur\Domain\Answer;
 use Confur\Repositories\AnswerRepository;
 use Confur\Services\AdminAssets;
 use Confur\Services\Mailer;
@@ -16,13 +18,15 @@ use Confur\Utils\HtmlHelper;
  */
 class StatusAdminPage
 {
-    private AnswerRepository $answerRepository;
+    private AnswerStore $store;
     private MeetingRepository $meetingRepository;
+    private DuplicateFinder $duplicates;
 
     public function __construct()
     {
-        $this->answerRepository = new AnswerRepository();
+        $this->store = new AnswerStore();
         $this->meetingRepository = new MeetingRepository();
+        $this->duplicates = new DuplicateFinder($this->store);
     }
 
     /**
@@ -263,228 +267,76 @@ class StatusAdminPage
             wp_die(__('You do not have sufficient permissions to access this page.', 'confur'));
         }
 
-        $allMeetings = $this->getAllMeetingsData();
+        // One read of the registrations, shared by the table and the
+        // duplicate warning.
+        $answers = $this->store->all();
+
+        $allMeetings = $this->getAllMeetingsData(AnswerRepository::registeredRows($answers));
         $stats = $this->calculateStats($allMeetings);
-        $duplicates = $this->findDuplicateRegistrations($allMeetings);
+        $duplicates = $this->duplicateGroups($answers);
 
         // Filter out cancelled items if screen option is disabled
-        $showCancellations = $this->shouldShowCancellations();
-        if (!$showCancellations) {
-            $allMeetings = array_filter($allMeetings, function ($meeting) {
-                return $meeting['status_class'] !== 'cancelled';
-            });
+        if (!$this->shouldShowCancellations()) {
+            $allMeetings = array_filter($allMeetings, fn (array $meeting): bool => $meeting['status_class'] !== 'cancelled');
         }
 
-        // Create a set of meeting IDs that have duplicates for easy lookup
-        $duplicateMeetingIds = array_keys($duplicates);
+        Template::render('admin/status', [
+            'allMeetings' => $allMeetings,
+            'stats' => $stats,
+            'duplicates' => $duplicates,
+            'duplicateAnswerIds' => array_merge([], ...array_column($duplicates, 'answerIds')),
+        ]);
+    }
 
-        ?>
-        <div class="wrap">
-            <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
+    /**
+     * Sets of duplicate registrations, for the warning and the Cancel buttons.
+     *
+     * @param list<Answer> $answers
+     * @return list<array{name: string, count: int, answerIds: list<int>}>
+     */
+    private function duplicateGroups(array $answers): array
+    {
+        $groups = [];
 
-            <?php if (!empty($duplicates)) : ?>
-                <div class="notice notice-warning">
-                    <p><strong><?php _e('Warning: Duplicate registrations detected!', 'confur'); ?></strong></p>
-                    <p><?php _e('The following meetings have multiple active (non-cancelled) registrations. Use the "Cancel" button to cancel duplicate entries:', 'confur'); ?></p>
-                    <ul>
-                        <?php foreach ($duplicates as $meetingId => $info) : ?>
-                            <li><?php echo esc_html($info['name']); ?> (<?php echo esc_html($info['count']); ?> registrations)</li>
-                        <?php endforeach; ?>
-                    </ul>
-                </div>
-            <?php endif; ?>
+        foreach ($this->duplicates->groups($answers) as $group) {
+            $first = $group[0];
 
-            <div class="confur-answers-header">
-                <div class="confur-answers-stats">
-                    <div class="stat-box">
-                        <div class="number"><?php echo esc_html($stats['total']); ?></div>
-                        <div class="label">Total Meetings</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="number"><?php echo esc_html($stats['registered']); ?></div>
-                        <div class="label">Registered</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="number"><?php echo esc_html($stats['unregistered']); ?></div>
-                        <div class="label">Unregistered</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="number"><?php echo esc_html($stats['completed']); ?></div>
-                        <div class="label">Completed</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="number"><?php echo esc_html($stats['draft']); ?></div>
-                        <div class="label">Draft</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="number"><?php echo esc_html($stats['cancelled']); ?></div>
-                        <div class="label">Cancelled</div>
-                    </div>
-                </div>
-            </div>
+            $groups[] = [
+                'name' => sprintf(
+                    '%s (%s)',
+                    $first->meetingId !== null ? RegisterGroup::meetingName($first->meetingId, $first->fellowMeetingId) : '',
+                    strtolower(trim($first->email ?? ''))
+                ),
+                'count' => count($group),
+                'answerIds' => array_map(static fn (Answer $a): int => $a->postId, $group),
+            ];
+        }
 
-            <?php if (empty($allMeetings)) : ?>
-                <div class="notice notice-info">
-                    <p><?php _e('No meetings found.', 'confur'); ?></p>
-                </div>
-            <?php else : ?>
-                <table class="confur-answers-table">
-                    <thead>
-                    <tr>
-                        <th>Meeting/Answers</th>
-                        <th>Status</th>
-                        <th>Registration Email</th>
-                        <th>Contact 1</th>
-                        <th>Contact 2</th>
-                        <th>Meeting Day</th>
-                        <th>Meeting Time</th>
-                        <th>Last Saved</th>
-                        <th>Actions</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <?php foreach ($allMeetings as $meeting) :
-                        // Check if this meeting is part of a duplicate set (and not cancelled)
-                        $isDuplicate = in_array($meeting['id'], $duplicateMeetingIds)
-                                       && $meeting['is_registered']
-                                       && $meeting['status_class'] !== 'cancelled';
-                        $rowClass = $isDuplicate ? 'duplicate-row' : $meeting['row_class'];
-                        ?>
-                        <tr class="<?php echo esc_attr($rowClass); ?>">
-                            <td class="answer-name">
-                                <?php if ($meeting['is_registered']) : ?>
-                                    <a href="<?php echo esc_url($meeting['edit_url']); ?>">
-                                        <?php echo esc_html($meeting['name']); ?>
-                                    </a>
-                                    <?php if ($isDuplicate) : ?>
-                                        <span class="duplicate-indicator">DUPLICATE</span>
-                                    <?php endif; ?>
-                                <?php else : ?>
-                                    <a href="<?php echo esc_url($meeting['meeting_url']); ?>" target="_blank">
-                                        <?php echo esc_html($meeting['name']); ?>
-                                    </a>
-                                <?php endif; ?>
-                            </td>
-                            <td>
-                                <span class="status-badge status-<?php echo esc_attr($meeting['status_class']); ?>">
-                                    <?php echo esc_html($meeting['status_label']); ?>
-                                </span>
-                            </td>
-                            <td>
-                                <?php
-                                // Anchor markup built by HtmlHelper::createLink(),
-                                // which escapes href, class and content itself.
-                                // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-                                echo $meeting['email_html'];
-                                ?>
-                            </td>
-                            <td class="contact-info">
-                                <?php
-                                // Contact name is escaped in contactTelephoneLink();
-                                // the anchor is escaped by createLink().
-                                // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-                                echo $meeting['contact1_html'];
-                                ?>
-                            </td>
-                            <td class="contact-info">
-                                <?php
-                                // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-                                echo $meeting['contact2_html'];
-                                ?>
-                            </td>
-                            <td><?php echo esc_html($meeting['day']); ?></td>
-                            <td><?php echo esc_html($meeting['time']); ?></td>
-                            <td><?php echo esc_html($meeting['last_saved']); ?></td>
-                            <td class="actions-cell">
-                                <?php if ($meeting['is_registered'] && !empty($meeting['answer_id'])) : ?>
-                                    <?php if ($isDuplicate) : ?>
-                                        <button type="button"
-                                                class="cancel-duplicate-btn"
-                                                data-answer-id="<?php echo esc_attr($meeting['answer_id']); ?>"
-                                                data-meeting-name="<?php echo esc_attr($meeting['name']); ?>">
-                                            <span class="btn-text">Cancel</span>
-                                            <span class="spinner"></span>
-                                        </button>
-                                    <?php endif; ?>
-                                    <?php if ($meeting['status_class'] !== 'cancelled') : ?>
-                                        <button type="button"
-                                                class="resend-confirmation-btn"
-                                                data-answer-id="<?php echo esc_attr($meeting['answer_id']); ?>"
-                                                data-meeting-name="<?php echo esc_attr($meeting['name']); ?>">
-                                            <span class="btn-text">Resend Email</span>
-                                            <span class="spinner"></span>
-                                        </button>
-                                    <?php endif; ?>
-                                <?php else : ?>
-                                    -
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                    </tbody>
-                </table>
-            <?php endif; ?>
-        </div>
-        <?php
+        return $groups;
     }
 
     /**
      * Get all meetings data (registered and unregistered)
      *
+     * @param array<int, array<string, mixed>> $registered AnswerRepository::registeredRows()
      * @return array<int, array<string, mixed>> Meeting data
      */
-    private function getAllMeetingsData(): array
+    private function getAllMeetingsData(array $registered): array
     {
         $allMeetings = [];
 
         // Get all meetings from repository
         $meetings = $this->meetingRepository->getMeetings();
 
-        // Get registered groups
-        $registered = $this->answerRepository->getRegisteredGroups();
-
-        // Create lookup for registered meetings (supports multiple registrations per meeting)
-        // For paired registrations, add entry under both meeting IDs
+        // Lookup of registrations by meeting; a paired registration is listed
+        // under both its meetings. The ids are already plain ints (AnswerStore
+        // normalises ACF's object/array shapes when it loads them).
         $registeredLookup = [];
         foreach ($registered as $item) {
-            // Get meeting ID - handle if it's an object, array, or scalar
-            // An object here is a post-like row — WP_Post, or a plain object
-            // straight off a query. Casting it to an array reads the public ID
-            // without naming a class, and collapses the object and array cases
-            // into the one expression they always morally were.
-            $meetingId = $item['meetingId'];
-            if (is_object($meetingId)) {
-                $meetingId = (array) $meetingId;
-            }
-            if (is_array($meetingId)) {
-                $meetingId = $meetingId['ID'] ?? null;
-            }
-
-            // Get fellow meeting ID
-            $fellowMeetingId = $item['fellowMeetingId'] ?? null;
-            if (is_object($fellowMeetingId)) {
-                $fellowMeetingId = (array) $fellowMeetingId;
-            }
-            if (is_array($fellowMeetingId)) {
-                $fellowMeetingId = $fellowMeetingId['ID'] ?? null;
-            }
-
-            // Add under primary meeting ID
-            if ($meetingId && is_numeric($meetingId)) {
-                $meetingIdInt = (int)$meetingId;
-                if (!isset($registeredLookup[$meetingIdInt])) {
-                    $registeredLookup[$meetingIdInt] = [];
+            foreach ([$item['meetingId'], $item['fellowMeetingId'] ?? null] as $id) {
+                if (is_int($id)) {
+                    $registeredLookup[$id][] = $item;
                 }
-                $registeredLookup[$meetingIdInt][] = $item;
-            }
-
-            // Also add under fellow meeting ID if it exists (for paired registrations)
-            if ($fellowMeetingId && is_numeric($fellowMeetingId)) {
-                $fellowMeetingIdInt = (int)$fellowMeetingId;
-                if (!isset($registeredLookup[$fellowMeetingIdInt])) {
-                    $registeredLookup[$fellowMeetingIdInt] = [];
-                }
-                $registeredLookup[$fellowMeetingIdInt][] = $item;
             }
         }
 
@@ -747,106 +599,5 @@ class StatusAdminPage
         $stats['unregistered'] = $stats['total'] - $stats['registered'];
 
         return $stats;
-    }
-
-    /**
-     * Find meetings with duplicate active (non-cancelled) registrations
-     *
-     * @param array<int, array<string, mixed>> $allMeetings Meeting data
-     * @return array<int, array<string, mixed>> Duplicates with meeting ID as key and info (name, count) as value
-     */
-    private function findDuplicateRegistrations(array $allMeetings): array
-    {
-        // Get all registered groups with full data
-        $registered = $this->answerRepository->getRegisteredGroups();
-
-        // Build a list of unique registrations (by answer ID) with their meeting combinations
-        // We need to track the FIRST entry for each answer ID (which has the correct fellowMeetingId)
-        $registrations = [];
-        $answerData = [];
-
-        // First pass: collect the primary entry for each answer (the one with fellowMeetingId if paired)
-        foreach ($registered as $item) {
-            $answerId = $item['answersId'];
-
-            // Only keep the first entry for each answer (which has the full meeting data)
-            if (!isset($answerData[$answerId])) {
-                $answerData[$answerId] = $item;
-            }
-        }
-
-        error_log("findDuplicateRegistrations - Found " . count($answerData) . " unique answers");
-
-        // Second pass: group by email + meeting combination
-        foreach ($answerData as $answerId => $item) {
-            $status = $item['status'] ?? '';
-
-            // Skip cancelled registrations (check for the exact constant value)
-            if ($status === Constants::STATUS_CANCELLED) {
-                error_log("findDuplicateRegistrations - Skipping cancelled answer $answerId");
-                continue;
-            }
-
-            $meetingId = $item['meetingId'];
-            $fellowMeetingId = $item['fellowMeetingId'];
-
-            $email = strtolower(trim($item['email'] ?? ''));
-
-            if (empty($meetingId) || empty($email)) {
-                error_log("findDuplicateRegistrations - Skipping answer $answerId due to empty meetingId or email");
-                continue;
-            }
-
-            // Build sorted meeting IDs array for comparison
-            $meetingIds = [(int)$meetingId];
-            $isPaired = !empty($fellowMeetingId);
-            if ($isPaired) {
-                $meetingIds[] = (int)$fellowMeetingId;
-            }
-            sort($meetingIds);
-
-            // Create a unique key for this meeting combination + email.
-            // Deliberately not logged: it embeds the registrant's address.
-            $key = $email . '|' . ($isPaired ? 'paired' : 'single') . '|' . implode('-', $meetingIds);
-
-            if (!isset($registrations[$key])) {
-                // Build name for display
-                $name = get_the_title($meetingId);
-                if ($isPaired) {
-                    $name .= ' and ' . get_the_title($fellowMeetingId);
-                }
-
-                $registrations[$key] = [
-                    'meetingIds' => $meetingIds,
-                    'email' => $email,
-                    'isPaired' => $isPaired,
-                    'count' => 0,
-                    'name' => $name
-                ];
-            }
-
-            $registrations[$key]['count']++;
-        }
-
-        // Not dumped: $registrations is keyed by registrant email address.
-        error_log('findDuplicateRegistrations - Registration groups: ' . count($registrations));
-
-        // Filter to only duplicates and reformat for display
-        $duplicates = [];
-        foreach ($registrations as $key => $info) {
-            if ($info['count'] > 1) {
-                // Use first meeting ID as the key for the duplicates array
-                $firstMeetingId = $info['meetingIds'][0];
-                $duplicates[$firstMeetingId] = [
-                    'name' => $info['name'] . ' (' . $info['email'] . ')',
-                    'count' => $info['count']
-                ];
-                error_log("findDuplicateRegistrations - Found duplicate: " . $info['name'] . " count=" . $info['count']);
-            }
-        }
-
-        error_log("findDuplicateRegistrations - Total duplicates found: " . count($duplicates));
-
-        return $duplicates;
     }
 }

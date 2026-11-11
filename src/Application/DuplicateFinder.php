@@ -29,14 +29,11 @@ class DuplicateFinder
             return null;
         }
 
-        $candidate = new Answer(0, $meetingId, $fellowMeetingId ?: null, $email, null, null);
+        $key = self::matchKey(new Answer(0, $meetingId, $fellowMeetingId ?: null, $email, null, null));
 
         $duplicates = array_values(array_filter(
             $this->store->all(false, $excluding ?: null),
-            static fn (Answer $existing): bool => !$existing->isCancelled()
-                && strtolower($existing->email ?? '') === strtolower($email)
-                && $existing->isPaired() === $candidate->isPaired()
-                && $existing->meetingIds() === $candidate->meetingIds()
+            static fn (Answer $existing): bool => self::matchKey($existing) === $key
         ));
 
         if ($duplicates === []) {
@@ -46,6 +43,45 @@ class DuplicateFinder
         usort($duplicates, [$this, 'compareLatestFirst']);
 
         return $duplicates[0];
+    }
+
+    /**
+     * Every set of two or more registrations that duplicate each other,
+     * by the same rule find() uses. For the Status screen's warning.
+     *
+     * @param list<Answer> $answers
+     * @return list<list<Answer>> Each group in post order; groups in order of first appearance.
+     */
+    public function groups(array $answers): array
+    {
+        $byKey = [];
+
+        foreach ($answers as $answer) {
+            $key = self::matchKey($answer);
+
+            if ($key !== null) {
+                $byKey[$key][] = $answer;
+            }
+        }
+
+        return array_values(array_filter($byKey, static fn (array $group): bool => count($group) > 1));
+    }
+
+    /**
+     * What makes two registrations the same: the email (ignoring case and
+     * surrounding space), paired or single, and the sorted meetings. Null for
+     * a registration that cannot duplicate anything — cancelled, or missing
+     * its meeting or email.
+     */
+    private static function matchKey(Answer $answer): ?string
+    {
+        $email = strtolower(trim($answer->email ?? ''));
+
+        if ($answer->isCancelled() || $answer->meetingId === null || $email === '') {
+            return null;
+        }
+
+        return $email . '|' . ($answer->isPaired() ? 'paired' : 'single') . '|' . implode('-', $answer->meetingIds());
     }
 
     /**
