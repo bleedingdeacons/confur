@@ -144,7 +144,9 @@ class AnswerStore
         $answers = [];
 
         foreach ($fields as $name => $value) {
-            if (AnswerKey::parse((string) $name) === null || empty($value) || !is_scalar($value)) {
+            // Blank means unanswered; "0" is an answer. empty() would drop it
+            // and the Complete check would then count the question as missing.
+            if (AnswerKey::parse((string) $name) === null || !is_scalar($value) || trim((string) $value) === '') {
                 continue;
             }
 

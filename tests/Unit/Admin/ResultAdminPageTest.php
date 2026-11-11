@@ -199,6 +199,16 @@ describe('the navigation table', function () {
             ->toContain('<a href="#c7_a1">Answer 1</a>')
             ->not->toContain('#c7_a2');
     });
+
+    it('follows the question set', function () {
+        \Brain\Monkey\Filters\expectApplied('confur_question_set')->andReturn([1 => 1, 2 => 4, 3 => 1]);
+
+        $m = new ReflectionMethod(ResultAdminPage::class, 'generateLinksTable');
+        $html = (string) $m->invoke($this->page);
+
+        expect($html)->toContain('<a href="#c2_a4">Answer 4</a>', '<strong>Committee 2</strong>', '<strong>All Committees</strong>')
+            ->not->toContain('<strong>Committee 3</strong>', '#c1_a2', 'c4_', 'c7_');
+    });
 });
 
 // ── the answer table ──────────────────────────────────────────────

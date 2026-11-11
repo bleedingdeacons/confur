@@ -258,6 +258,19 @@ describe('handleSubmission', function () {
             ->and($r->data['message'])->toBe('Answers Saved as Complete');
     });
 
+    it('counts an answer of "0" as answered', function () {
+        $_POST['submit_answers'] = Constants::STATUS_COMPLETED;
+        answerEveryQuestion();
+        $_POST['c3_a1'] = '0';
+        Functions\when('url_to_postid')->justReturn(72);
+        $this->statuses[72] = 'publish';
+        WpState::$postTypes[72] = Constants::ANSWER_CUSTOM_TYPE;
+        $this->fields[72] = [Constants::EMAIL_FIELD => 'a@b.com'];
+
+        $r = ($this->runSubmission)();
+        expect($r->data['state'])->toBe(Constants::STATUS_COMPLETED);
+    });
+
     it('does not let a group mark itself cancelled', function () {
         $_POST['submit_answers'] = Constants::STATUS_CANCELLED;
         Functions\when('url_to_postid')->justReturn(70);

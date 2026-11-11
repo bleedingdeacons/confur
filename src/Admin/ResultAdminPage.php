@@ -354,39 +354,18 @@ class ResultAdminPage
      */
     private function generateLinksTable(): string
     {
-        $html = '<table id="answer_links"><tbody>';
+        $questions = QuestionSet::current();
+        $cells = '';
 
-        $committee1 = $this->createAnswerLinks(1, 3);
-        $committee2 = $this->createAnswerLinks(2, 2);
-        $committee3 = $this->createAnswerLinks(3, 2);
-        $committee4 = $this->createAnswerLinks(4, 2);
-        $committee5 = $this->createAnswerLinks(5, 2);
-        $committee6 = $this->createAnswerLinks(6, 2);
-        $committee7 = $this->createAnswerLinks(7, 1);
+        // One column per committee in the set, linking each question.
+        foreach ($questions->committees() as $committee) {
+            $cells .= sprintf(
+                '<td class="answerLinks">%s</td>',
+                $this->createAnswerLinks($committee, $questions->questionCount($committee))
+            );
+        }
 
-        $class = 'class="answerLinks"';
-
-        $html .= sprintf(
-            "<tr><td %s>%s</td><td %s>%s</td><td %s>%s</td><td %s>%s</td><td %s>%s</td><td %s>%s</td><td %s>%s</td></tr>",
-            $class,
-            $committee1,
-            $class,
-            $committee2,
-            $class,
-            $committee3,
-            $class,
-            $committee4,
-            $class,
-            $committee5,
-            $class,
-            $committee6,
-            $class,
-            $committee7
-        );
-
-        $html .= "</tbody></table>";
-
-        return $html;
+        return '<table id="answer_links"><tbody><tr>' . $cells . '</tr></tbody></table>';
     }
 
     /**
@@ -398,12 +377,7 @@ class ResultAdminPage
      */
     private function createAnswerLinks(int $committeeNumber, int $answerCount): string
     {
-
-        if ($committeeNumber <= 6) {
-            $html = "<strong>Committee {$committeeNumber}</strong><ul>";
-        } else {
-            $html = "<strong>All Committees</strong><ul>";
-        }
+        $html = '<strong>' . esc_html(QuestionSet::current()->committeeLabel($committeeNumber)) . '</strong><ul>';
 
         for ($count = 1; $count <= $answerCount; $count++) {
             $link = $this->createAnswerLink($committeeNumber, $count, 'Answer ' . $count);
