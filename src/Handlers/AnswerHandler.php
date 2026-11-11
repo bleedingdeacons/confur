@@ -359,7 +359,7 @@ class AnswerHandler
             }
 
             if (!$this->store->saveAnswer($postId, $key, $sanitizedValue)) {
-                error_log("AnswerHandler::updateAnswerFields - Failed to update field {$key->fieldName()} for Post ID: $postId");
+                error_log(sprintf("AnswerHandler::updateAnswerFields - Could not save answer c%d_a%d on post %d", $key->committee, $key->question, $postId));
             }
         }
     }
