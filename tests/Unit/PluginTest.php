@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use BleedingDeacons\WpMocks\WpState;
 use Brain\Monkey\Functions;
 use Confur\Plugin;
+use Confur\Services\ShortcodeService;
 
 covers(Plugin::class);
 
@@ -40,10 +41,26 @@ it('leaves the answer post type alone when it is absent', function () {
     (new Plugin())->modifyAnswerPostType();
 })->throwsNoExceptions();
 
-it('disables shortcodes when the Divi builder is active', function () {
+it('disables every registered shortcode when the Divi builder is active', function () {
+    (new ShortcodeService())->registerShortcodes();
+    expect($this->registeredShortcodes())->not->toBeEmpty();
+
     $_GET['et_fb'] = '1';
     (new Plugin())->maybeDisableShortcodesForDivi();
-})->throwsNoExceptions();
+
+    expect($this->registeredShortcodes())->toBe([]);
+});
+
+it('lists every tag the service registers in TAGS', function () {
+    (new ShortcodeService())->registerShortcodes();
+
+    $registered = $this->registeredShortcodes();
+    sort($registered);
+    $declared = ShortcodeService::TAGS;
+    sort($declared);
+
+    expect($registered)->toBe($declared);
+});
 
 it('leaves shortcodes alone when the Divi builder is inactive', function () {
     unset($_GET['et_fb']);

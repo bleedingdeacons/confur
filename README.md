@@ -6,7 +6,7 @@
 ![PHPStan](https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fbleedingdeacons%2Fconfur%2Fmain%2Fphpstan.neon.dist&query=%24.parameters.level&label=PHPStan&prefix=level%20&color=brightgreen)
 ![PHPCS](https://img.shields.io/badge/dynamic/xml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fbleedingdeacons%2Fconfur%2Fmain%2F.phpcs.xml.dist&query=%2Fruleset%2Frule%5B1%5D%2F%40ref&label=PHPCS&color=brightgreen)
 ![Version](https://img.shields.io/badge/version-3.0.5-blue)
-![PHP](https://img.shields.io/badge/php-8.1%2B-777bb4)
+![PHP](https://img.shields.io/badge/php-8.4%2B-777bb4)
 ![Licence](https://img.shields.io/badge/licence-MIT%20(Modified)-green)
 
 Automated collation of answers to conference questions submitted online by groups. Confur provides one place for groups to lodge their answers and one place for region representatives to read them back, organised and ready to discuss.
@@ -24,7 +24,7 @@ Every question/answer field is backed by Advanced Custom Fields, so the question
 ## Requirements
 
 - WordPress 6.0 or higher
-- PHP 8.1 or higher
+- PHP 8.4 or higher
 - [12 Step Meeting List](https://wordpress.org/plugins/12-step-meeting-list/) — meeting metadata
 - [Advanced Custom Fields](https://wordpress.org/plugins/advanced-custom-fields/) — answer field group
 
@@ -40,7 +40,7 @@ Confur is a MIT-licensed plugin published by The Bleeding Deacons.
 
 ## Administration
 
-Under the **Conference for Question** sidebar menu:
+Under the **Questions for Conference** sidebar menu:
 
 | Screen | What it shows |
 |---|---|
@@ -52,14 +52,16 @@ Under the **Conference for Question** sidebar menu:
 ### Answer & question management
 
 ```text
-[answer_field committee="1" question="1"]    Generate an answer input field
+[answer committee="1" question="1"]          Generate an answer input field
 [question number="1" committee="1"]          Render a question with formatting
-[committee number="1" name="Finance"]        Open a committee section
+[committee number="1" name="Finance"]…[/committee]   Wrap a committee section
+[start_committee number="1"] … [end_committee]      Open / close a committee section
 [header]                                     Conference meeting header
+[allocated_committee]                        The committee this group was allocated
 [progress_table]                             Per-committee progress table
 [control position="top"]                     Save controls (Draft / Complete)
 [status position="top"]                      Unsaved-changes notice
-[days_remaining end_date="2024-12-31" extend_by="0"]   Countdown to deadline
+[configure_form action="answer_submission"]  Hidden form action field
 ```
 
 ### AA programme content
@@ -67,15 +69,17 @@ Under the **Conference for Question** sidebar menu:
 ```text
 [step number="1"]                            Display an AA Step + PDF link
 [tradition number="1"]                       Display an AA Tradition + PDF link
-[responsibility_pledge number="1"]           Display the Responsibility Pledge
 ```
 
 ### General utilities
 
+These four are also shipped by the Amber plugin; whichever loads first registers them.
+
 ```text
-[open_blank href="url" class="…"]Link[/open_blank]      Link that opens in a new tab
-[link_email address="x@y" subject="…"]Text[/link_email] Mailto link
-[pdf_link url="…" name="file.pdf"]Link[/pdf_link]       Inline PDF download link
+[open_new_link href="url" class="…"]Link[/open_new_link]  Link that opens in a new tab
+[open_email address="x@y" subject="…"]Text[/open_email]   Mailto link
+[pdf_link url="…" name="file.pdf"]Link[/pdf_link]         Inline PDF download link
+[days_remaining end_date="2024-12-31" extend_by="0"]     Countdown to deadline
 ```
 
 ## Building a release

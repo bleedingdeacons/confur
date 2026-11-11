@@ -8,7 +8,6 @@ use Confur\Shortcodes\TraditionShortcode;
 
 covers(StepShortcode::class);
 covers(TraditionShortcode::class);
-covers(ResponsibilityPledgeShortcode::class);
 
 it('renders a valid step number', function () {
     $out = (new StepShortcode())->render(['number' => ' 3 ']);
@@ -27,10 +26,4 @@ it('renders a valid tradition number', function () {
 
 it('rejects an unknown tradition number', function () {
     expect((new TraditionShortcode())->render(['number' => '0']))->toBe('');
-});
-
-it('renders and rejects responsibility pledge numbers', function () {
-    $shortcode = new ResponsibilityPledgeShortcode();
-    expect($shortcode->render(['number' => '12']))->toContain('Step 12.')
-        ->and($shortcode->render(['number' => '13']))->toBe('');
 });

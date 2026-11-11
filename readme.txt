@@ -39,11 +39,11 @@ No. The Answer post type and its fields are defined via ACF, so Advanced Custom 
 
 = Where do I see submitted answers? =
 
-Under the **Conference for Question** sidebar menu. The Status screen shows submission progress; Results displays the latest answers in a collation-friendly layout.
+Under the **Questions for Conference** sidebar menu. The Status screen shows submission progress; Results displays the latest answers in a collation-friendly layout.
 
 = What shortcodes are available? =
 
-`[answer_field]`, `[question]`, `[committee]`, `[header]`, `[progress_table]`, `[control]`, `[status]`, `[days_remaining]`, plus AA-programme shortcodes `[step]`, `[tradition]`, `[responsibility_pledge]`, and general utilities `[open_blank]`, `[link_email]`, `[pdf_link]`. See README.md for full parameters.
+`[answer]`, `[question]`, `[committee]`, `[start_committee]`, `[end_committee]`, `[header]`, `[progress_table]`, `[control]`, `[status]`, `[allocated_committee]`, `[configure_form]`, `[days_remaining]`, plus AA-programme shortcodes `[step]` and `[tradition]`, and general utilities `[open_new_link]`, `[open_email]`, `[pdf_link]`. See README.md for full parameters.
 
 == Changelog ==
 

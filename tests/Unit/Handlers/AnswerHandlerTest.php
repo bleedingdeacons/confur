@@ -98,6 +98,7 @@ describe('handleSubmission', function () {
         $_POST['c1_a1'] = 'My answer';
         Functions\when('url_to_postid')->justReturn(60);
         $this->statuses[60] = 'publish';
+        WpState::$postTypes[60] = Constants::ANSWER_CUSTOM_TYPE;
         $this->fields[60] = [Constants::EMAIL_FIELD => 'a@b.com'];
 
         $r = ($this->runSubmission)();
@@ -111,6 +112,7 @@ describe('handleSubmission', function () {
         $_POST['submit_answers'] = Constants::STATUS_COMPLETED;
         Functions\when('url_to_postid')->justReturn(61);
         $this->statuses[61] = 'publish';
+        WpState::$postTypes[61] = Constants::ANSWER_CUSTOM_TYPE;
         $this->fields[61] = [Constants::EMAIL_FIELD => 'a@b.com'];
         $this->titles[61] = 'Answers from Group';
 
@@ -124,6 +126,7 @@ describe('handleSubmission', function () {
         $_POST['submit_answers'] = 'Bogus'; // not a valid status
         Functions\when('url_to_postid')->justReturn(62);
         $this->statuses[62] = 'publish';
+        WpState::$postTypes[62] = Constants::ANSWER_CUSTOM_TYPE;
         $this->fields[62] = [Constants::EMAIL_FIELD => 'a@b.com'];
 
         $r = ($this->runSubmission)();
@@ -136,12 +139,70 @@ describe('handleSubmission', function () {
         $_POST['c1_a1'] = 'A new value';
         Functions\when('url_to_postid')->justReturn(63);
         $this->statuses[63] = 'publish';
+        WpState::$postTypes[63] = Constants::ANSWER_CUSTOM_TYPE;
         $this->fields[63] = [Constants::EMAIL_FIELD => 'a@b.com'];
         // update_field returns false → the "failed to update field" branch runs.
         Functions\when('update_field')->justReturn(false);
 
         $r = ($this->runSubmission)();
         expect($r->success)->toBeTrue();
+    });
+
+    it('rejects a post that is not an answer', function () {
+        $_POST['submit_answers'] = Constants::STATUS_DRAFT;
+        $_POST['c1_a1'] = 'Injected';
+        Functions\when('url_to_postid')->justReturn(64);
+        $this->statuses[64] = 'publish';
+        WpState::$postTypes[64] = 'page';
+
+        $r = ($this->runSubmission)();
+        expect($r->success)->toBeFalse()
+            ->and($r->status)->toBe(404)
+            ->and(get_field('c1_a1', 64))->toBeNull();
+    });
+
+    it('rejects a cancelled registration', function () {
+        $_POST['submit_answers'] = Constants::STATUS_DRAFT;
+        $_POST['c1_a1'] = 'Late edit';
+        Functions\when('url_to_postid')->justReturn(65);
+        $this->statuses[65] = 'publish';
+        WpState::$postTypes[65] = Constants::ANSWER_CUSTOM_TYPE;
+        $this->fields[65] = [Constants::STATUS_FIELD => Constants::STATUS_CANCELLED];
+
+        $r = ($this->runSubmission)();
+        expect($r->success)->toBeFalse()
+            ->and($r->status)->toBe(403)
+            ->and(get_field('c1_a1', 65))->toBeNull()
+            ->and(get_field(Constants::STATUS_FIELD, 65))->toBe(Constants::STATUS_CANCELLED);
+    });
+
+    it('compares against the submitted post, not the current one', function () {
+        // admin-post.php has no current post. The change check used to read
+        // there, so a value matching whatever it found was never saved.
+        $_POST['submit_answers'] = Constants::STATUS_DRAFT;
+        $_POST['c1_a1'] = 'New';
+        Functions\when('url_to_postid')->justReturn(66);
+        $this->statuses[66] = 'publish';
+        WpState::$postTypes[66] = Constants::ANSWER_CUSTOM_TYPE;
+        $this->fields[66] = ['c1_a1' => 'Old'];
+        update_field('c1_a1', 'New');
+
+        ($this->runSubmission)();
+        expect(get_field('c1_a1', 66))->toBe('New');
+    });
+
+    it('stores the status and timestamp unescaped', function () {
+        $_POST['submit_answers'] = Constants::STATUS_COMPLETED;
+        Functions\when('url_to_postid')->justReturn(67);
+        Functions\when('current_time')->justReturn('Monday, 2024-01-01 01:02:03 PM');
+        $this->statuses[67] = 'publish';
+        WpState::$postTypes[67] = Constants::ANSWER_CUSTOM_TYPE;
+        $this->fields[67] = [Constants::EMAIL_FIELD => 'a@b.com'];
+
+        ($this->runSubmission)();
+        expect(get_field(Constants::UPDATED_FIELD, 67))->toBe('Monday, 2024-01-01 01:02:03 PM')
+            ->and(get_field(Constants::COMPLETION_FIELD, 67))->toBe('Monday, 2024-01-01 01:02:03 PM')
+            ->and(get_field(Constants::STATUS_FIELD, 67))->toBe(Constants::STATUS_COMPLETED);
     });
 });
 
@@ -164,7 +225,9 @@ describe('handleRegistration', function () {
         $this->handler->handleRegistration(Constants::REGISTER_QUESTION_FORM, $postId);
 
         expect(WpState::$mail)->not->toBeEmpty()
-            ->and($this->trashedPostIds())->toBe([]);
+            ->and($this->trashedPostIds())->toBe([])
+            // The initial state lands on the new post itself.
+            ->and(get_field(Constants::STATUS_FIELD, $postId))->toBe(Constants::DEFAULT_STATUS);
     });
 
     it('blocks a blocked email', function () {

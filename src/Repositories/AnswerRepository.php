@@ -13,12 +13,15 @@ class AnswerRepository
      * Get value from ACF field
      *
      * @param string $name Field name
+     * @param int|false $postId Post to read from. False means the current
+     *                          post, which only exists inside the loop — pass
+     *                          the id anywhere else (e.g. admin-post.php).
      * @return string Sanitized value
      */
-    public function getValue(string $name): string
+    public function getValue(string $name, int|false $postId = false): string
     {
-        $value = get_field($name);
-        return sanitize_textarea_field($value);
+        $value = get_field($name, $postId);
+        return sanitize_textarea_field((string) $value);
     }
 
     /**
@@ -31,10 +34,10 @@ class AnswerRepository
     {
         $status = get_field(Constants::STATUS_FIELD, $postId);
 
+        // A post with no status yet is a draft. This is a read — the public
+        // REST endpoint calls it — so it reports that rather than writing it.
         if (empty($status)) {
-            update_field(Constants::STATUS_FIELD, Constants::STATUS_DRAFT, $postId);
-            acf_save_post();
-            $status = get_field(Constants::STATUS_FIELD, $postId);
+            $status = Constants::STATUS_DRAFT;
         }
 
         $updated = get_field(Constants::UPDATED_FIELD, $postId);
@@ -44,7 +47,6 @@ class AnswerRepository
         }
 
         return [
-//          'id' => $postId,
             'state' => $status,
             'updated' => $updated
         ];
@@ -290,53 +292,6 @@ class AnswerRepository
 
         return null;
     }
-
-    /**
-     * Get group answers
-     *
-     * @return array<string, mixed> Group answers data
-     */
-//  public function getGroupAnswers(): array
-//  {
-//      $answers = [];
-//      $all = $this->getAllAnswers();
-//
-//      foreach ($all as $postId) {
-//          $meeting = get_field(Constants::MEETING_FIELD, $postId);
-//          $email = get_field(Constants::EMAIL_FIELD, $postId);
-//          $updated = get_field(Constants::UPDATED_FIELD, $postId);
-//          $status = get_field(Constants::STATUS_FIELD, $postId);
-//
-//          if (!empty($updated)) {
-//              $allFields = get_fields($postId);
-//
-//              foreach ($allFields as $fieldName => $fieldValue) {
-//                  if (str_starts_with($fieldName, 'c')) {
-//                      foreach ($fieldValue as $questionName => $answer) {
-//                          if (!empty($answer)) {
-//                              $meetingName = get_the_title($meeting);
-//                              $resultUrl = get_permalink($postId);
-//
-//                              $groupAnswer = [
-//                                  $meeting,
-//                                  $meetingName,
-//                                  $resultUrl,
-//                                  $email,
-//                                  $updated,
-//                                  $answer,
-//                                  $status
-//                              ];
-//
-//                              $answers[$fieldName . '_' . $questionName][] = $groupAnswer;
-//                          }
-//                      }
-//                  }
-//              }
-//          }
-//      }
-//
-//      return $answers;
-//  }
 
     /**
      * Get group answers

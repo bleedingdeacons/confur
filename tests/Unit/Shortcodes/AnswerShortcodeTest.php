@@ -173,6 +173,23 @@ it('generates the start of a committee', function () {
     expect($result)->toEqual('<div id="c4"><h2>Committee 4</h2>');
 });
 
+it('escapes attributes in question and committee headings', function () {
+    $evil = '"><script>x</script>';
+
+    $question = $this->shortcode->generateQuestion(['number' => $evil, 'committee' => '1']);
+    $start = $this->shortcode->generateStartCommittee(['number' => $evil]);
+
+    expect($question)->not->toContain('<script>')
+        ->and($start)->not->toContain('<script>')
+        // The quote can't close the id attribute early.
+        ->and($start)->toStartWith('<div id="c&quot;&gt;&lt;script&gt;');
+});
+
+it('tolerates missing attributes', function () {
+    expect($this->shortcode->generateQuestion([]))->toContain('<h3 id="c_q">')
+        ->and($this->shortcode->generateStartCommittee([]))->toBe('<div id="c"><h2>Committee </h2>');
+});
+
 it('generates the end of a committee', function () {
     $result = $this->shortcode->generateEndCommittee();
 

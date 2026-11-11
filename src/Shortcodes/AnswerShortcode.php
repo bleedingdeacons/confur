@@ -94,8 +94,8 @@ class AnswerShortcode
      */
     public function generateQuestion(array $atts = [], ?string $content = null): string
     {
-        $question = trim($atts['number']);
-        $committee = trim($atts['committee']);
+        $question = trim((string) ($atts['number'] ?? ''));
+        $committee = trim((string) ($atts['committee'] ?? ''));
         $hidden = isset($atts['hidden']) && filter_var($atts['hidden'], FILTER_VALIDATE_BOOLEAN);
 
         $name = 'c' . $committee . '_q' . $question;
@@ -109,8 +109,8 @@ class AnswerShortcode
 
         return sprintf(
             '<h3 id="%s">%s</h3>%s',
-            $name,
-            $headerText,
+            esc_attr($name),
+            esc_html($headerText),
             $content
         );
     }
@@ -124,7 +124,7 @@ class AnswerShortcode
      */
     public function generateCommittee(array $atts = [], ?string $content = null): string
     {
-        $number = sanitize_text_field(trim($atts['number']));
+        $number = sanitize_text_field(trim((string) ($atts['number'] ?? '')));
         $id = 'c' . $number;
 
         // Check if name attribute exists, otherwise use default "Committee {number}"
@@ -136,8 +136,8 @@ class AnswerShortcode
 
         return sprintf(
             '<div id="g_%s"><h2>%s</h2>%s</div>',
-            $id,
-            $title,
+            esc_attr($id),
+            esc_html($title),
             $content
         );
     }
@@ -150,13 +150,13 @@ class AnswerShortcode
      */
     public function generateStartCommittee(array $atts = []): string
     {
-        $number = trim($atts['number']);
+        $number = trim((string) ($atts['number'] ?? ''));
         $id = 'c' . $number;
 
         return sprintf(
             '<div id="%s"><h2>Committee %s</h2>',
-            $id,
-            $number
+            esc_attr($id),
+            esc_html($number)
         );
     }
 
@@ -199,11 +199,9 @@ class AnswerShortcode
      */
     public function configureCustomForm(array $atts): string
     {
-        error_log('Action: ' . $atts['action']);
-
         return sprintf(
             '<input type="hidden" name="action" value="%s">',
-            esc_attr($atts['action'])
+            esc_attr((string) ($atts['action'] ?? ''))
         );
     }
 

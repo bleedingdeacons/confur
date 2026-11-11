@@ -25,12 +25,4 @@ class Constants
     public const UPDATED_FIELD = 'updated';
     public const EMAIL_FIELD = 'email';
     public const ALLOCATION_FIELD = 'allocated_committee';
-
-    /**
-     * Initialize constants (for backward compatibility if needed)
-     */
-    public static function init(): void
-    {
-        // Legacy constant definitions can be added here if needed for compatibility
-    }
 }

@@ -25,15 +25,6 @@ class AnswerHandler
     public function handleSubmission(): void
     {
         try {
-            error_log('AnswerHandler::handleSubmission');
-
-//            // Only allow HTTPS
-//            if (!isset($_SERVER['HTTPS']) || $_SERVER['HTTPS'] !== 'on') {
-//                error_log('AnswerHandler::handleSubmission - HTTPS required');
-//                wp_send_json_error(['message' => 'HTTPS required.'], 403);
-//                return;
-//            }
-
             if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['submit_answers'])) {
                 error_log('AnswerHandler::handleSubmission - Invalid request method or missing submit_answers field');
                 wp_send_json_error(['message' => 'Unrecognized Action.'], 400);
@@ -53,6 +44,21 @@ class AnswerHandler
             if (get_post_status($postId) === false) {
                 error_log("AnswerHandler::handleSubmission - Post ID: $postId does not exist");
                 wp_send_json_error(['message' => 'Post does not exist.'], 404);
+            }
+
+            // The referer can resolve to any post on this site, so the type
+            // has to be checked: without it a submission could write answer
+            // fields onto, and publish, an unrelated post.
+            if (get_post_type($postId) !== Constants::ANSWER_CUSTOM_TYPE) {
+                error_log("AnswerHandler::handleSubmission - Post ID: $postId is not an answer post");
+                wp_send_json_error(['message' => 'Post does not exist.'], 404);
+            }
+
+            // A cancelled registration is read-only. The client disables its
+            // buttons, but that is a convenience, not the enforcement.
+            if (get_field(Constants::STATUS_FIELD, $postId) === Constants::STATUS_CANCELLED) {
+                error_log("AnswerHandler::handleSubmission - Post ID: $postId is cancelled");
+                wp_send_json_error(['message' => 'This registration has been cancelled.'], 403);
             }
 
             // Send backup email (sanitize POST data before logging)
@@ -86,20 +92,23 @@ class AnswerHandler
 
             $updated = current_time('l, Y-m-d h:i:s A');
 
-            update_field(Constants::UPDATED_FIELD, esc_html($updated), $postId);
-            update_field(Constants::STATUS_FIELD, esc_html($status), $postId);
+            // Stored raw; escaped where it is output.
+            update_field(Constants::UPDATED_FIELD, $updated, $postId);
+            update_field(Constants::STATUS_FIELD, $status, $postId);
 
             error_log("AnswerHandler::handleSubmission - Answers for Post ID: $postId Status: $status");
 
             $email = get_field(Constants::EMAIL_FIELD, $postId);
 
             if ($status === Constants::STATUS_COMPLETED) {
-                update_field(Constants::COMPLETION_FIELD, esc_html($updated), $postId);
+                update_field(Constants::COMPLETION_FIELD, $updated, $postId);
             } else {
                 update_field(Constants::COMPLETION_FIELD, "", $postId);
             }
 
-            acf_save_post();
+            // update_field() has already written each value. The bare
+            // acf_save_post() that used to follow had no post id and no
+            // $_POST['acf'] to save, so it did nothing.
             wp_publish_post($postId);
 
             $title = get_the_title($postId);
@@ -246,8 +255,9 @@ class AnswerHandler
 
             $title = 'Answers from ' . $meetingName;
 
-            update_field(Constants::STATUS_FIELD, Constants::DEFAULT_STATUS);
-            acf_save_post();
+            // Without the post id this wrote to whatever ACF took the current
+            // post to be, so a new registration never got its initial state.
+            update_field(Constants::STATUS_FIELD, Constants::DEFAULT_STATUS, $postId);
 
             $postData = [
                 'ID' => $postId,
@@ -307,7 +317,7 @@ class AnswerHandler
             if (preg_match('/^c\d+_a\d+$/', $key)) {
                 $sanitizedValue = sanitize_textarea_field($newValue);
 
-                $existing = $this->answerRepository->getValue($key);
+                $existing = $this->answerRepository->getValue($key, $postId);
 
                 // Field keys and post IDs only. The values are conference
                 // answers written by members and must not reach the PHP
@@ -315,7 +325,6 @@ class AnswerHandler
                 // by Scrutiny's audit trail.
                 if ($existing !== $sanitizedValue) {
                     if (!update_field($key, $sanitizedValue, $postId)) {
-//                  if (!AcfHelper::updateAcfField2($postId, $key, $sanitizedValue)) {
                         error_log("AnswerHandler::updateAnswerFields - Failed to update field $key for Post ID: $postId");
                     }
                 }
