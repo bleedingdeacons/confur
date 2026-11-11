@@ -2,8 +2,8 @@
 
 namespace Confur\Admin;
 
-use Confur\Config\QuestionSetOption;
 use Confur\Domain\QuestionSet;
+use Confur\Storage\QuestionSetStore;
 
 /**
  * Questions for Conference → Questions: which committees there are, how many
@@ -72,7 +72,7 @@ class QuestionSetAdminPage
     private function resolveSubmissionRedirect(array $post): string
     {
         if (isset($post['reset_to_default'])) {
-            return $this->pageUrl(QuestionSetOption::reset() ? ['updated' => 'reset'] : ['error' => 'save']);
+            return $this->pageUrl(QuestionSetStore::reset() ? ['updated' => 'reset'] : ['error' => 'save']);
         }
 
         try {
@@ -84,7 +84,7 @@ class QuestionSetAdminPage
             return $this->pageUrl(['error' => 'invalid']);
         }
 
-        return $this->pageUrl(QuestionSetOption::save($questions) ? ['updated' => '1'] : ['error' => 'save']);
+        return $this->pageUrl(QuestionSetStore::save($questions) ? ['updated' => '1'] : ['error' => 'save']);
     }
 
     /**
@@ -139,7 +139,7 @@ class QuestionSetAdminPage
         }
 
         $questions = QuestionSet::current();
-        $saved = QuestionSetOption::load();
+        $saved = QuestionSetStore::load();
         $rows = [];
 
         foreach ($saved->committees() as $committee) {
@@ -232,7 +232,7 @@ class QuestionSetAdminPage
 
                 <p class="submit">
                     <?php submit_button('Save Questions', 'primary', 'submit', false); ?>
-                    <?php if (QuestionSetOption::isCustomised()) : ?>
+                    <?php if (QuestionSetStore::isCustomised()) : ?>
                         <?php submit_button('Reset to Default', 'secondary', 'reset_to_default', false, [
                             'onclick' => "return confirm('Replace the saved questions with the default set?');",
                         ]); ?>

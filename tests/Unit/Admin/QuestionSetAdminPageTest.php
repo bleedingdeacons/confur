@@ -6,8 +6,8 @@ use BleedingDeacons\WpMocks\Exceptions\WpDieException;
 use BleedingDeacons\WpMocks\WpState;
 use Brain\Monkey\Functions;
 use Confur\Admin\QuestionSetAdminPage;
-use Confur\Config\QuestionSetOption;
 use Confur\Domain\QuestionSet;
+use Confur\Storage\QuestionSetStore;
 use ReflectionMethod;
 
 covers(QuestionSetAdminPage::class);
@@ -77,17 +77,17 @@ describe('submission', function () {
         ]);
 
         expect($url)->toContain('page=confur-questions', 'updated=1')
-            ->and(QuestionSetOption::load()->questionCounts())->toBe([1 => 2, 2 => 1]);
+            ->and(QuestionSetStore::load()->questionCounts())->toBe([1 => 2, 2 => 1]);
     });
 
     it('keeps the saved set and explains why when the form is invalid', function () {
-        QuestionSetOption::save(new QuestionSet([1 => 1]));
+        QuestionSetStore::save(new QuestionSet([1 => 1]));
 
         $url = questionsRedirect($this->page, ['committee' => ['2', '2'], 'questions' => ['1', '1']]);
 
         expect($url)->toContain('error=invalid')
             ->not->toContain('twice')   // the reason is not carried in the URL
-            ->and(QuestionSetOption::load()->questionCounts())->toBe([1 => 1]);
+            ->and(QuestionSetStore::load()->questionCounts())->toBe([1 => 1]);
 
         $_GET = ['error' => 'invalid'];
         $html = captureOutput(fn () => $this->page->renderAdminPage());
@@ -96,12 +96,12 @@ describe('submission', function () {
     });
 
     it('resets to the default', function () {
-        QuestionSetOption::save(new QuestionSet([1 => 1]));
+        QuestionSetStore::save(new QuestionSet([1 => 1]));
 
         $url = questionsRedirect($this->page, ['reset_to_default' => '1']);
 
         expect($url)->toContain('updated=reset')
-            ->and(QuestionSetOption::isCustomised())->toBeFalse();
+            ->and(QuestionSetStore::isCustomised())->toBeFalse();
     });
 
     it('refuses a user who cannot manage options', function () {
@@ -143,7 +143,7 @@ describe('screen', function () {
     });
 
     it('lists each committee with its fields and spare rows to add more', function () {
-        QuestionSetOption::save(new QuestionSet([1 => 3, 2 => 1]));
+        QuestionSetStore::save(new QuestionSet([1 => 3, 2 => 1]));
 
         $html = captureOutput(fn () => $this->page->renderAdminPage());
 

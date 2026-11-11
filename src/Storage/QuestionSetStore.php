@@ -1,6 +1,6 @@
 <?php
 
-namespace Confur\Config;
+namespace Confur\Storage;
 
 use Confur\Domain\QuestionSet;
 
@@ -11,7 +11,7 @@ use Confur\Domain\QuestionSet;
  * Nothing saved, or something saved that no longer makes a valid set, means
  * QuestionSet::DEFAULT — a broken option must not stop groups saving answers.
  */
-final class QuestionSetOption
+final class QuestionSetStore
 {
     public const OPTION_NAME = 'confur_question_set';
 
@@ -26,7 +26,7 @@ final class QuestionSetOption
         try {
             return self::fromStored($stored);
         } catch (\InvalidArgumentException $e) {
-            error_log('QuestionSetOption::load - Saved question set is invalid, using the default: ' . $e->getMessage());
+            error_log('QuestionSetStore::load - Saved question set is invalid, using the default: ' . $e->getMessage());
             return new QuestionSet(QuestionSet::DEFAULT);
         }
     }

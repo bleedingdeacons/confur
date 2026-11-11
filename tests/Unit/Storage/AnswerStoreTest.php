@@ -54,7 +54,7 @@ it('loads only non-empty answer fields when asked', function () {
 it('reads answers to questions the ACF field group does not define', function () {
     // get_fields() only returns fields ACF knows about. A question added on
     // the Questions screen has no ACF field, so its answer is read by name.
-    \Confur\Config\QuestionSetOption::save(new \Confur\Domain\QuestionSet([1 => 1, 8 => 1]));
+    \Confur\Storage\QuestionSetStore::save(new \Confur\Domain\QuestionSet([1 => 1, 8 => 1]));
     ($this->answerPost)(1, ['c1_a1' => 'Known']);
     \Brain\Monkey\Functions\when('get_fields')->justReturn(['c1_a1' => 'Known']);
     update_field('c8_a1', 'Added later', 1);

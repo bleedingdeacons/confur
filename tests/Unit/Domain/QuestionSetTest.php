@@ -65,7 +65,7 @@ it('lists the questions without an answer', function () {
 });
 
 it('uses the set saved in the admin', function () {
-    \Confur\Config\QuestionSetOption::save(new QuestionSet([1 => 2, 2 => 2, 3 => 1], 1));
+    \Confur\Storage\QuestionSetStore::save(new QuestionSet([1 => 2, 2 => 2, 3 => 1], 1));
 
     $set = QuestionSet::current();
 
@@ -75,7 +75,7 @@ it('uses the set saved in the admin', function () {
 });
 
 it('keeps the saved All Committees choice when a filter adjusts the counts', function () {
-    \Confur\Config\QuestionSetOption::save(new QuestionSet([1 => 1, 2 => 1, 3 => 1], 2));
+    \Confur\Storage\QuestionSetStore::save(new QuestionSet([1 => 1, 2 => 1, 3 => 1], 2));
     Filters\expectApplied('confur_question_set')->once()->andReturn([1 => 1, 2 => 5, 3 => 1]);
 
     $set = QuestionSet::current();

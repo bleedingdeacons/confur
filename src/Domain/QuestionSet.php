@@ -2,7 +2,7 @@
 
 namespace Confur\Domain;
 
-use Confur\Config\QuestionSetOption;
+use Confur\Storage\QuestionSetStore;
 
 /**
  * The questions a conference cycle asks: which committees there are and how
@@ -15,7 +15,7 @@ use Confur\Config\QuestionSetOption;
  * The last committee is special: it holds questions not owned by any single
  * committee, and is shown as "All Committees" rather than "Committee 7".
  *
- * Administrators edit it on the Questions screen (QuestionSetOption stores
+ * Administrators edit it on the Questions screen (QuestionSetStore stores
  * it). DEFAULT is what the bundled ACF field group in setup/Acf_Answers.json
  * defines, and a test checks the two agree. A question added beyond that
  * still saves and reports — AnswerStore reads the set's field names directly
@@ -82,7 +82,7 @@ final class QuestionSet
      */
     public static function current(): self
     {
-        $saved = QuestionSetOption::load();
+        $saved = QuestionSetStore::load();
 
         /** @var mixed $counts */
         $counts = apply_filters('confur_question_set', $saved->questionCounts());
