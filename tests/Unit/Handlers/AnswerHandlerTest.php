@@ -429,3 +429,42 @@ describe('handleRegistration', function () {
         expect(WpState::$mail)->not->toBeEmpty();
     });
 });
+
+// ── the error boundary ───────────────────────────────────────────────
+describe('the error boundary', function () {
+    it('turns an unexpected failure while saving into a generic 500', function () {
+        $save = \Mockery::mock(\Confur\Application\SaveAnswers::class);
+        $save->shouldReceive('save')->andThrow(new \RuntimeException('database went away'));
+        $this->handler = new AnswerHandler($save);
+
+        $_POST['submit_answers'] = Constants::STATUS_DRAFT;
+        Functions\when('url_to_postid')->justReturn(60);
+
+        $r = ($this->runSubmission)();
+        expect($r->success)->toBeFalse()
+            ->and($r->status)->toBe(500)
+            // The internal error is logged, not shown to the group.
+            ->and($r->data['message'])->not->toContain('database');
+    });
+
+    it('emails the registrant when registration fails unexpectedly', function () {
+        $register = \Mockery::mock(\Confur\Application\RegisterGroup::class);
+        $register->shouldReceive('register')->andThrow(new \RuntimeException('boom'));
+        $this->handler = new AnswerHandler(null, $register);
+        $this->fields[95] = [Constants::REGISTRATION_RECIPIENT_EMAIL => 'a@b.com'];
+
+        $this->handler->handleRegistration(Constants::REGISTER_QUESTION_FORM, 95);
+
+        $sent = end(WpState::$mail);
+        expect($sent['to'])->toBe('a@b.com')
+            ->and($sent['subject'])->toBe('Error: Registration Failed');
+    });
+
+    it('does not run registration for another form', function () {
+        $register = \Mockery::mock(\Confur\Application\RegisterGroup::class);
+        $register->shouldNotReceive('register');
+        $this->handler = new AnswerHandler(null, $register);
+
+        $this->handler->handleRegistration('some-other-form', 96);
+    });
+});
