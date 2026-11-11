@@ -4,6 +4,7 @@ namespace Confur\Admin;
 
 use Confur\Config\Constants;
 use Confur\Domain\AnswerKey;
+use Confur\Domain\QuestionSet;
 use Confur\Repositories\AnswerRepository;
 use Confur\Services\AdminAssets;
 
@@ -56,10 +57,7 @@ class ConfurHeadsUp
             wp_send_json_error(['message' => 'Invalid security token']);
         }
 
-        // Get the widget content
-        ob_start();
-        $this->renderWidgetContent();
-        $content = ob_get_clean();
+        $content = $this->renderWidgetContent();
 
         wp_send_json_success([
             'content' => $content,
@@ -68,36 +66,34 @@ class ConfurHeadsUp
     }
 
     /**
-     * Render the widget wrapper with AJAX functionality
+     * Render the widget. Its CSS and JS are enqueued separately (enqueueAssets).
      */
     public function renderWidget(): void
     {
-        // CSS and JS are enqueued from assets/admin/ (enqueueAssets).
-        echo '<div id="confur-headsup-container">';
-        echo '<div id="confur-headsup-content">';
-        $this->renderWidgetContent();
-        echo '</div>';
-
-        // Footer with last updated and refresh button
-        echo '<div class="confur-headsup-footer">';
-        echo '<span class="confur-last-updated-time">Last updated: <span id="confur-update-time">' . current_time('M j, Y g:i A') . '</span></span>';
-        echo '<button type="button" id="confur-refresh-btn" class="button button-small">';
-        echo '<span class="dashicons dashicons-update"></span> Refresh';
-        echo '</button>';
-        echo '</div>';
-        echo '</div>';
+        Template::render('admin/dashboard-widget', [
+            'updatesHtml' => $this->renderWidgetContent(),
+            'lastUpdated' => current_time('M j, Y g:i A'),
+        ]);
     }
 
     /**
-     * Render the main widget content (used both for initial load and AJAX refresh)
+     * The list of recent updates, as HTML: used on load and for the AJAX refresh.
      */
-    private function renderWidgetContent(): void
+    private function renderWidgetContent(): string
     {
-        // Get recent updates
-        $recentUpdates = $this->getRecentUpdates();
+        $questions = QuestionSet::current();
+        $updates = $this->getRecentUpdates();
+        $labels = [];
 
-        // Display the list
-        $this->renderUpdatesList($recentUpdates);
+        foreach (array_keys($updates) as $committee) {
+            $labels[$committee] = $questions->committeeLabel($committee);
+        }
+
+        return Template::capture('admin/dashboard-updates', [
+            'updates' => $updates,
+            'committeeLabels' => $labels,
+            'now' => current_time('timestamp'),
+        ]);
     }
 
     /**
@@ -182,60 +178,5 @@ class ConfurHeadsUp
         }
 
         return $updates;
-    }
-
-    /**
-     * Render the updates list
-     *
-     * @param array<int, array<int, list<array<string, mixed>>>> $updates
-     */
-    private function renderUpdatesList(array $updates): void
-    {
-        if (empty($updates)) {
-            echo '<div class="confur-no-data">';
-            echo '<p>No updates in the last 24 hours</p>';
-            echo '</div>';
-            return;
-        }
-
-        echo '<ul class="confur-updates-list">';
-
-        foreach ($updates as $committeeNum => $questions) {
-            echo '<li class="confur-committee-item" data-committee="' . esc_attr((string) $committeeNum) . '">';
-            echo '<div class="confur-committee-title">';
-            echo '<span class="confur-committee-toggle">▼</span>';
-            echo 'Committee ' . esc_html((string) $committeeNum);
-            echo '</div>';
-
-            echo '<ul class="confur-questions-list">';
-
-            foreach ($questions as $questionNum => $groups) {
-                echo '<li class="confur-question-item">';
-                echo '<div class="confur-question-title">Question ' . esc_html((string) $questionNum);
-                echo '<span class="confur-recent-badge">UPDATED</span>';
-                echo '</div>';
-
-                echo '<ul class="confur-groups-list">';
-
-                foreach ($groups as $group) {
-                    $timeAgo = human_time_diff($group['updated'], current_time('timestamp'));
-
-                    echo '<li class="confur-group-item">';
-                    echo '<a href="' . esc_url($group['url']) . '" class="confur-group-link">';
-                    echo esc_html($group['group_name']);
-                    echo '</a>';
-                    echo '<span class="confur-group-time">' . esc_html($timeAgo) . ' ago</span>';
-                    echo '</li>';
-                }
-
-                echo '</ul>'; // .confur-groups-list
-                echo '</li>'; // .confur-question-item
-            }
-
-            echo '</ul>'; // .confur-questions-list
-            echo '</li>'; // .confur-committee-item
-        }
-
-        echo '</ul>'; // .confur-updates-list
     }
 }

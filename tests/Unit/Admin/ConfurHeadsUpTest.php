@@ -221,6 +221,16 @@ describe('rendering', function () {
             // the relative time should be rendered
             ->toContain('ago</span>');
     });
+
+    it('labels the All Committees committee as the rest of the plugin does', function () {
+        $this->makePost(500, 'Monday Group');
+        ($this->seedAnswer)(1, '2026-07-24 10:00:00', 500, ['c7_a1' => 'The last one']);
+
+        $html = captureOutput(fn () => $this->widget->renderWidget());
+
+        expect($html)->toContain('All Committees')
+            ->not->toContain('Committee 7');
+    });
 });
 
 // ── the AJAX refresh ──────────────────────────────────────────────

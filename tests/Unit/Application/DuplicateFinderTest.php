@@ -122,3 +122,30 @@ describe('choosing among several', function () {
         expect($this->finder->find(100, null, 'test@example.com', 999)?->postId)->toBe(2);
     });
 });
+
+describe('groups', function () {
+    it('collects every set of duplicates, by the same rule as find()', function () {
+        $make = fn (int $id, ?int $m, ?int $f, string $email, string $status = 'Draft') => new \Confur\Domain\Answer($id, $m, $f, $email, null, $status);
+
+        $groups = $this->finder->groups([
+            $make(1, 100, null, 'a@x.org'),
+            $make(2, 100, null, ' A@X.org '),        // same as 1
+            $make(3, 100, null, 'b@x.org'),          // another group, same meeting: not a duplicate of 1
+            $make(4, 200, 100, 'c@x.org'),
+            $make(5, 100, 200, 'c@x.org'),           // same pair, other order: duplicate of 4
+            $make(6, 100, null, 'a@x.org', 'cancelled'), // cancelled: ignored
+            $make(7, null, null, 'a@x.org'),         // no meeting: ignored
+            $make(8, 300, null, ''),                 // no email: ignored
+            $make(9, 300, null, ''),
+        ]);
+
+        expect(array_map(fn (array $g) => array_map(fn ($a) => $a->postId, $g), $groups))->toBe([[1, 2], [4, 5]]);
+    });
+
+    it('finds nothing when every registration is distinct', function () {
+        expect($this->finder->groups([
+            new \Confur\Domain\Answer(1, 100, null, 'a@x.org', null, 'Draft'),
+            new \Confur\Domain\Answer(2, 100, 200, 'a@x.org', null, 'Draft'),
+        ]))->toBe([]);
+    });
+});

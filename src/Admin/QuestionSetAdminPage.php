@@ -143,125 +143,57 @@ class QuestionSetAdminPage
         $rows = [];
 
         foreach ($saved->committees() as $committee) {
-            $rows[] = ['committee' => (string) $committee, 'questions' => (string) $saved->questionCount($committee)];
+            $count = $saved->questionCount($committee);
+            $rows[] = [
+                'committee' => (string) $committee,
+                'questions' => (string) $count,
+                'isAll' => $saved->isAllCommittees($committee),
+                'fields' => self::fieldRange($committee, $count),
+            ];
         }
 
         for ($i = 0; $i < self::SPARE_ROWS; $i++) {
-            $rows[] = ['committee' => '', 'questions' => ''];
+            $rows[] = ['committee' => '', 'questions' => '', 'isAll' => false, 'fields' => ''];
         }
 
-        ?>
-        <div class="wrap">
-            <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
-
-            <?php $this->renderNotices(); ?>
-
-            <p>
-                Each committee has a number of questions, answered in fields named
-                <code>c&lt;committee&gt;_a&lt;question&gt;</code>. A group can mark its answers
-                <strong>Complete</strong> only when every question here has an answer.
-            </p>
-            <p>
-                Answer pages are built from shortcodes, so they have to match: each question needs
-                <code>[answer committee="N" question="M"]</code> on the page.
-                Questions beyond the bundled set are saved and reported, but have no field on the
-                answer post's own edit screen unless one is added to the ACF field group.
-            </p>
-
-            <?php if (!$questions->equals($saved)) : ?>
-                <div class="notice notice-warning inline"><p>
-                    Code on this site changes the question set through the <code>confur_question_set</code>
-                    filter, so what is in force differs from what is saved here.
-                </p></div>
-            <?php endif; ?>
-
-            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
-                <?php wp_nonce_field(self::NONCE_ACTION, self::NONCE_FIELD); ?>
-                <input type="hidden" name="action" value="<?php echo esc_attr(self::ACTION); ?>">
-
-                <table class="widefat striped" style="max-width: 640px">
-                    <thead>
-                    <tr>
-                        <th scope="col">Committee</th>
-                        <th scope="col">Questions</th>
-                        <th scope="col">All Committees</th>
-                        <th scope="col">Answer fields</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <?php foreach ($rows as $index => $row) : ?>
-                        <?php
-                        $number = $row['committee'];
-                        $isAll = $number !== '' && $saved->isAllCommittees((int) $number);
-                        ?>
-                        <tr>
-                            <td>
-                                <input type="number" min="1" step="1" class="small-text"
-                                       name="committee[<?php echo esc_attr((string) $index); ?>]"
-                                       aria-label="Committee number"
-                                       value="<?php echo esc_attr($number); ?>">
-                            </td>
-                            <td>
-                                <input type="number" min="0" step="1" class="small-text"
-                                       name="questions[<?php echo esc_attr((string) $index); ?>]"
-                                       aria-label="Number of questions"
-                                       value="<?php echo esc_attr($row['questions']); ?>">
-                            </td>
-                            <td>
-                                <input type="radio" name="all_committees"
-                                       aria-label="Show as All Committees"
-                                       value="<?php echo esc_attr((string) $index); ?>"
-                                    <?php checked($isAll); ?>>
-                            </td>
-                            <td>
-                                <?php if ($number !== '') : ?>
-                                    <code><?php echo esc_html(self::fieldRange((int) $number, (int) $row['questions'])); ?></code>
-                                <?php else : ?>
-                                    <span class="description">New committee</span>
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                    </tbody>
-                </table>
-                <p class="description">
-                    Set a committee's questions to 0 to remove it. Answers already given to removed
-                    questions are kept and still shown on the Results page; they just stop counting
-                    towards Complete. If no committee is chosen as All Committees, the highest-numbered one is.
-                </p>
-
-                <p class="submit">
-                    <?php submit_button('Save Questions', 'primary', 'submit', false); ?>
-                    <?php if (QuestionSetStore::isCustomised()) : ?>
-                        <?php submit_button('Reset to Default', 'secondary', 'reset_to_default', false, [
-                            'onclick' => "return confirm('Replace the saved questions with the default set?');",
-                        ]); ?>
-                    <?php endif; ?>
-                </p>
-            </form>
-        </div>
-        <?php
+        Template::render('admin/questions', [
+            'notices' => $this->notices(),
+            'rows' => $rows,
+            'overriddenByFilter' => !$questions->equals($saved),
+            'customised' => QuestionSetStore::isCustomised(),
+            'action' => self::ACTION,
+            'nonceAction' => self::NONCE_ACTION,
+            'nonceField' => self::NONCE_FIELD,
+        ]);
     }
 
-    private function renderNotices(): void
+    /**
+     * What to tell the administrator about the last save.
+     *
+     * @return list<array{type: string, message: string}>
+     */
+    private function notices(): array
     {
         $updated = isset($_GET['updated']) ? sanitize_text_field(wp_unslash($_GET['updated'])) : '';
         $error = isset($_GET['error']) ? sanitize_text_field(wp_unslash($_GET['error'])) : '';
+        $notices = [];
 
         if ($updated === '1') {
-            echo '<div class="notice notice-success is-dismissible"><p>Questions saved.</p></div>';
+            $notices[] = ['type' => 'success', 'message' => 'Questions saved.'];
         } elseif ($updated === 'reset') {
-            echo '<div class="notice notice-success is-dismissible"><p>Questions reset to the default set.</p></div>';
+            $notices[] = ['type' => 'success', 'message' => 'Questions reset to the default set.'];
         }
 
         if ($error === 'invalid') {
             $reason = get_transient(self::errorTransient());
             delete_transient(self::errorTransient());
             $reason = is_string($reason) && $reason !== '' ? $reason : 'the questions are not valid.';
-            echo '<div class="notice notice-error"><p>Not saved: ' . esc_html($reason) . '</p></div>';
+            $notices[] = ['type' => 'error', 'message' => 'Not saved: ' . $reason];
         } elseif ($error === 'save') {
-            echo '<div class="notice notice-error"><p>The questions could not be saved. Please try again.</p></div>';
+            $notices[] = ['type' => 'error', 'message' => 'The questions could not be saved. Please try again.'];
         }
+
+        return $notices;
     }
 
     /** "c1_a1 – c1_a3", or the single field name for one question. */

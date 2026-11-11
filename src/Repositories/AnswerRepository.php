@@ -2,6 +2,7 @@
 
 namespace Confur\Repositories;
 
+use Confur\Domain\Answer;
 use Confur\Storage\AnswerStore;
 
 /**
@@ -70,9 +71,21 @@ class AnswerRepository
      */
     public function getRegisteredGroups(): array
     {
+        return self::registeredRows($this->store->all());
+    }
+
+    /**
+     * The getRegisteredGroups() rows for registrations already loaded, so a
+     * screen that needs them as well as the Answers reads the posts once.
+     *
+     * @param list<Answer> $answers
+     * @return array<int, array<string, mixed>>
+     */
+    public static function registeredRows(array $answers): array
+    {
         $registered = [];
 
-        foreach ($this->store->all() as $answer) {
+        foreach ($answers as $answer) {
             if ($answer->meetingId === null) {
                 continue;
             }
