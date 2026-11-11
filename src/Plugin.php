@@ -2,7 +2,6 @@
 
 namespace Confur;
 
-use Confur\Config\Constants;
 use Confur\Config\ConfurSettings;
 use Confur\Services\AdminAssetService;
 use Confur\Services\AssetService;
@@ -38,14 +37,6 @@ class Plugin
     public function init(): void
     {
         try {
-            // Load constants
-            try {
-                Constants::init();
-            } catch (\Exception $e) {
-                error_log('Plugin::init - Failed to initialize constants: ' . $e->getMessage());
-                throw new \Exception('Failed to load plugin constants: ' . $e->getMessage());
-            }
-
             // Initialize email settings with defaults
             try {
                 ConfurSettings::initialize();
@@ -213,37 +204,12 @@ class Plugin
                 return;
             }
 
-            // List of all custom shortcodes to disable - verify these names match your ShortcodeService.php registrations
-            $custom_shortcodes = [
-                // Answer shortcodes
-                'answer_field',
-                'question',
-                'committee',
-                'start_committee',
-                'end_committee',
-                'header',
-                'custom_form',
-                'status',
-                'progress_table',
-                'control',
-                'days_remaining',
-                'allocated_committee',
-                // General shortcodes
-                'open_blank',
-                'link_email',
-                'pdf_link',
-
-                // Step shortcode
-                'step',
-
-                // Tradition shortcode
-                'tradition',
-
-                // Add any shortcodes from ReportingShortcode.php here
-            ];
-
-            // Remove all custom shortcodes when Visual Builder is active
-            foreach ($custom_shortcodes as $shortcode) {
+            // Read from ShortcodeService so this can't drift from what is
+            // registered. The hand-kept list here had drifted: it named
+            // answer_field, custom_form, open_blank and link_email, none of
+            // which exist, and so left answer, configure_form, open_new_link
+            // and open_email active under the builder.
+            foreach (ShortcodeService::TAGS as $shortcode) {
                 try {
                     remove_shortcode($shortcode);
                 } catch (\Exception $e) {

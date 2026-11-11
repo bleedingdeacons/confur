@@ -9,9 +9,46 @@ use Confur\Shortcodes\GeneralShortcodes;
 
 /**
  * Registers all plugin shortcodes
+ *
+ * This class is the one list of the tags Confur owns. Anything else that needs
+ * the tag names — the Divi builder guard in Plugin, the docs — reads TAGS
+ * rather than keeping its own copy.
  */
 class ShortcodeService
 {
+    /**
+     * Tags also shipped by the Amber plugin. Each is registered only if not
+     * already present, so whichever plugin loads first wins and the other
+     * no-ops. Both plugins ship the same implementation, so the resulting
+     * behaviour is the same either way.
+     */
+    public const SHARED_TAGS = [
+        'open_new_link',
+        'open_email',
+        'pdf_link',
+        'days_remaining',
+    ];
+
+    /** Tags only Confur registers. */
+    public const OWN_TAGS = [
+        'step',
+        'tradition',
+        'answer',
+        'committee',
+        'start_committee',
+        'end_committee',
+        'question',
+        'header',
+        'configure_form',
+        'status',
+        'progress_table',
+        'control',
+        'allocated_committee',
+    ];
+
+    /** Every tag Confur may register. */
+    public const TAGS = [...self::OWN_TAGS, ...self::SHARED_TAGS];
+
     private StepShortcode $stepShortcode;
     private TraditionShortcode $traditionShortcode;
     private AnswerShortcode $answerShortcode;
@@ -30,38 +67,45 @@ class ShortcodeService
      */
     public function registerShortcodes(): void
     {
-        // Steps and Traditions
-        add_shortcode('step', [$this->stepShortcode, 'render']);
-        add_shortcode('tradition', [$this->traditionShortcode, 'render']);
+        foreach ($this->handlers() as $tag => $handler) {
+            if (in_array($tag, self::SHARED_TAGS, true) && shortcode_exists($tag)) {
+                continue;
+            }
 
-        // General shortcodes — also shipped by the Amber plugin. Each tag is
-        // guarded by shortcode_exists so whichever plugin loads first wins and
-        // the other no-ops. Both plugins ship the same implementation, so the
-        // resulting behaviour is the same either way.
-        if (!shortcode_exists('open_new_link')) {
-            add_shortcode('open_new_link', [$this->generalShortcodes, 'openBlank']);
+            add_shortcode($tag, $handler);
         }
-        if (!shortcode_exists('open_email')) {
-            add_shortcode('open_email', [$this->generalShortcodes, 'linkEmail']);
-        }
-        if (!shortcode_exists('pdf_link')) {
-            add_shortcode('pdf_link', [$this->generalShortcodes, 'generatePdfLink']);
-        }
-        if (!shortcode_exists('days_remaining')) {
-            add_shortcode('days_remaining', [$this->generalShortcodes, 'generateDaysRemaining']);
-        }
+    }
 
-        // Answer shortcodes
-        add_shortcode('answer', [$this->answerShortcode, 'generateAnswerField']);
-        add_shortcode('committee', [$this->answerShortcode, 'generateCommittee']);
-        add_shortcode('start_committee', [$this->answerShortcode, 'generateStartCommittee']);
-        add_shortcode('end_committee', [$this->answerShortcode, 'generateEndCommittee']);
-        add_shortcode('question', [$this->answerShortcode, 'generateQuestion']);
-        add_shortcode('header', [$this->answerShortcode, 'generateHeader']);
-        add_shortcode('configure_form', [$this->answerShortcode, 'configureCustomForm']);
-        add_shortcode('status', [$this->answerShortcode, 'generateStatus']);
-        add_shortcode('progress_table', [$this->answerShortcode, 'generateProgressTable']);
-        add_shortcode('control', [$this->answerShortcode, 'generateControl']);
-        add_shortcode('allocated_committee', [$this->answerShortcode, 'generateAllocatedCommittee']);
+    /**
+     * Tag => handler, in registration order. Keyed by every entry of TAGS.
+     *
+     * @return array<non-empty-string, callable>
+     */
+    private function handlers(): array
+    {
+        return [
+            // Steps and Traditions
+            'step' => [$this->stepShortcode, 'render'],
+            'tradition' => [$this->traditionShortcode, 'render'],
+
+            // General shortcodes (shared with Amber)
+            'open_new_link' => [$this->generalShortcodes, 'openBlank'],
+            'open_email' => [$this->generalShortcodes, 'linkEmail'],
+            'pdf_link' => [$this->generalShortcodes, 'generatePdfLink'],
+            'days_remaining' => [$this->generalShortcodes, 'generateDaysRemaining'],
+
+            // Answer shortcodes
+            'answer' => [$this->answerShortcode, 'generateAnswerField'],
+            'committee' => [$this->answerShortcode, 'generateCommittee'],
+            'start_committee' => [$this->answerShortcode, 'generateStartCommittee'],
+            'end_committee' => [$this->answerShortcode, 'generateEndCommittee'],
+            'question' => [$this->answerShortcode, 'generateQuestion'],
+            'header' => [$this->answerShortcode, 'generateHeader'],
+            'configure_form' => [$this->answerShortcode, 'configureCustomForm'],
+            'status' => [$this->answerShortcode, 'generateStatus'],
+            'progress_table' => [$this->answerShortcode, 'generateProgressTable'],
+            'control' => [$this->answerShortcode, 'generateControl'],
+            'allocated_committee' => [$this->answerShortcode, 'generateAllocatedCommittee'],
+        ];
     }
 }

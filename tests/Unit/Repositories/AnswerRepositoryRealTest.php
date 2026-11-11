@@ -52,12 +52,19 @@ it('returns the existing status from getAnswerStatus', function () {
         ->and($status['updated'])->toBe('2024-05-01');
 });
 
-it('initialises the status in getAnswerStatus when empty', function () {
+it('reads the given post in getValue', function () {
+    update_field('c1_a1', 'current', false);
+    $this->fields[7] = ['c1_a1' => 'seven'];
+    expect($this->repo->getValue('c1_a1', 7))->toBe('seven');
+});
+
+it('reports draft from getAnswerStatus when empty without writing it', function () {
     $this->fields[6] = [];
     $status = $this->repo->getAnswerStatus(6);
-    // update_field writes the draft status, which get_field then reads back.
     expect($status['state'])->toBe(Constants::STATUS_DRAFT)
-        ->and($status['updated'])->toBe('N/A');
+        ->and($status['updated'])->toBe('N/A')
+        // A read must not write: the public REST endpoint calls this.
+        ->and(get_field(Constants::STATUS_FIELD, 6))->toBeNull();
 });
 
 it('returns ids from getAllAnswers', function () {

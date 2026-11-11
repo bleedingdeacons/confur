@@ -46,32 +46,6 @@ add_filter('map_meta_cap', function ($caps, $cap, $user_id, $args) {
     return $caps;
 }, 1, 4);
 
-// Debug - check permissions when accessing answer posts
-add_action('admin_init', function () {
-    if (!isset($_GET['post']) || !isset($_GET['action']) || $_GET['action'] != 'edit') {
-        return;
-    }
-
-    $post_id = intval($_GET['post']);
-    $post = get_post($post_id);
-    if (!$post || $post->post_type != 'answer') {
-        return;
-    }
-
-    $user = wp_get_current_user();
-    if (!$user->ID) {
-        return;
-    }
-
-    error_log('=== CONFUR DEBUG POST ' . $post_id . ' ===');
-    error_log('User: ' . $user->user_login);
-    error_log('Roles: ' . implode(', ', $user->roles));
-    error_log('Post type registered: ' . (post_type_exists('answer') ? 'YES' : 'NO'));
-    error_log('edit_post (' . $post_id . '): ' . (current_user_can('edit_post', $post_id) ? 'YES' : 'NO'));
-    error_log('edit_answer: ' . (current_user_can('edit_answer') ? 'YES' : 'NO'));
-    error_log('edit_others_answers: ' . (current_user_can('edit_others_answers') ? 'YES' : 'NO'));
-}, 0);
-
 // Define plugin constants
 // Get version from plugin header to maintain single source of truth
 if (!function_exists('get_plugin_data')) {
@@ -113,6 +87,10 @@ spl_autoload_register(function ($class) {
         error_log('Confur Autoloader Fatal Error: ' . $e->getMessage());
     }
 });
+
+// Grant the administrator role the answer capabilities. Plugin::activate()
+// existed but was never hooked up, so on a fresh install nothing granted them.
+register_activation_hook(__FILE__, [\Confur\Plugin::class, 'activate']);
 
 // Initialize the plugin with exception handling
 add_action('plugins_loaded', function () {
