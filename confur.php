@@ -7,6 +7,7 @@
  * Version: 3.3.0
  * Requires at least: 6.0
  * Requires PHP: 8.4
+ * Requires Plugins: unity, tsml-for-unity
  * GitHub Plugin URI: https://github.com/bleedingdeacons/confur
  * GitHub Branch: main
  * Author: The Bleeding Deacons
@@ -92,8 +93,23 @@ spl_autoload_register(function ($class) {
 // existed but was never hooked up, so on a fresh install nothing granted them.
 register_activation_hook(__FILE__, [\Confur\Plugin::class, 'activate']);
 
-// Initialize the plugin with exception handling
+// Unity is required: groups (registrations' `group` / `fellow_group`) come
+// from its GroupRepository, which TSML for Unity binds. Confur boots on
+// unity/loaded like the rest of the suite, and says so if Unity is missing.
 add_action('plugins_loaded', function () {
+    if (!class_exists('Unity\\Plugin')) {
+        add_action('admin_notices', function () {
+            echo '<div class="notice notice-error"><p><strong>Confur:</strong> '
+                . esc_html__('This plugin requires the Unity and TSML for Unity plugins to be installed and activated.', 'confur')
+                . '</p></div>';
+        });
+    }
+}, 20);
+
+// Initialize the plugin with exception handling. The repository itself is
+// resolved when first used: TSML for Unity binds it in its own unity/loaded
+// handler, which can run after this one.
+add_action('unity/loaded', function ($container) {
     try {
         // Check if Plugin class exists before trying to instantiate
         if (!class_exists('Confur\Plugin')) {
@@ -102,7 +118,7 @@ add_action('plugins_loaded', function () {
 
         global $confur_plugin;
         $confur_plugin = new \Confur\Plugin();
-        $confur_plugin->init();
+        $confur_plugin->init($container);
     } catch (\Exception $e) {
         // Log the error
         error_log('Confur Plugin Initialization Error: ' . $e->getMessage());

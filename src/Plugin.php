@@ -3,6 +3,7 @@
 namespace Confur;
 
 use Confur\Cli\MigrateDatesCommand;
+use Unity\Core\Interfaces\Container;
 use Confur\Config\ConfurSettings;
 use Confur\Services\AssetService;
 use Confur\Services\ShortcodeService;
@@ -34,8 +35,11 @@ class Plugin
 
     /**
      * Initialize the plugin
+     *
+     * @param Container|null $unity Unity's container, from unity/loaded. The
+     *                              Status page resolves groups from it.
      */
-    public function init(): void
+    public function init(?Container $unity = null): void
     {
         try {
             // Initialize email settings with defaults
@@ -53,7 +57,7 @@ class Plugin
                 $this->answerHandler = new AnswerHandler();
                 $this->answerAPI = new AnswerAPI();
                 $this->confurHeadsUp = new ConfurHeadsUp();
-                $this->answerAdminPage = new StatusAdminPage();
+                $this->answerAdminPage = new StatusAdminPage($unity);
                 $this->reportingAdminPage = new ResultAdminPage();
                 $this->confurSettingsAdminPage = new ConfurSettingsAdminPage();
                 $this->emailTemplateAdminPage = new EmailTemplateAdminPage();

@@ -36,6 +36,11 @@ parameters:
         - tests
     bootstrapFiles:
         - vendor/autoload.php
+    # Unity's interfaces (GroupRepository, Group, Meeting, Contact, Container),
+    # checked out as a sibling as for the rest of the suite. CI checks it out
+    # next to this repo.
+    scanDirectories:
+        - ../unity/src
     scanFiles:
         # Defines the plugin constants. Outside paths (src only), so it has to
         # be scanned explicitly.

@@ -11,12 +11,12 @@ function copyCommitteeToClipboard(committeeId, committeeNumber) {
 
     for (let i = 0; i < answerGroups.length; i++) {
         const questionNumber = answerGroups[i].getAttribute("data-question");
-        const meeting = answerGroups[i].getAttribute("data-meeting");
+        const group = answerGroups[i].getAttribute("data-group");
         const status = answerGroups[i].getAttribute("data-status");
         const answer = answerGroups[i].querySelector(".answer")?.textContent || "";
 
         clipboardText += "\nQuestion: " + questionNumber + "\n";
-        clipboardText += "Meeting: " + meeting + (status ? " - " + status : "") + "\n";
+        clipboardText += "Group: " + group + (status ? " - " + status : "") + "\n";
         clipboardText += answer + "\n";
         clipboardText += "\n";
     }
@@ -44,10 +44,10 @@ function copyAllAnswersToClipboard(committeeNumber, questionNumber) {
         const currentQuestionNumber = answerGroups[i].getAttribute("data-question");
 
         if (currentCommitteeNumber == committeeNumber && currentQuestionNumber == questionNumber) {
-            const meeting = answerGroups[i].getAttribute("data-meeting");
+            const group = answerGroups[i].getAttribute("data-group");
             const status = answerGroups[i].getAttribute("data-status");
             const answer = answerGroups[i].querySelector(".answer")?.textContent || "";
-            clipboardText += "\nMeeting: " + meeting + (status ? " - " + status : "") + "\n";
+            clipboardText += "\nGroup: " + group + (status ? " - " + status : "") + "\n";
             clipboardText += answer + "\n";
             clipboardText += "\n";
         }

@@ -194,13 +194,17 @@ class ResultAdminPage
      */
     private function renderAnswerGroup(string $committeeNumber, string $questionNumber, array $row, array &$addedAnchors): string
     {
-        $meetingId = $row['meetingId'];
-        $fellowMeetingId = $row['fellowMeetingId'];
-        $meeting = $row['meetingName'];
-        $email = $row['email'];
-        $time = $row['updated'];
-        $answer = $row['answer'];
-        $status = $row['status'];
+        $groupId = $row['groupId'];
+        $fellowGroupId = $row['fellowGroupId'];
+        $group = (string) $row['groupName'];
+        // Member-written, so every value is escaped where it is placed. They
+        // used to go in raw, which let an answer containing ' or <script>
+        // break out of its attribute on this (admin) screen. The copy buttons
+        // read them back with getAttribute()/textContent, which unescape.
+        $email = esc_html((string) $row['email']);
+        $time = esc_html((string) $row['updated']);
+        $answer = (string) $row['answer'];
+        $status = (string) $row['status'];
 
         $anchorKey = "c{$committeeNumber}_a{$questionNumber}";
         $anchorId = "";
@@ -209,21 +213,28 @@ class ResultAdminPage
             $addedAnchors[$anchorKey] = true;
         }
 
-        // Build meeting header - show both meetings if fellow_meeting exists
-        $meetingHeader = $meeting;
-        if (!empty($fellowMeetingId) && $fellowMeetingId != $meetingId) {
-            $fellowMeetingName = get_the_title($fellowMeetingId);
-            if (!empty($fellowMeetingName)) {
-                $meetingHeader = "{$meeting} & {$fellowMeetingName}";
+        // Both groups' names for a pair.
+        $groupHeader = $group;
+        if (!empty($fellowGroupId) && $fellowGroupId != $groupId) {
+            $fellowGroupName = get_the_title($fellowGroupId);
+            if (!empty($fellowGroupName)) {
+                $groupHeader = "{$group} & {$fellowGroupName}";
             }
         }
 
-        $html = "<div class='answer-group' $anchorId data-committee='{$committeeNumber}' data-question='{$questionNumber}' data-meeting='{$meeting}' data-status='{$status}' data-answer='{$answer}'>";
-        $html .= "<div class='question-header'>{$meetingHeader} - {$status}</div>";
+        $html = sprintf(
+            "<div class='answer-group' %s data-committee='%s' data-question='%s' data-group='%s' data-status='%s'>",
+            $anchorId,
+            esc_attr($committeeNumber),
+            esc_attr($questionNumber),
+            esc_attr($group),
+            esc_attr($status)
+        );
+        $html .= "<div class='question-header'>" . esc_html($groupHeader) . ' - ' . esc_html($status) . '</div>';
         $html .= "<div><strong>Committee {$committeeNumber} - Question {$questionNumber}</strong></div>";
         $html .= "<div><strong>Updated:</strong> {$time}</div>";
         $html .= "<div><strong>Email:</strong> {$email}</div>";
-        $html .= "<div><strong>Answer:</strong><div class=\"answer\">{$answer}</div></div>";
+        $html .= '<div><strong>Answer:</strong><div class="answer">' . esc_html($answer) . '</div></div>';
         $html .= "</div>";
 
         return $html;

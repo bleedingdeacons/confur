@@ -153,7 +153,7 @@ class ConfurHeadsUp
                             }
 
                             $updates[$committeeNum][$questionNum][] = [
-                                'group_name' => $answer['meetingName'],
+                                'group_name' => $answer['groupName'],
                                 'updated' => $updateTime,
                                 'url' => $resultsPageUrl
                             ];

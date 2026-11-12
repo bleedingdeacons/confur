@@ -52,9 +52,9 @@ function resultCoverageTable(ResultAdminPage $page, array $answers): string
 function resultRow(string $answer, string $status = Constants::STATUS_COMPLETED, array $overrides = []): array
 {
     return array_merge([
-        'meetingId'       => 500,
-        'fellowMeetingId' => null,
-        'meetingName'     => 'Monday Group',
+        'groupId'       => 500,
+        'fellowGroupId' => null,
+        'groupName'     => 'Monday Group',
         'resultUrl'       => 'https://example.test/?p=1',
         'email'           => 'group@example.org',
         'updated'         => '2026-07-24 10:00:00',
@@ -82,10 +82,10 @@ beforeEach(function () {
      */
     $this->seedAnswer = function (
         int $postId,
-        int $meetingId,
+        int $groupId,
         array $answers,
         string $status = Constants::STATUS_COMPLETED,
-        ?int $fellowMeetingId = null
+        ?int $fellowGroupId = null
     ): void {
         WpState::$queryPosts[] = (object) [
             'ID'          => $postId,
@@ -96,8 +96,8 @@ beforeEach(function () {
 
         $this->fields[$postId] = array_merge([
             Constants::UPDATED_FIELD        => '2026-07-24 10:00:00',
-            Constants::MEETING_FIELD        => $meetingId,
-            Constants::FELLOW_MEETING_FIELD => $fellowMeetingId,
+            Constants::GROUP_FIELD        => $groupId,
+            Constants::FELLOW_GROUP_FIELD => $fellowGroupId,
             Constants::EMAIL_FIELD          => 'group@example.org',
             Constants::STATUS_FIELD         => $status,
         ], $answers);
@@ -206,6 +206,24 @@ describe('the navigation table', function () {
 
 // ── the answer table ──────────────────────────────────────────────
 describe('the answer table', function () {
+    // Answers and names are written by members, and this is an admin screen:
+    // nothing they type may break out of its attribute or run as markup.
+    it('escapes member-written answers, names and emails', function () {
+        $escape = static fn (mixed $t): string => htmlspecialchars((string) $t, ENT_QUOTES, 'UTF-8');
+        \Brain\Monkey\Functions\when('esc_html')->alias($escape);
+        \Brain\Monkey\Functions\when('esc_attr')->alias($escape);
+
+        $html = resultAnswerTable($this->page, [
+            'c1_a1' => [resultRow("x' onmouseover='alert(1)<script>y</script>", Constants::STATUS_COMPLETED, [
+                'groupName' => "Bad' Group<b>",
+                'email' => '<i>a@b.c</i>',
+            ])],
+        ]);
+
+        expect($html)->not->toContain('<script>', "onmouseover='", '<b>', '<i>')
+            ->toContain('&lt;script&gt;', 'Bad&#039; Group&lt;b&gt;', '&lt;i&gt;a@b.c&lt;/i&gt;');
+    });
+
     it('orders and labels committees', function () {
         $html = resultAnswerTable($this->page, [
             'c2_a1' => [resultRow('Second')],
@@ -234,7 +252,7 @@ describe('the answer table', function () {
         $html = resultAnswerTable($this->page, [
             'c1_a1' => [
                 resultRow('First group'),
-                resultRow('Second group', Constants::STATUS_COMPLETED, ['meetingName' => 'Tuesday Group']),
+                resultRow('Second group', Constants::STATUS_COMPLETED, ['groupName' => 'Tuesday Group']),
             ],
         ]);
 
@@ -261,19 +279,20 @@ describe('the answer table', function () {
 
     // A paired registration answers on behalf of two groups, and the header
     // has to name both so the report is not read as one group's answer.
-    it('names both meetings in the header of a paired registration', function () {
+    it('names both groups in the header of a paired registration', function () {
         $this->makePost(501, 'Tuesday Group');
 
         $html = resultAnswerTable($this->page, [
-            'c1_a1' => [resultRow('A shared answer', Constants::STATUS_COMPLETED, ['fellowMeetingId' => 501])],
+            'c1_a1' => [resultRow('A shared answer', Constants::STATUS_COMPLETED, ['fellowGroupId' => 501])],
         ]);
 
-        expect($html)->toContain('Monday Group & Tuesday Group');
+        // Escaped: the browser shows it as 'Monday Group & Tuesday Group'.
+        expect($html)->toContain('Monday Group &amp; Tuesday Group');
     });
 
-    it('falls back to the primary name when the fellow meeting no longer exists', function () {
+    it('falls back to the primary name when the fellow group no longer exists', function () {
         $html = resultAnswerTable($this->page, [
-            'c1_a1' => [resultRow('A shared answer', Constants::STATUS_COMPLETED, ['fellowMeetingId' => 999])],
+            'c1_a1' => [resultRow('A shared answer', Constants::STATUS_COMPLETED, ['fellowGroupId' => 999])],
         ]);
 
         expect($html)->toContain('Monday Group - Complete');
@@ -281,7 +300,7 @@ describe('the answer table', function () {
 
     it('does not repeat a fellow meeting equal to the primary', function () {
         $html = resultAnswerTable($this->page, [
-            'c1_a1' => [resultRow('An answer', Constants::STATUS_COMPLETED, ['fellowMeetingId' => 500])],
+            'c1_a1' => [resultRow('An answer', Constants::STATUS_COMPLETED, ['fellowGroupId' => 500])],
         ]);
 
         expect($html)->toContain('Monday Group - Complete')

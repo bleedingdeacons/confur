@@ -5,7 +5,7 @@ namespace Confur\Domain;
 /**
  * One group's registration and its answers, as loaded from an `answer` post.
  *
- * Plain data: AnswerStore builds it and nothing here calls WordPress. Meeting
+ * Plain data: AnswerStore builds it and nothing here calls WordPress. Group
  * ids are already normalised (ACF can hand back an id, a post object or an
  * array), so callers never see the raw field shapes.
  *
@@ -21,8 +21,8 @@ final readonly class Answer
      */
     public function __construct(
         public int $postId,
-        public ?int $meetingId,
-        public ?int $fellowMeetingId,
+        public ?int $groupId,
+        public ?int $fellowGroupId,
         public ?string $email,
         public ?string $updated,
         public ?string $status,
@@ -40,21 +40,21 @@ final readonly class Answer
         return $this->state() === AnswerState::Cancelled;
     }
 
-    /** Registered for two meetings jointly rather than one. */
+    /** Registered for two groups jointly rather than one. */
     public function isPaired(): bool
     {
-        return $this->fellowMeetingId !== null;
+        return $this->fellowGroupId !== null;
     }
 
     /**
-     * The meeting ids this registration covers, sorted, so a pair matches
+     * The group ids this registration covers, sorted, so a pair matches
      * regardless of which one was entered first.
      *
      * @return list<int>
      */
-    public function meetingIds(): array
+    public function groupIds(): array
     {
-        $ids = array_values(array_filter([$this->meetingId, $this->fellowMeetingId], static fn (?int $id): bool => $id !== null));
+        $ids = array_values(array_filter([$this->groupId, $this->fellowGroupId], static fn (?int $id): bool => $id !== null));
         sort($ids);
 
         return $ids;

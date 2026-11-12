@@ -12,6 +12,12 @@ use Confur\Admin\StatusAdminPage;
 use Confur\Config\Constants;
 use Confur\Repositories\AnswerRepository;
 use Confur\Storage\AnswerStore;
+use Unity\Contacts\Interfaces\Contact;
+use Unity\Groups\Interfaces\GroupRepository;
+use Unity\Testing\Doubles\FakeContainer;
+use Unity\Testing\Doubles\GroupStub;
+use Unity\Testing\Doubles\InMemoryGroupRepository;
+use Unity\Testing\Doubles\MeetingStub;
 use ReflectionMethod;
 use WP_Screen;
 
@@ -41,7 +47,7 @@ const STATUS_SCREEN = 'questions-for-conference_page_confur-answer-submissions';
 /** @return array<int, array<string, mixed>> */
 function statusMeetingsData(StatusAdminPage $page): array
 {
-    $m = new ReflectionMethod(StatusAdminPage::class, 'getAllMeetingsData');
+    $m = new ReflectionMethod(StatusAdminPage::class, 'getAllGroupsData');
 
     /** @var array<int, array<string, mixed>> $data */
     $data = $m->invoke($page, AnswerRepository::registeredRows((new AnswerStore())->all()));
@@ -80,7 +86,13 @@ beforeEach(function () {
     // Stands in for the user meta store.
     $this->userMeta = [];
 
-    $this->page = new StatusAdminPage();
+    // The groups the page lists, from Unity. Seeded per test; the page asks
+    // Unity's container for them on first use, so the repository is built
+    // from whatever the test has seeded by then.
+    $this->groups = [];
+    $this->page = new StatusAdminPage(new FakeContainer([], fn (string $id) => $id === GroupRepository::class
+        ? new InMemoryGroupRepository($this->groups)
+        : null));
 
     Functions\when('get_admin_page_title')->justReturn('Status');
     Functions\when('get_user_meta')->alias(
@@ -95,21 +107,46 @@ beforeEach(function () {
         }
     );
 
-    // Seed a TSML meeting the status page will list.
-    $this->seedMeeting = function (int $id, string $title, string $day = '1', string $time = '19:00'): void {
-        WpState::$queryPosts[] = (object) [
-            'ID'          => $id,
-            'post_type'   => 'tsml_meeting',
-            'post_status' => 'publish',
-            'post_title'  => $title,
-            'post_name'   => 'meeting-' . $id,
-            'post_parent' => 0,
-        ];
-        WpState::$postMeta[$id] = ['day' => [$day], 'time' => [$time]];
-        $this->makePost($id, $title, 'publish', 'tsml_meeting');
+    // Seed a Unity group the status page will list, running one meeting.
+    $this->seedGroup = function (int $id, string $title, string $day = '1', string $time = '19:00', array $contacts = []): void {
+        $this->groups[] = new GroupStub(
+            id: $id,
+            title: $title,
+            meetings: [new MeetingStub(id: $id + 10000, name: $title, day: (int) $day, time: $time)],
+            contacts: $contacts,
+            link: 'https://example.test/groups/' . $id,
+        );
+        $this->makePost($id, $title, 'publish', 'tsml_group');
     };
 
-    // Seed an answer post registered against a meeting.
+    // A group contact, as Unity hands them out.
+    $this->contact = fn (string $name, string $phone): Contact => new class ($name, $phone) implements Contact {
+        public function __construct(private string $name, private string $phone)
+        {
+        }
+
+        public function getName(): string
+        {
+            return $this->name;
+        }
+
+        public function getEmail(): string
+        {
+            return '';
+        }
+
+        public function getPhone(): string
+        {
+            return $this->phone;
+        }
+
+        public function getUpdated(): string
+        {
+            return '';
+        }
+    };
+
+    // Seed an answer post registered against a group.
     $this->seedRegistration = function (
         int $postId,
         int $meetingId,
@@ -126,8 +163,8 @@ beforeEach(function () {
         WpState::$postStatuses[$postId] = 'publish';
 
         $this->fields[$postId] = [
-            Constants::MEETING_FIELD        => $meetingId,
-            Constants::FELLOW_MEETING_FIELD => $fellowMeetingId,
+            Constants::GROUP_FIELD        => $meetingId,
+            Constants::FELLOW_GROUP_FIELD => $fellowMeetingId,
             Constants::EMAIL_FIELD          => $email,
             Constants::UPDATED_FIELD        => $updated,
             Constants::STATUS_FIELD         => $status,
@@ -137,11 +174,11 @@ beforeEach(function () {
     // Seed an answer the resend handler will accept.
     $this->seedResendable = function (int $postId, int $meetingId = 500, ?int $fellowMeetingId = null): void {
         $this->makePost($postId, 'An answer', 'publish', Constants::ANSWER_CUSTOM_TYPE);
-        $this->makePost($meetingId, 'Monday Group', 'publish', 'tsml_meeting');
+        $this->makePost($meetingId, 'Monday Group', 'publish', 'tsml_group');
         $this->fields[$postId] = [
-            Constants::EMAIL_FIELD          => 'group@example.org',
-            Constants::MEETING_FIELD        => $meetingId,
-            Constants::FELLOW_MEETING_FIELD => $fellowMeetingId,
+            Constants::EMAIL_FIELD        => 'group@example.org',
+            Constants::GROUP_FIELD        => $meetingId,
+            Constants::FELLOW_GROUP_FIELD => $fellowMeetingId,
         ];
         $_POST = ['nonce' => 'nonce-confur_resend_confirmation', 'answer_id' => (string) $postId];
     };
@@ -410,7 +447,7 @@ describe('resending a confirmation', function () {
         ($this->seedResendable)(700);
         $this->fields[700] = [
             Constants::EMAIL_FIELD   => $email,
-            Constants::MEETING_FIELD => 500,
+            Constants::GROUP_FIELD   => 500,
         ];
 
         try {
@@ -425,18 +462,18 @@ describe('resending a confirmation', function () {
         'malformed'  => ['not-an-email'],
     ]);
 
-    it('refuses an answer with no meeting', function () {
+    it('refuses an answer with no group', function () {
         ($this->seedResendable)(700);
         $this->fields[700] = [
             Constants::EMAIL_FIELD   => 'group@example.org',
-            Constants::MEETING_FIELD => null,
+            Constants::GROUP_FIELD   => null,
         ];
 
         try {
             $this->page->handleResendConfirmation();
             $this->fail('expected a JSON response to be sent');
         } catch (JsonResponseException $e) {
-            expect($e->data['message'])->toBe('No meeting associated with this registration');
+            expect($e->data['message'])->toBe('No group associated with this registration');
         }
     });
 
@@ -489,7 +526,7 @@ describe('resending a confirmation', function () {
 // ── joining meetings against registrations ────────────────────────
 describe('joining meetings against registrations', function () {
     it('lists a meeting with no registration as unregistered', function () {
-        ($this->seedMeeting)(500, 'Monday Group');
+        ($this->seedGroup)(500, 'Monday Group');
 
         $rows = statusMeetingsData($this->page);
 
@@ -502,7 +539,7 @@ describe('joining meetings against registrations', function () {
     });
 
     it('carries the answer id, status and email of a registered meeting', function () {
-        ($this->seedMeeting)(500, 'Monday Group');
+        ($this->seedGroup)(500, 'Monday Group');
         ($this->seedRegistration)(1, 500);
 
         $rows = statusMeetingsData($this->page);
@@ -519,8 +556,8 @@ describe('joining meetings against registrations', function () {
     // A paired registration is indexed under both meetings so either one finds
     // it, but it must still produce one row rather than two.
     it('lists a paired registration once across both meetings', function () {
-        ($this->seedMeeting)(500, 'Monday Group');
-        ($this->seedMeeting)(501, 'Tuesday Group');
+        ($this->seedGroup)(500, 'Monday Group');
+        ($this->seedGroup)(501, 'Tuesday Group');
         ($this->seedRegistration)(1, 500, Constants::STATUS_COMPLETED, 'group@example.org', 501);
 
         $rows = statusMeetingsData($this->page);
@@ -530,7 +567,7 @@ describe('joining meetings against registrations', function () {
     });
 
     it('marks a cancelled registration as such', function () {
-        ($this->seedMeeting)(500, 'Monday Group');
+        ($this->seedGroup)(500, 'Monday Group');
         ($this->seedRegistration)(1, 500, Constants::STATUS_CANCELLED);
 
         $rows = statusMeetingsData($this->page);
@@ -540,7 +577,7 @@ describe('joining meetings against registrations', function () {
     });
 
     it('reads a registration that has never been saved as not started', function () {
-        ($this->seedMeeting)(500, 'Monday Group');
+        ($this->seedGroup)(500, 'Monday Group');
         ($this->seedRegistration)(1, 500, '', 'group@example.org', null, '   ');
 
         $rows = statusMeetingsData($this->page);
@@ -550,7 +587,7 @@ describe('joining meetings against registrations', function () {
     });
 
     it('renders a dash for a registration without an email', function () {
-        ($this->seedMeeting)(500, 'Monday Group');
+        ($this->seedGroup)(500, 'Monday Group');
         ($this->seedRegistration)(1, 500, Constants::STATUS_COMPLETED, '');
 
         expect(statusMeetingsData($this->page)[0]['email_html'])->toBe('-');
@@ -559,23 +596,20 @@ describe('joining meetings against registrations', function () {
     // Registered meetings sort above unregistered ones, and each block sorts
     // by name — the screen is read as "who has signed up" first.
     it('sorts registered meetings first, then alphabetically', function () {
-        ($this->seedMeeting)(500, 'Zed Group');
-        ($this->seedMeeting)(501, 'Alpha Group');
-        ($this->seedMeeting)(502, 'Beta Group');
+        ($this->seedGroup)(500, 'Zed Group');
+        ($this->seedGroup)(501, 'Alpha Group');
+        ($this->seedGroup)(502, 'Beta Group');
         ($this->seedRegistration)(1, 500);
 
         expect(array_column(statusMeetingsData($this->page), 'name'))
             ->toBe(['Zed Group', 'Alpha Group', 'Beta Group']);
     });
 
-    it("renders a meeting's contacts as telephone links", function () {
-        ($this->seedMeeting)(500, 'Monday Group');
-        WpState::$postMeta[500] += [
-            'contact_1_name'  => ['Alice'],
-            'contact_1_phone' => ['0117 000 0000'],
-            'contact_2_name'  => ['Bob'],
-            'contact_2_phone' => ['0117 111 1111'],
-        ];
+    it("renders a group's contacts as telephone links", function () {
+        ($this->seedGroup)(500, 'Monday Group', '1', '19:00', [
+            ($this->contact)('Alice', '0117 000 0000'),
+            ($this->contact)('Bob', '0117 111 1111'),
+        ]);
 
         $row = statusMeetingsData($this->page)[0];
 
@@ -584,7 +618,7 @@ describe('joining meetings against registrations', function () {
     });
 
     it('renders dashes for a meeting without contacts', function () {
-        ($this->seedMeeting)(500, 'Monday Group');
+        ($this->seedGroup)(500, 'Monday Group');
 
         $row = statusMeetingsData($this->page)[0];
 
@@ -691,7 +725,7 @@ describe('statistics', function () {
 // ── duplicate detection ───────────────────────────────────────────
 describe('duplicate detection', function () {
     it('treats two registrations for the same meeting and email as a duplicate', function () {
-        ($this->seedMeeting)(500, 'Monday Group');
+        ($this->seedGroup)(500, 'Monday Group');
         ($this->seedRegistration)(1, 500);
         ($this->seedRegistration)(2, 500);
 
@@ -704,14 +738,14 @@ describe('duplicate detection', function () {
     });
 
     it('does not treat a single registration as a duplicate', function () {
-        ($this->seedMeeting)(500, 'Monday Group');
+        ($this->seedGroup)(500, 'Monday Group');
         ($this->seedRegistration)(1, 500);
 
         expect(statusDuplicates($this->page))->toBe([]);
     });
 
     it('does not treat two different addresses on one meeting as duplicates', function () {
-        ($this->seedMeeting)(500, 'Monday Group');
+        ($this->seedGroup)(500, 'Monday Group');
         ($this->seedRegistration)(1, 500, Constants::STATUS_COMPLETED, 'one@example.org');
         ($this->seedRegistration)(2, 500, Constants::STATUS_COMPLETED, 'two@example.org');
 
@@ -721,7 +755,7 @@ describe('duplicate detection', function () {
     // The address is normalised before comparison, so a re-registration typed
     // with different capitalisation still counts as the same person.
     it('compares addresses case-insensitively', function () {
-        ($this->seedMeeting)(500, 'Monday Group');
+        ($this->seedGroup)(500, 'Monday Group');
         ($this->seedRegistration)(1, 500, Constants::STATUS_COMPLETED, 'Group@Example.org');
         ($this->seedRegistration)(2, 500, Constants::STATUS_COMPLETED, 'group@example.org');
 
@@ -731,7 +765,7 @@ describe('duplicate detection', function () {
     // Cancelling a duplicate is how the screen's own button resolves one, so a
     // cancelled registration must stop counting towards the warning.
     it('no longer counts a cancelled registration as a duplicate', function () {
-        ($this->seedMeeting)(500, 'Monday Group');
+        ($this->seedGroup)(500, 'Monday Group');
         ($this->seedRegistration)(1, 500);
         ($this->seedRegistration)(2, 500, Constants::STATUS_CANCELLED);
 
@@ -741,8 +775,8 @@ describe('duplicate detection', function () {
     // A paired registration only collides with another paired one — a group
     // that also signed up alone is a different registration, not a duplicate.
     it('does not collide a paired registration with a single one', function () {
-        ($this->seedMeeting)(500, 'Monday Group');
-        ($this->seedMeeting)(501, 'Tuesday Group');
+        ($this->seedGroup)(500, 'Monday Group');
+        ($this->seedGroup)(501, 'Tuesday Group');
         ($this->seedRegistration)(1, 500, Constants::STATUS_COMPLETED, 'group@example.org', 501);
         ($this->seedRegistration)(2, 500);
 
@@ -752,8 +786,8 @@ describe('duplicate detection', function () {
     // The pair is compared as a sorted set, so registering Monday+Tuesday and
     // then Tuesday+Monday is the same registration twice.
     it('treats a pair registered in either order as the same pair', function () {
-        ($this->seedMeeting)(500, 'Monday Group');
-        ($this->seedMeeting)(501, 'Tuesday Group');
+        ($this->seedGroup)(500, 'Monday Group');
+        ($this->seedGroup)(501, 'Tuesday Group');
         ($this->seedRegistration)(1, 500, Constants::STATUS_COMPLETED, 'group@example.org', 501);
         ($this->seedRegistration)(2, 501, Constants::STATUS_COMPLETED, 'group@example.org', 500);
 
@@ -764,7 +798,7 @@ describe('duplicate detection', function () {
     });
 
     it('skips a registration missing its email', function () {
-        ($this->seedMeeting)(500, 'Monday Group');
+        ($this->seedGroup)(500, 'Monday Group');
         ($this->seedRegistration)(1, 500, Constants::STATUS_COMPLETED, '');
         ($this->seedRegistration)(2, 500, Constants::STATUS_COMPLETED, '');
 
@@ -774,7 +808,7 @@ describe('duplicate detection', function () {
     // Grouped by registration rather than keyed by meeting, so two groups
     // each registered twice for the same meeting are two warnings, not one.
     it('lists every duplicate set, even when they share a meeting', function () {
-        ($this->seedMeeting)(500, 'Monday Group');
+        ($this->seedGroup)(500, 'Monday Group');
         ($this->seedRegistration)(1, 500, Constants::STATUS_COMPLETED, 'one@example.org');
         ($this->seedRegistration)(2, 500, Constants::STATUS_COMPLETED, 'one@example.org');
         ($this->seedRegistration)(3, 500, Constants::STATUS_COMPLETED, 'two@example.org');
@@ -786,7 +820,7 @@ describe('duplicate detection', function () {
     // Another group's single, valid registration for a meeting that has a
     // duplicate is not itself a duplicate, and must not be offered Cancel.
     it('flags only the duplicate registrations, not others for the same meeting', function () {
-        ($this->seedMeeting)(500, 'Monday Group');
+        ($this->seedGroup)(500, 'Monday Group');
         ($this->seedRegistration)(1, 500, Constants::STATUS_COMPLETED, 'one@example.org');
         ($this->seedRegistration)(2, 500, Constants::STATUS_COMPLETED, 'one@example.org');
         ($this->seedRegistration)(3, 500, Constants::STATUS_COMPLETED, 'two@example.org');
@@ -810,13 +844,13 @@ describe('the screen', function () {
     it('says so on an empty screen rather than rendering an empty table', function () {
         $html = captureOutput(fn () => $this->page->renderAdminPage());
 
-        expect($html)->toContain('No meetings found.')
+        expect($html)->toContain('No groups found.')
             ->not->toContain('<table class="confur-answers-table">');
     });
 
-    it('renders a row per meeting with its stats', function () {
-        ($this->seedMeeting)(500, 'Monday Group');
-        ($this->seedMeeting)(501, 'Tuesday Group');
+    it('renders a row per group with its stats', function () {
+        ($this->seedGroup)(500, 'Monday Group');
+        ($this->seedGroup)(501, 'Tuesday Group');
         ($this->seedRegistration)(1, 500);
 
         $html = captureOutput(fn () => $this->page->renderAdminPage());
@@ -826,13 +860,13 @@ describe('the screen', function () {
             'Tuesday Group',
             'class="registered-row"',
             'class="unregistered-row"',
-            'Total Meetings',
+            'Total Groups',
             'resend-confirmation-btn',
         );
     });
 
     it('warns about duplicates and offers a cancel button', function () {
-        ($this->seedMeeting)(500, 'Monday Group');
+        ($this->seedGroup)(500, 'Monday Group');
         ($this->seedRegistration)(1, 500);
         ($this->seedRegistration)(2, 500);
 
@@ -849,7 +883,7 @@ describe('the screen', function () {
     // A cancelled registration keeps its row but loses the resend button —
     // there is nothing left to confirm.
     it('offers no resend button on a cancelled row', function () {
-        ($this->seedMeeting)(500, 'Monday Group');
+        ($this->seedGroup)(500, 'Monday Group');
         ($this->seedRegistration)(1, 500, Constants::STATUS_CANCELLED);
 
         $html = captureOutput(fn () => $this->page->renderAdminPage());
@@ -860,8 +894,8 @@ describe('the screen', function () {
 
     it('hides cancelled registrations when the screen option is turned off', function () {
         $this->userMeta['1|confur_show_cancellations'] = 0;
-        ($this->seedMeeting)(500, 'Monday Group');
-        ($this->seedMeeting)(501, 'Tuesday Group');
+        ($this->seedGroup)(500, 'Monday Group');
+        ($this->seedGroup)(501, 'Tuesday Group');
         ($this->seedRegistration)(1, 500, Constants::STATUS_CANCELLED);
         ($this->seedRegistration)(2, 501);
 
@@ -875,11 +909,45 @@ describe('the screen', function () {
     // counters still report them so the totals stay honest.
     it('still counts hidden cancellations in the statistics', function () {
         $this->userMeta['1|confur_show_cancellations'] = 0;
-        ($this->seedMeeting)(500, 'Monday Group');
+        ($this->seedGroup)(500, 'Monday Group');
         ($this->seedRegistration)(1, 500, Constants::STATUS_CANCELLED);
 
         $html = captureOutput(fn () => $this->page->renderAdminPage());
 
         expect($html)->toMatch('/<div class="number">1<\/div>\s*<div class="label">Cancelled<\/div>/');
     });
+});
+
+// ── groups from Unity ─────────────────────────────────────────────
+describe('groups from Unity', function () {
+    it('lists every meeting a group runs', function () {
+        $this->groups[] = new GroupStub(
+            id: 600,
+            title: 'Two Meeting Group',
+            meetings: [
+                new MeetingStub(id: 1, day: 1, time: '19:00'),
+                new MeetingStub(id: 2, day: 4, time: '20:30'),
+            ],
+        );
+
+        $row = statusMeetingsData($this->page)[0];
+
+        expect($row['day'])->toContain(',')
+            ->and($row['time'])->toBe('19:00, 20:30');
+    });
+
+    it('shows a dash for a group with no meetings', function () {
+        $this->groups[] = new GroupStub(id: 601, title: 'Quiet Group');
+
+        $row = statusMeetingsData($this->page)[0];
+
+        expect($row['day'])->toBe('-')
+            ->and($row['time'])->toBe('-');
+    });
+
+    it('says what is missing when Unity has no group repository', function () {
+        $page = new StatusAdminPage(new FakeContainer([], fn (string $id) => null));
+
+        statusMeetingsData($page);
+    })->throws(\RuntimeException::class, 'Unity has no GroupRepository: is TSML for Unity active?');
 });

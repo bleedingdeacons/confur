@@ -9,7 +9,7 @@ use Confur\Storage\AnswerStore;
  * Finds an existing registration that a new one repeats.
  *
  * A duplicate has the same email address (ignoring case) and the same
- * meetings — in either order for a paired registration. Paired registrations
+ * groups — in either order for a paired registration. Paired registrations
  * only match paired ones and single only single, and a cancelled
  * registration never matches. If several match, the most recently updated
  * wins, then the most recently created.
@@ -23,13 +23,13 @@ class DuplicateFinder
     /**
      * @param int|null $excluding The new registration's own post.
      */
-    public function find(?int $meetingId, ?int $fellowMeetingId, string $email, ?int $excluding = null): ?Answer
+    public function find(?int $groupId, ?int $fellowGroupId, string $email, ?int $excluding = null): ?Answer
     {
-        if (empty($meetingId) || trim($email) === '') {
+        if (empty($groupId) || trim($email) === '') {
             return null;
         }
 
-        $key = self::matchKey(new Answer(0, $meetingId, $fellowMeetingId ?: null, $email, null, null));
+        $key = self::matchKey(new Answer(0, $groupId, $fellowGroupId ?: null, $email, null, null));
 
         $duplicates = array_values(array_filter(
             $this->store->all(false, $excluding ?: null),
@@ -69,19 +69,19 @@ class DuplicateFinder
 
     /**
      * What makes two registrations the same: the email (ignoring case and
-     * surrounding space), paired or single, and the sorted meetings. Null for
+     * surrounding space), paired or single, and the sorted groups. Null for
      * a registration that cannot duplicate anything — cancelled, or missing
-     * its meeting or email.
+     * its group or email.
      */
     private static function matchKey(Answer $answer): ?string
     {
         $email = strtolower(trim($answer->email ?? ''));
 
-        if ($answer->isCancelled() || $answer->meetingId === null || $email === '') {
+        if ($answer->isCancelled() || $answer->groupId === null || $email === '') {
             return null;
         }
 
-        return $email . '|' . ($answer->isPaired() ? 'paired' : 'single') . '|' . implode('-', $answer->meetingIds());
+        return $email . '|' . ($answer->isPaired() ? 'paired' : 'single') . '|' . implode('-', $answer->groupIds());
     }
 
     /**

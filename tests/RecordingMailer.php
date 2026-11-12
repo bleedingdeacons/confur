@@ -45,12 +45,12 @@ final class RecordingMailer extends Mailer
         return $this->record(__FUNCTION__, func_get_args());
     }
 
-    public function sendConfirmation(string $recipient, string $meetingName, string $answerUrl, string $allocatedCommittee = '', bool $isDuplicate = false): bool
+    public function sendConfirmation(string $recipient, string $groupName, string $answerUrl, string $allocatedCommittee = '', bool $isDuplicate = false): bool
     {
-        return $this->record(__FUNCTION__, [$recipient, $meetingName, $answerUrl, $allocatedCommittee, $isDuplicate]);
+        return $this->record(__FUNCTION__, [$recipient, $groupName, $answerUrl, $allocatedCommittee, $isDuplicate]);
     }
 
-    public function sendCompletion(string $recipient, string $meetingName): bool
+    public function sendCompletion(string $recipient, string $groupName): bool
     {
         return $this->record(__FUNCTION__, func_get_args());
     }

@@ -50,11 +50,11 @@ describe('Answer', function () {
         $ba = new Answer(2, 10, 20, 'a@b.c', null, null);
         $single = new Answer(3, 10, null, 'a@b.c', null, null);
 
-        expect($ab->meetingIds())->toBe([10, 20])
-            ->and($ab->meetingIds())->toBe($ba->meetingIds())
+        expect($ab->groupIds())->toBe([10, 20])
+            ->and($ab->groupIds())->toBe($ba->groupIds())
             ->and($ab->isPaired())->toBeTrue()
             ->and($single->isPaired())->toBeFalse()
-            ->and($single->meetingIds())->toBe([10]);
+            ->and($single->groupIds())->toBe([10]);
     });
 
     it('interprets its stored status', function () {

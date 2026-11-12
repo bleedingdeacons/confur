@@ -19,17 +19,17 @@ Confur provides a complete solution for collecting, organising, and managing que
 * **Group answer submission** — groups submit answers to conference questions through an online form.
 * **Centralised management** — single dashboard for reviewing and organising every submitted answer.
 * **ACF-backed data model** — leverages Advanced Custom Fields for flexible answer storage.
-* **Meeting integration** — works alongside the 12 Step Meeting List plugin for meeting-aware question contexts.
+* **Group integration** — groups register through Unity (with TSML for Unity and 12 Step Meeting List), and the Status screen lists every group with its meetings and contacts.
 * **Shortcode toolkit** — a complete set of shortcodes for rendering questions, capturing answers, tracking committee progress, and surfacing AA programme content (Steps, Traditions, Responsibility Pledge).
 
 == Installation ==
 
-1. Install and activate the [12 Step Meeting List](https://wordpress.org/plugins/12-step-meeting-list/) plugin.
+1. Install and activate the [12 Step Meeting List](https://wordpress.org/plugins/12-step-meeting-list/) plugin, then Unity and TSML for Unity.
 2. Install and activate the [Advanced Custom Fields](https://wordpress.org/plugins/advanced-custom-fields/) plugin.
 3. Upload the `confur` directory to `/wp-content/plugins/`.
 4. Activate Confur through the **Plugins** menu in WordPress.
 5. Import the bundled ACF configuration to register the Answer custom post type and its field group.
-6. Create a registration page containing a form that creates the Answer post type.
+6. Create a registration page containing a form that creates the Answer post type, filling its group (and optional fellow group) field with TSML groups.
 
 == Frequently Asked Questions ==
 

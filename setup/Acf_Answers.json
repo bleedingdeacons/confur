@@ -5,8 +5,8 @@
         "fields": [
             {
                 "key": "field_6943990fbfd58",
-                "label": "Meeting",
-                "name": "meeting",
+                "label": "Group",
+                "name": "group",
                 "aria-label": "",
                 "type": "post_object",
                 "instructions": "",
@@ -18,7 +18,7 @@
                     "id": ""
                 },
                 "post_type": [
-                    "tsml_meeting"
+                    "tsml_group"
                 ],
                 "post_status": [
                     "publish"
@@ -34,8 +34,8 @@
             },
             {
                 "key": "field_6949ce3043a26",
-                "label": "Fellow Meeting",
-                "name": "fellow_meeting",
+                "label": "Fellow Group",
+                "name": "fellow_group",
                 "aria-label": "",
                 "type": "post_object",
                 "instructions": "",
@@ -47,11 +47,11 @@
                     "id": ""
                 },
                 "post_type": [
-                    "tsml_meeting"
+                    "tsml_group"
                 ],
                 "post_status": "",
                 "taxonomy": "",
-                "return_format": "object",
+                "return_format": "id",
                 "multiple": 0,
                 "allow_null": 0,
                 "allow_in_bindings": 0,

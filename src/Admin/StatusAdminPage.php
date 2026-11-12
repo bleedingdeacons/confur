@@ -10,8 +10,10 @@ use Confur\Repositories\AnswerRepository;
 use Confur\Services\AdminAssets;
 use Confur\Services\Mailer;
 use Confur\Storage\AnswerStore;
-use Confur\Repositories\MeetingRepository;
 use Confur\Utils\HtmlHelper;
+use Unity\Contacts\Interfaces\Contact;
+use Unity\Core\Interfaces\Container;
+use Unity\Groups\Interfaces\GroupRepository;
 
 /**
  * Admin page for displaying answer submissions
@@ -19,14 +21,35 @@ use Confur\Utils\HtmlHelper;
 class StatusAdminPage
 {
     private AnswerStore $store;
-    private MeetingRepository $meetingRepository;
     private DuplicateFinder $duplicates;
 
-    public function __construct()
-    {
+    /**
+     * The groups come from Unity: TSML for Unity binds GroupRepository in
+     * Unity's container. It is resolved on first use, not here, because
+     * TSML for Unity may bind it after Confur has booted. Tests pass a
+     * repository directly.
+     */
+    public function __construct(
+        private ?Container $container = null,
+        private ?GroupRepository $groups = null,
+    ) {
         $this->store = new AnswerStore();
-        $this->meetingRepository = new MeetingRepository();
         $this->duplicates = new DuplicateFinder($this->store);
+    }
+
+    private function groups(): GroupRepository
+    {
+        if ($this->groups === null) {
+            $groups = $this->container?->get(GroupRepository::class);
+
+            if (!$groups instanceof GroupRepository) {
+                throw new \RuntimeException('Unity has no GroupRepository: is TSML for Unity active?');
+            }
+
+            $this->groups = $groups;
+        }
+
+        return $this->groups;
     }
 
     /**
@@ -195,22 +218,22 @@ class StatusAdminPage
             wp_send_json_error(['message' => 'Answer not found']);
         }
 
-        // Get the email, meeting info, and answer URL
+        // Get the email, group(s), and answer URL
         $email = get_field(Constants::EMAIL_FIELD, $answerId);
-        // Normalised: ACF can return the meeting as a post object or array,
+        // Normalised: ACF can return the group as a post object or array,
         // which get_the_title() would not take.
-        $meetingId = AnswerStore::normalizePostId(get_field(Constants::MEETING_FIELD, $answerId));
-        $fellowMeetingId = AnswerStore::normalizePostId(get_field(Constants::FELLOW_MEETING_FIELD, $answerId));
+        $groupId = AnswerStore::normalizePostId(get_field(Constants::GROUP_FIELD, $answerId));
+        $fellowGroupId = AnswerStore::normalizePostId(get_field(Constants::FELLOW_GROUP_FIELD, $answerId));
 
         if (empty($email) || !is_email($email)) {
             wp_send_json_error(['message' => 'No valid email address found for this registration']);
         }
 
-        if ($meetingId === null) {
-            wp_send_json_error(['message' => 'No meeting associated with this registration']);
+        if ($groupId === null) {
+            wp_send_json_error(['message' => 'No group associated with this registration']);
         }
 
-        $meetingName = RegisterGroup::meetingName($meetingId, $fellowMeetingId);
+        $groupName = RegisterGroup::groupName($groupId, $fellowGroupId);
 
         // Get the answer URL. get_permalink() is string|false; an unresolvable
         // one means there is no answer page to point the recipient at, so
@@ -222,7 +245,7 @@ class StatusAdminPage
         }
 
         // Send the confirmation email
-        $result = Mailer::fromOptions()->sendConfirmation($email, $meetingName, $answerUrl);
+        $result = Mailer::fromOptions()->sendConfirmation($email, $groupName, $answerUrl);
 
         if ($result) {
             wp_send_json_success([
@@ -258,7 +281,7 @@ class StatusAdminPage
      */
     public function renderAdminPage(): void
     {
-        // 'edit_answers', not 'read'. This table carries every meeting's
+        // 'edit_answers', not 'read'. This table carries every group's
         // contact names, telephone numbers and registration email, which is
         // not Subscriber-level information — and 'read' is held by every
         // logged-in user. The rest of this class already gates on
@@ -271,17 +294,17 @@ class StatusAdminPage
         // duplicate warning.
         $answers = $this->store->all();
 
-        $allMeetings = $this->getAllMeetingsData(AnswerRepository::registeredRows($answers));
-        $stats = $this->calculateStats($allMeetings);
+        $rows = $this->getAllGroupsData(AnswerRepository::registeredRows($answers));
+        $stats = $this->calculateStats($rows);
         $duplicates = $this->duplicateGroups($answers);
 
         // Filter out cancelled items if screen option is disabled
         if (!$this->shouldShowCancellations()) {
-            $allMeetings = array_filter($allMeetings, fn (array $meeting): bool => $meeting['status_class'] !== 'cancelled');
+            $rows = array_filter($rows, fn (array $row): bool => $row['status_class'] !== 'cancelled');
         }
 
         Template::render('admin/status', [
-            'allMeetings' => $allMeetings,
+            'rows' => $rows,
             'stats' => $stats,
             'duplicates' => $duplicates,
             'duplicateAnswerIds' => array_merge([], ...array_column($duplicates, 'answerIds')),
@@ -304,7 +327,7 @@ class StatusAdminPage
             $groups[] = [
                 'name' => sprintf(
                     '%s (%s)',
-                    $first->meetingId !== null ? RegisterGroup::meetingName($first->meetingId, $first->fellowMeetingId) : '',
+                    $first->groupId !== null ? RegisterGroup::groupName($first->groupId, $first->fellowGroupId) : '',
                     strtolower(trim($first->email ?? ''))
                 ),
                 'count' => count($group),
@@ -316,131 +339,116 @@ class StatusAdminPage
     }
 
     /**
-     * Get all meetings data (registered and unregistered)
+     * One row per Unity group, or one per registration for a group that has
+     * registered (a pair appears once, under its first group).
      *
      * @param array<int, array<string, mixed>> $registered AnswerRepository::registeredRows()
-     * @return array<int, array<string, mixed>> Meeting data
+     * @return array<int, array<string, mixed>> Rows for the template
      */
-    private function getAllMeetingsData(array $registered): array
+    private function getAllGroupsData(array $registered): array
     {
-        $allMeetings = [];
+        $rows = [];
 
-        // Get all meetings from repository
-        $meetings = $this->meetingRepository->getMeetings();
-
-        // Lookup of registrations by meeting; a paired registration is listed
-        // under both its meetings. The ids are already plain ints (AnswerStore
-        // normalises ACF's object/array shapes when it loads them).
+        // Registrations by group; a pair is listed under both its groups. The
+        // ids are already plain ints (AnswerStore normalises ACF's shapes).
         $registeredLookup = [];
         foreach ($registered as $item) {
-            foreach ([$item['meetingId'], $item['fellowMeetingId'] ?? null] as $id) {
+            foreach ([$item['groupId'], $item['fellowGroupId'] ?? null] as $id) {
                 if (is_int($id)) {
                     $registeredLookup[$id][] = $item;
                 }
             }
         }
 
-        // Track which answer IDs we've already displayed to avoid duplicates
+        // A pair would otherwise show under each of its groups.
         $displayedAnswerIds = [];
 
-        // Process all meetings
-        foreach ($meetings as $meeting) {
-            $meetingId = $meeting['id'];
-            $contacts = $this->meetingRepository->getMeetingContacts($meetingId);
+        foreach ($this->groups()->findAll() as $group) {
+            $groupId = $group->getId();
+            $contacts = $group->getContacts();
 
-            // Get contact HTML
             $contact1Html = isset($contacts[0]) ? $this->contactTelephoneLink($contacts[0]) : '-';
             $contact2Html = isset($contacts[1]) ? $this->contactTelephoneLink($contacts[1]) : '-';
 
-            // Convert day number to day name
-            $dayName = $this->getDayName($meeting['day']);
+            // A group can run more than one meeting; list them all.
+            $days = [];
+            $times = [];
+            foreach ($group->getMeetings() as $meeting) {
+                $days[] = $this->getDayName($meeting->getDay());
+                $times[] = $meeting->getTime();
+            }
+            $day = $days === [] ? '-' : implode(', ', $days);
+            $time = $times === [] ? '-' : implode(', ', $times);
 
-            if (isset($registeredLookup[$meetingId])) {
-                // Registered meeting(s) - loop through all registrations for this meeting ID
-                foreach ($registeredLookup[$meetingId] as $item) {
-                    // Skip if we've already displayed this answer (for paired registrations)
-                    if (isset($displayedAnswerIds[$item['answersId']])) {
-                        continue;
-                    }
-                    $displayedAnswerIds[$item['answersId']] = true;
+            if (!isset($registeredLookup[$groupId])) {
+                $rows[] = [
+                    'id' => $groupId,
+                    'answer_id' => null,
+                    'name' => $group->getTitle(),
+                    'is_registered' => false,
+                    'edit_url' => '',
+                    'group_url' => $group->getLink(),
+                    'status_label' => 'Unregistered',
+                    'status_class' => 'unregistered',
+                    'email_html' => '-',
+                    'contact1_html' => $contact1Html,
+                    'contact2_html' => $contact2Html,
+                    'day' => $day,
+                    'time' => $time,
+                    'last_saved' => '-',
+                    'row_class' => 'unregistered-row',
+                ];
+                continue;
+            }
 
-                    // Build meeting name - include fellow meeting if present
-                    $meetingName = get_the_title($item['meetingId']);
-                    if (!empty($item['fellowMeetingId'])) {
-                        $fellowMeetingName = get_the_title($item['fellowMeetingId']);
-                        if (!empty($fellowMeetingName)) {
-                            $meetingName .= ' and ' . $fellowMeetingName;
-                        }
-                    }
-
-                    $updated = trim($item['updated']);
-                    $status = isset($item['status']) && !empty($item['status']) ? $item['status'] : 'Not Started';
-
-                    if (empty($updated)) {
-                        $updated = "Not Started";
-                    }
-
-                    // Get status information
-                    $statusInfo = $this->getStatusInfo($status);
-
-                    // Create email link
-                    $emailHtml = !empty($item['email'])
-                            ? HtmlHelper::createLink(
-                                HtmlHelper::createEmailToAddress($item['email'], "Questions for Conference"),
-                                '',
-                                $item['email']
-                            )
-                            : '-';
-
-                    $allMeetings[] = [
-                            'id' => $meetingId,
-                            'answer_id' => $item['answersId'],  // Added answer ID for cancel button
-                            'name' => $meetingName,
-                            'is_registered' => true,
-                            'edit_url' => get_edit_post_link($item['answersId']),
-                            'meeting_url' => $meeting['url'],
-                            'status_label' => $statusInfo['label'],
-                            'status_class' => $statusInfo['class'],
-                            'email_html' => $emailHtml,
-                            'contact1_html' => $contact1Html,
-                            'contact2_html' => $contact2Html,
-                            'day' => $dayName,
-                            'time' => $meeting['time'],
-                            'last_saved' => $updated,
-                            'row_class' => $statusInfo['class'] === 'cancelled' ? 'cancelled-row' : 'registered-row'
-                    ];
+            foreach ($registeredLookup[$groupId] as $item) {
+                if (isset($displayedAnswerIds[$item['answersId']])) {
+                    continue;
                 }
-            } else {
-                // Unregistered meeting
-                $allMeetings[] = [
-                        'id' => $meetingId,
-                        'answer_id' => null,
-                        'name' => $meeting['name'],
-                        'is_registered' => false,
-                        'edit_url' => '',
-                        'meeting_url' => $meeting['url'],
-                        'status_label' => 'Unregistered',
-                        'status_class' => 'unregistered',
-                        'email_html' => '-',
-                        'contact1_html' => $contact1Html,
-                        'contact2_html' => $contact2Html,
-                        'day' => $dayName,
-                        'time' => $meeting['time'],
-                        'last_saved' => '-',
-                        'row_class' => 'unregistered-row'
+                $displayedAnswerIds[$item['answersId']] = true;
+
+                $updated = trim((string) $item['updated']);
+                $status = !empty($item['status']) ? (string) $item['status'] : 'Not Started';
+                $statusInfo = $this->getStatusInfo($status);
+
+                $emailHtml = !empty($item['email'])
+                    ? HtmlHelper::createLink(
+                        HtmlHelper::createEmailToAddress($item['email'], 'Questions for Conference'),
+                        '',
+                        $item['email']
+                    )
+                    : '-';
+
+                $rows[] = [
+                    'id' => $groupId,
+                    'answer_id' => $item['answersId'],
+                    'name' => RegisterGroup::groupName((int) $item['groupId'], $item['fellowGroupId'] ?? null),
+                    'is_registered' => true,
+                    'edit_url' => get_edit_post_link($item['answersId']),
+                    'group_url' => $group->getLink(),
+                    'status_label' => $statusInfo['label'],
+                    'status_class' => $statusInfo['class'],
+                    'email_html' => $emailHtml,
+                    'contact1_html' => $contact1Html,
+                    'contact2_html' => $contact2Html,
+                    'day' => $day,
+                    'time' => $time,
+                    'last_saved' => $updated !== '' ? $updated : 'Not Started',
+                    'row_class' => $statusInfo['class'] === 'cancelled' ? 'cancelled-row' : 'registered-row',
                 ];
             }
         }
 
-        // Sort by registration status (registered first), then by meeting name
-        usort($allMeetings, function ($a, $b) {
-            if ($a['is_registered'] != $b['is_registered']) {
-                return $b['is_registered'] - $a['is_registered']; // Registered first
+        // Registered first, then by name.
+        usort($rows, static function (array $a, array $b): int {
+            if ($a['is_registered'] !== $b['is_registered']) {
+                return $a['is_registered'] ? -1 : 1;
             }
+
             return strcmp($a['name'], $b['name']);
         });
 
-        return $allMeetings;
+        return $rows;
     }
 
     /**
@@ -493,15 +501,14 @@ class StatusAdminPage
     /**
      * Create contact telephone link
      *
-     * @param array<string, mixed> $contact Contact data
      * @return string Rendered HTML
      */
-    private function contactTelephoneLink(array $contact): string
+    private function contactTelephoneLink(Contact $contact): string
     {
-        return esc_html($contact['name']) . ' ' . HtmlHelper::createLink(
-            HtmlHelper::createPhoneToAddress($contact['phone']),
+        return esc_html($contact->getName()) . ' ' . HtmlHelper::createLink(
+            HtmlHelper::createPhoneToAddress($contact->getPhone()),
             '',
-            $contact['phone']
+            $contact->getPhone()
         );
     }
 
@@ -546,10 +553,10 @@ class StatusAdminPage
     /**
      * Calculate statistics
      *
-     * @param array<int, array<string, mixed>> $allMeetings Meeting data
+     * @param array<int, array<string, mixed>> $rows Group rows
      * @return array<string, mixed> Statistics
      */
-    private function calculateStats(array $allMeetings): array
+    private function calculateStats(array $rows): array
     {
         $stats = [
                 'total' => 0,
@@ -561,22 +568,22 @@ class StatusAdminPage
                 'cancelled' => 0
         ];
 
-        // Track distinct meeting IDs
-        $distinctMeetingIds = [];
-        $registeredMeetingIds = [];
+        // Track distinct group IDs
+        $distinctGroupIds = [];
+        $registeredGroupIds = [];
 
-        foreach ($allMeetings as $meeting) {
-            $meetingId = $meeting['id'];
+        foreach ($rows as $row) {
+            $groupId = $row['id'];
 
-            // Track all distinct meetings
-            $distinctMeetingIds[$meetingId] = true;
+            // Track all distinct groups
+            $distinctGroupIds[$groupId] = true;
 
-            if ($meeting['is_registered']) {
-                // Track distinct registered meetings
-                $registeredMeetingIds[$meetingId] = true;
+            if ($row['is_registered']) {
+                // Track distinct registered groups
+                $registeredGroupIds[$groupId] = true;
 
-                // Count statuses (these can be multiple per meeting)
-                switch ($meeting['status_class']) {
+                // Count statuses (these can be multiple per group)
+                switch ($row['status_class']) {
                     case 'completed':
                         $stats['completed']++;
                         break;
@@ -594,8 +601,8 @@ class StatusAdminPage
         }
 
         // Set distinct counts
-        $stats['total'] = count($distinctMeetingIds);
-        $stats['registered'] = count($registeredMeetingIds);
+        $stats['total'] = count($distinctGroupIds);
+        $stats['registered'] = count($registeredGroupIds);
         $stats['unregistered'] = $stats['total'] - $stats['registered'];
 
         return $stats;

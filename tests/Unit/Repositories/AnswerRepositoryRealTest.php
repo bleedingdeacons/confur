@@ -74,25 +74,25 @@ it('returns ids from getAllAnswers', function () {
 });
 
 it('includes only posts with a meeting in getRegisteredGroups', function () {
-    ($this->answer)(1, [Constants::MEETING_FIELD => 100, Constants::EMAIL_FIELD => 'a@b.com']);
-    ($this->answer)(2, [Constants::MEETING_FIELD => null, Constants::EMAIL_FIELD => 'c@d.com']);
+    ($this->answer)(1, [Constants::GROUP_FIELD => 100, Constants::EMAIL_FIELD => 'a@b.com']);
+    ($this->answer)(2, [Constants::GROUP_FIELD => null, Constants::EMAIL_FIELD => 'c@d.com']);
 
     $groups = $this->repo->getRegisteredGroups();
     expect($groups)->toHaveCount(1)
-        ->and($groups[0]['meetingId'])->toBe(100)
+        ->and($groups[0]['groupId'])->toBe(100)
         ->and($groups[0]['email'])->toBe('a@b.com');
 });
 
 it('normalises varied meeting shapes in getRegisteredGroups', function () {
-    ($this->answer)(1, [Constants::MEETING_FIELD => (object) ['ID' => 10], Constants::EMAIL_FIELD => 'a@b.com']);
-    ($this->answer)(2, [Constants::MEETING_FIELD => ['ID' => 20], Constants::EMAIL_FIELD => 'b@b.com']);
-    ($this->answer)(3, [Constants::MEETING_FIELD => 'not-an-id', Constants::EMAIL_FIELD => 'c@b.com']);
+    ($this->answer)(1, [Constants::GROUP_FIELD => (object) ['ID' => 10], Constants::EMAIL_FIELD => 'a@b.com']);
+    ($this->answer)(2, [Constants::GROUP_FIELD => ['ID' => 20], Constants::EMAIL_FIELD => 'b@b.com']);
+    ($this->answer)(3, [Constants::GROUP_FIELD => 'not-an-id', Constants::EMAIL_FIELD => 'c@b.com']);
 
     $groups = $this->repo->getRegisteredGroups();
 
     // Object and array meetings normalise to their ID; the bogus string
     // yields null and is dropped.
-    $ids = array_column($groups, 'meetingId');
+    $ids = array_column($groups, 'groupId');
     expect($ids)->toContain(10, 20)
         ->and($groups)->toHaveCount(2);
 });
@@ -101,7 +101,7 @@ it('normalises varied meeting shapes in getRegisteredGroups', function () {
 describe('getGroupAnswers', function () {
     it('collects answered committee fields', function () {
         ($this->answer)(1, [
-            Constants::MEETING_FIELD => 100,
+            Constants::GROUP_FIELD => 100,
             Constants::EMAIL_FIELD => 'a@b.com',
             Constants::UPDATED_FIELD => '2024-01-01',
             Constants::STATUS_FIELD => Constants::STATUS_DRAFT,
@@ -119,7 +119,7 @@ describe('getGroupAnswers', function () {
         $answers = $this->repo->getGroupAnswers();
         expect($answers)->toHaveKey('c1_a1')
             ->not->toHaveKey('c1_a2')
-            ->and($answers['c1_a1'][0]['meetingName'])->toBe('Monday Group');
+            ->and($answers['c1_a1'][0]['groupName'])->toBe('Monday Group');
     });
 
     it('skips trashed posts', function () {
@@ -127,7 +127,7 @@ describe('getGroupAnswers', function () {
         // publish/draft/pending/private, so the loop's own trash check is the
         // guard for a post trashed *after* that query ran. Reproduce that: the
         // query still returns it, get_post_status() reports it trashed.
-        ($this->answer)(1, [Constants::MEETING_FIELD => 100, Constants::UPDATED_FIELD => '2024-01-01']);
+        ($this->answer)(1, [Constants::GROUP_FIELD => 100, Constants::UPDATED_FIELD => '2024-01-01']);
         $this->addFields(1, ['c1_a1' => 'x']);
 
         WpState::$postStatuses[1] = 'trash';

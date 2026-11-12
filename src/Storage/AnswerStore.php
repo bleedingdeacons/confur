@@ -11,7 +11,7 @@ use Confur\Domain\QuestionSet;
  * Reads and writes `answer` posts through ACF.
  *
  * The only class that knows how a registration is laid out in post meta. It
- * hands back Answer objects with meeting ids already normalised, so the
+ * hands back Answer objects with group ids already normalised, so the
  * "ACF may return an id, an object or an array" handling lives here once
  * instead of being copied into each caller.
  */
@@ -79,8 +79,8 @@ class AnswerStore
     {
         return new Answer(
             postId: $postId,
-            meetingId: self::normalizePostId(get_field(Constants::MEETING_FIELD, $postId)),
-            fellowMeetingId: self::normalizePostId(get_field(Constants::FELLOW_MEETING_FIELD, $postId)),
+            groupId: self::normalizePostId(get_field(Constants::GROUP_FIELD, $postId)),
+            fellowGroupId: self::normalizePostId(get_field(Constants::FELLOW_GROUP_FIELD, $postId)),
             email: self::stringOrNull(get_field(Constants::EMAIL_FIELD, $postId)),
             updated: self::stringOrNull(get_field(Constants::UPDATED_FIELD, $postId)),
             status: self::stringOrNull(get_field(Constants::STATUS_FIELD, $postId)),
