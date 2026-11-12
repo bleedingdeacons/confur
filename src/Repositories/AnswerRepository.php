@@ -86,14 +86,14 @@ class AnswerRepository
         $registered = [];
 
         foreach ($answers as $answer) {
-            if ($answer->meetingId === null) {
+            if ($answer->groupId === null) {
                 continue;
             }
 
             $registered[] = [
                 'answersId' => $answer->postId,
-                'meetingId' => $answer->meetingId,
-                'fellowMeetingId' => $answer->fellowMeetingId,
+                'groupId' => $answer->groupId,
+                'fellowGroupId' => $answer->fellowGroupId,
                 'email' => $answer->email,
                 'updated' => $answer->updated,
                 'status' => $answer->status,
@@ -120,15 +120,15 @@ class AnswerRepository
                 continue;
             }
 
-            // get_the_title() will not take null, and the meeting can be empty.
-            $meetingName = $answer->meetingId !== null ? get_the_title($answer->meetingId) : '';
+            // get_the_title() will not take null, and the group can be empty.
+            $groupName = $answer->groupId !== null ? get_the_title($answer->groupId) : '';
             $resultUrl = get_permalink($answer->postId);
 
             foreach ($answer->answers as $fieldName => $text) {
                 $grouped[$fieldName][] = [
-                    'meetingId' => $answer->meetingId,
-                    'fellowMeetingId' => $answer->fellowMeetingId,
-                    'meetingName' => $meetingName,
+                    'groupId' => $answer->groupId,
+                    'fellowGroupId' => $answer->fellowGroupId,
+                    'groupName' => $groupName,
                     'resultUrl' => $resultUrl,
                     'email' => $answer->email,
                     'updated' => $answer->updated,

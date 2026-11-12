@@ -2,9 +2,11 @@
 
 namespace Confur\Shortcodes;
 
+use Confur\Application\RegisterGroup;
 use Confur\Config\Constants;
 use Confur\Domain\QuestionSet;
 use Confur\Repositories\AnswerRepository;
+use Confur\Storage\AnswerStore;
 
 /**
  * Answer-related shortcodes
@@ -172,17 +174,12 @@ class AnswerShortcode
      */
     public function generateHeader(): string
     {
-        $meetingId = get_field(Constants::MEETING_FIELD);
-        $fellow_meetingId = get_field(Constants::FELLOW_MEETING_FIELD);
-        $meetingTitle = get_the_title($meetingId);
-
-        if (! empty($fellow_meetingId)) {
-            $meetingTitle .= ' and ' . get_the_title($fellow_meetingId);
-        }
+        $groupId = AnswerStore::normalizePostId(get_field(Constants::GROUP_FIELD));
+        $fellowGroupId = AnswerStore::normalizePostId(get_field(Constants::FELLOW_GROUP_FIELD));
 
         return sprintf(
             '<h2>Answers from %s</h2>',
-            esc_html($meetingTitle)
+            esc_html($groupId !== null ? RegisterGroup::groupName($groupId, $fellowGroupId) : '')
         );
     }
 
@@ -270,7 +267,7 @@ class AnswerShortcode
     /**
      * Generate allocated committee display
      *
-     * Displays "Allocated Committee (Number)" if the associated meeting
+     * Displays "Allocated Committee (Number)" if the registration's group
      * has a populated allocation field. The All Committees committee displays
      * as "Last Question".
      *
@@ -279,16 +276,14 @@ class AnswerShortcode
      */
     public function generateAllocatedCommittee(array $atts = []): string
     {
-        // Get the meeting ID from the current answer post
-        $meetingId = $this->getField(Constants::MEETING_FIELD);
+        $groupId = AnswerStore::normalizePostId($this->getField(Constants::GROUP_FIELD));
 
-        if (empty($meetingId)) {
+        if ($groupId === null) {
             return '';
         }
 
-        // Get the allocation field from the meeting
-        // Assumes Constants::ALLOCATION_FIELD exists, adjust field name as needed
-        $allocation = $this->getField(Constants::ALLOCATION_FIELD, $meetingId);
+        // The Allocation field group sits on the tsml_group post.
+        $allocation = $this->getField(Constants::ALLOCATION_FIELD, $groupId);
 
         if (empty($allocation)) {
             return '';

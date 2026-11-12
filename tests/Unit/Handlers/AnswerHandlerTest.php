@@ -65,7 +65,7 @@ describe('handleRegistration', function () {
     it('confirms a new registration', function () {
         $postId = 70;
         $this->fields[$postId] = [
-            Constants::MEETING_FIELD => 100,
+            Constants::GROUP_FIELD => 100,
             Constants::REGISTRATION_RECIPIENT_EMAIL => 'a@b.com',
         ];
         $this->titles[100] = 'Monday Group';
@@ -85,7 +85,7 @@ describe('handleRegistration', function () {
 
         $postId = 71;
         $this->fields[$postId] = [
-            Constants::MEETING_FIELD => 100,
+            Constants::GROUP_FIELD => 100,
             Constants::REGISTRATION_RECIPIENT_EMAIL => 'blocked@x.com',
         ];
 
@@ -103,7 +103,7 @@ describe('handleRegistration', function () {
         $existing = seedAnswer(80, 'existing');
         WpState::$queryPosts = [$existing];
         $this->fields[80] = [
-            Constants::MEETING_FIELD => 100,
+            Constants::GROUP_FIELD => 100,
             Constants::EMAIL_FIELD => 'a@b.com',
             Constants::STATUS_FIELD => Constants::STATUS_DRAFT,
         ];
@@ -114,7 +114,7 @@ describe('handleRegistration', function () {
         $newId = 81;
         seedAnswer($newId, 'new');
         $this->fields[$newId] = [
-            Constants::MEETING_FIELD => 100,
+            Constants::GROUP_FIELD => 100,
             Constants::REGISTRATION_RECIPIENT_EMAIL => 'a@b.com',
         ];
 
@@ -126,8 +126,8 @@ describe('handleRegistration', function () {
     it('confirms a paired registration', function () {
         $postId = 72;
         $this->fields[$postId] = [
-            Constants::MEETING_FIELD => 100,
-            Constants::FELLOW_MEETING_FIELD => 200,
+            Constants::GROUP_FIELD => 100,
+            Constants::FELLOW_GROUP_FIELD => 200,
             Constants::REGISTRATION_RECIPIENT_EMAIL => 'a@b.com',
         ];
         $this->seedTitles([100 => 'Monday Group', 200 => 'Tuesday Group']);
@@ -144,8 +144,8 @@ describe('handleRegistration', function () {
         // ACF may return the meeting as an object or array rather than an int;
         // normalizePostId() must handle both.
         $this->fields[$postId] = [
-            Constants::MEETING_FIELD => (object) ['ID' => 100],
-            Constants::FELLOW_MEETING_FIELD => ['ID' => 200],
+            Constants::GROUP_FIELD => (object) ['ID' => 100],
+            Constants::FELLOW_GROUP_FIELD => ['ID' => 200],
             Constants::REGISTRATION_RECIPIENT_EMAIL => 'a@b.com',
         ];
         $this->seedTitles([100 => 'Monday Group', 200 => 'Tuesday Group']);
@@ -159,8 +159,8 @@ describe('handleRegistration', function () {
 
         WpState::$queryPosts = [seedAnswer(82, 'existing')];
         $this->fields[82] = [
-            Constants::MEETING_FIELD => 100,
-            Constants::FELLOW_MEETING_FIELD => 200,
+            Constants::GROUP_FIELD => 100,
+            Constants::FELLOW_GROUP_FIELD => 200,
             Constants::EMAIL_FIELD => 'a@b.com',
             Constants::STATUS_FIELD => Constants::STATUS_DRAFT,
         ];
@@ -169,8 +169,8 @@ describe('handleRegistration', function () {
         $newId = 83;
         seedAnswer($newId, 'new');
         $this->fields[$newId] = [
-            Constants::MEETING_FIELD => 100,
-            Constants::FELLOW_MEETING_FIELD => 200,
+            Constants::GROUP_FIELD => 100,
+            Constants::FELLOW_GROUP_FIELD => 200,
             Constants::REGISTRATION_RECIPIENT_EMAIL => 'a@b.com',
         ];
 
@@ -181,7 +181,7 @@ describe('handleRegistration', function () {
     it('handles a missing meeting', function () {
         $postId = 90;
         $this->fields[$postId] = [
-            Constants::MEETING_FIELD => null,
+            Constants::GROUP_FIELD => null,
             Constants::REGISTRATION_RECIPIENT_EMAIL => 'a@b.com',
         ];
 

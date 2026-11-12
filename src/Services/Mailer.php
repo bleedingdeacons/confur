@@ -73,13 +73,13 @@ class Mailer
     /**
      * Send the registration confirmation with the group's answer page link.
      *
-     * @param string $allocatedCommittee The committee the meeting was allocated, if any.
+     * @param string $allocatedCommittee The committee the group was allocated, if any.
      * @param bool $isDuplicate The group had already registered; this resends its existing link.
      */
-    public function sendConfirmation(string $recipient, string $meetingName, string $answerUrl, string $allocatedCommittee = '', bool $isDuplicate = false): bool
+    public function sendConfirmation(string $recipient, string $groupName, string $answerUrl, string $allocatedCommittee = '', bool $isDuplicate = false): bool
     {
         $recipient = sanitize_email($recipient);
-        $meetingName = sanitize_text_field($meetingName);
+        $groupName = sanitize_text_field($groupName);
         $answerUrl = sanitize_url($answerUrl);
         $allocatedCommittee = sanitize_text_field($allocatedCommittee);
 
@@ -104,12 +104,14 @@ class Mailer
         $registrationStatusHtml = '';
         if ($isDuplicate) {
             $registrationStatusHtml = '<div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px;">
-            <p style="margin: 0; font-size: 16px; color: #856404;"><strong>Note:</strong> You have already registered for this meeting. This is a reminder with your existing registration link.</p>
+            <p style="margin: 0; font-size: 16px; color: #856404;"><strong>Note:</strong> You have already registered for this group. This is a reminder with your existing registration link.</p>
         </div>';
         }
 
         $body = $this->renderTemplate('RegistrationConfirmation', [
-            'MeetingName' => $meetingName,
+            // {{MeetingName}} is kept as the placeholder name: administrators'
+            // saved templates use it. It now holds the group's name.
+            'MeetingName' => $groupName,
             'Url' => $answerUrl,
             'AllocationNotice' => $allocationHtml,
             'RegistrationStatus' => $registrationStatusHtml,
@@ -125,7 +127,7 @@ class Mailer
     }
 
     /** Thank a group for completing its answers. */
-    public function sendCompletion(string $recipient, string $meetingName): bool
+    public function sendCompletion(string $recipient, string $groupName): bool
     {
         $recipient = sanitize_email($recipient);
 
@@ -138,7 +140,7 @@ class Mailer
             $recipient,
             'Region Representatives <' . $this->settings->registrationReplyEmail . '>',
             EmailTemplateAdminPage::getSubject('AnswersComplete'),
-            $this->renderTemplate('AnswersComplete', ['MeetingName' => sanitize_text_field($meetingName)])
+            $this->renderTemplate('AnswersComplete', ['MeetingName' => sanitize_text_field($groupName)])
         );
     }
 

@@ -32,7 +32,7 @@
                 {
                     "param": "post_type",
                     "operator": "==",
-                    "value": "tsml_meeting"
+                    "value": "tsml_group"
                 }
             ]
         ],

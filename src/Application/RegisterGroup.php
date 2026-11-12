@@ -11,12 +11,12 @@ use Confur\Storage\AnswerStore;
 /**
  * Turns a registration form submission into a group's answer page.
  *
- * The form plugin has already created the `answer` post with the meeting(s)
+ * The form plugin has already created the `answer` post with the group(s)
  * and email filled in. From there, in order:
  * - a blocked address is told no, and its post deleted if the setting says so;
  * - with duplicate detection on, a repeat registration is trashed and the
  *   group is re-sent its existing link;
- * - a registration with no meeting is reported to the registrant;
+ * - a registration with no group is reported to the registrant;
  * - otherwise the post gets its title, an unguessable slug (the slug is the
  *   only thing protecting the answer page) and the Draft state, and the group
  *   is sent the link.
@@ -42,30 +42,30 @@ class RegisterGroup
         }
 
         if ($this->settings->duplicateDetection) {
-            $existing = $this->duplicates->find($registration->meetingId, $registration->fellowMeetingId, $email, $postId);
+            $existing = $this->duplicates->find($registration->groupId, $registration->fellowGroupId, $email, $postId);
 
             if ($existing !== null) {
-                $this->resendExisting($postId, $existing->postId, $registration->meetingId, $registration->fellowMeetingId, $email);
+                $this->resendExisting($postId, $existing->postId, $registration->groupId, $registration->fellowGroupId, $email);
                 return;
             }
         }
 
-        if ($registration->meetingId === null) {
-            error_log("RegisterGroup::register - No meeting group set for post ID: $postId");
+        if ($registration->groupId === null) {
+            error_log("RegisterGroup::register - No group set for post ID: $postId");
             $this->mailer->sendRegistrationError(
                 $email,
-                'Error: Missing Meeting Group',
-                'There was an issue with your registration: No meeting group was given.'
+                'Error: Missing Group',
+                'There was an issue with your registration: no group was given.'
             );
             return;
         }
 
-        $meetingName = self::meetingName($registration->meetingId, $registration->fellowMeetingId);
+        $groupName = self::groupName($registration->groupId, $registration->fellowGroupId);
 
         update_field(Constants::STATUS_FIELD, AnswerState::Draft->value, $postId);
 
-        $postData = ['ID' => $postId, 'post_title' => 'Answers from ' . $meetingName];
-        $slug = self::unguessableSlug($meetingName);
+        $postData = ['ID' => $postId, 'post_title' => 'Answers from ' . $groupName];
+        $slug = self::unguessableSlug($groupName);
 
         // Without a slug, leave post_name out and let WordPress derive one,
         // rather than blanking it.
@@ -77,22 +77,22 @@ class RegisterGroup
 
         $this->mailer->sendConfirmation(
             $email,
-            $meetingName,
+            $groupName,
             get_permalink($postId) ?: '',
-            self::allocatedCommittee($registration->meetingId)
+            self::allocatedCommittee($registration->groupId)
         );
     }
 
     /**
-     * The name a registration goes by: its meeting, or both meetings for a
+     * The name a registration goes by: its group, or both groups for a
      * pair, each cut to 85 characters so the title stays a sensible length.
      */
-    public static function meetingName(int $meetingId, ?int $fellowMeetingId): string
+    public static function groupName(int $groupId, ?int $fellowGroupId): string
     {
-        $name = get_the_title($meetingId);
+        $name = get_the_title($groupId);
 
-        if ($fellowMeetingId !== null) {
-            $name = substr($name, 0, 85) . ' and ' . substr(get_the_title($fellowMeetingId), 0, 85);
+        if ($fellowGroupId !== null) {
+            $name = substr($name, 0, 85) . ' and ' . substr(get_the_title($fellowGroupId), 0, 85);
         }
 
         return $name;
@@ -109,7 +109,7 @@ class RegisterGroup
         $this->mailer->sendRegistrationBlocked($email);
     }
 
-    private function resendExisting(int $postId, int $existingId, ?int $meetingId, ?int $fellowMeetingId, string $email): void
+    private function resendExisting(int $postId, int $existingId, ?int $groupId, ?int $fellowGroupId, string $email): void
     {
         error_log("RegisterGroup::register - Post $postId duplicates post $existingId; trashing it and resending the existing link");
 
@@ -117,27 +117,27 @@ class RegisterGroup
 
         $this->mailer->sendConfirmation(
             $email,
-            $meetingId !== null ? self::meetingName($meetingId, $fellowMeetingId) : '',
+            $groupId !== null ? self::groupName($groupId, $fellowGroupId) : '',
             get_permalink($existingId) ?: '',
-            $meetingId !== null ? self::allocatedCommittee($meetingId) : '',
+            $groupId !== null ? self::allocatedCommittee($groupId) : '',
             true
         );
     }
 
-    private static function allocatedCommittee(int $meetingId): string
+    private static function allocatedCommittee(int $groupId): string
     {
-        $allocation = get_field(Constants::ALLOCATION_FIELD, $meetingId);
+        $allocation = get_field(Constants::ALLOCATION_FIELD, $groupId);
 
         return is_scalar($allocation) ? (string) $allocation : '';
     }
 
     /**
-     * A random prefix plus the meeting name. The answer page is reachable by
+     * A random prefix plus the group name. The answer page is reachable by
      * anyone with the link, so the prefix is what keeps it private.
      */
-    private static function unguessableSlug(string $meetingName): ?string
+    private static function unguessableSlug(string $groupName): ?string
     {
-        if ($meetingName === '') {
+        if ($groupName === '') {
             return null;
         }
 
@@ -148,6 +148,6 @@ class RegisterGroup
             return null;
         }
 
-        return $prefix . '_' . str_replace('-', '_', sanitize_title($meetingName));
+        return $prefix . '_' . str_replace('-', '_', sanitize_title($groupName));
     }
 }

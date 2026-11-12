@@ -18,8 +18,8 @@ class Constants
     public const STATUS_CANCELLED = 'Cancelled';
     public const DEFAULT_STATUS = self::STATUS_DRAFT;
     public const ANSWER_CUSTOM_TYPE = 'answer';
-    public const MEETING_FIELD = 'meeting';
-    public const FELLOW_MEETING_FIELD = 'fellow_meeting';
+    public const GROUP_FIELD = 'group';
+    public const FELLOW_GROUP_FIELD = 'fellow_group';
     public const UPDATED_FIELD = 'updated';
     public const EMAIL_FIELD = 'email';
     public const ALLOCATION_FIELD = 'allocated_committee';

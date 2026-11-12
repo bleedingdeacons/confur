@@ -60,6 +60,32 @@ if (!defined('CONFUR_TEST_MODE')) {
     define('CONFUR_TEST_MODE', true);
 }
 
+// Unity's interfaces and test doubles (GroupRepository, GroupStub,
+// InMemoryGroupRepository, ...). Read from a real Unity checkout beside this
+// one — the suite's convention, as in Reach — never from a copy here, which
+// would drift from the contract Unity owns. UNITY_PATH overrides the location.
+$unityPath = getenv('UNITY_PATH') ?: dirname(__DIR__, 2) . '/unity';
+$unitySrc = $unityPath . '/src';
+
+if (!is_dir($unitySrc)) {
+    fwrite(STDERR, PHP_EOL . 'ERROR: Unity plugin source not found at ' . $unitySrc . PHP_EOL
+        . 'Confur reads its groups through Unity, so Unity must be checked out as a' . PHP_EOL
+        . 'sibling directory (or UNITY_PATH set) for this suite to run.' . PHP_EOL . PHP_EOL);
+    exit(1);
+}
+
+spl_autoload_register(static function (string $class) use ($unitySrc): void {
+    if (!str_starts_with($class, 'Unity\\')) {
+        return;
+    }
+
+    $file = $unitySrc . '/' . str_replace('\\', '/', substr($class, strlen('Unity\\'))) . '.php';
+
+    if (is_file($file)) {
+        require $file;
+    }
+});
+
 // Prevent "headers already sent" warnings from the render paths.
 ini_set('output_buffering', 'on');
 ob_start();

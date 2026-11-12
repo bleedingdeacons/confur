@@ -43,7 +43,7 @@ beforeEach(function () {
 
 describe('a new registration', function () {
     it('gets a title, an unguessable slug, the Draft state and a confirmation', function () {
-        ($this->registration)(1, [Constants::MEETING_FIELD => 100, Constants::EMAIL_FIELD => 'group@example.org']);
+        ($this->registration)(1, [Constants::GROUP_FIELD => 100, Constants::EMAIL_FIELD => 'group@example.org']);
         $this->fields[100] = [Constants::ALLOCATION_FIELD => '3'];
 
         ($this->service)()->register(1);
@@ -60,8 +60,8 @@ describe('a new registration', function () {
     it('names both meetings of a pair, each cut to 85 characters', function () {
         $this->seedTitles([100 => str_repeat('M', 100), 200 => 'Tuesday Group']);
         ($this->registration)(2, [
-            Constants::MEETING_FIELD => (object) ['ID' => 100],
-            Constants::FELLOW_MEETING_FIELD => ['ID' => 200],
+            Constants::GROUP_FIELD => (object) ['ID' => 100],
+            Constants::FELLOW_GROUP_FIELD => ['ID' => 200],
             Constants::EMAIL_FIELD => 'group@example.org',
         ]);
 
@@ -71,11 +71,11 @@ describe('a new registration', function () {
     });
 
     it('reports a registration with no meeting to the registrant', function () {
-        ($this->registration)(3, [Constants::MEETING_FIELD => null, Constants::EMAIL_FIELD => 'group@example.org']);
+        ($this->registration)(3, [Constants::GROUP_FIELD => null, Constants::EMAIL_FIELD => 'group@example.org']);
 
         ($this->service)()->register(3);
 
-        expect($this->mailer->calls('sendRegistrationError')[0][1])->toBe('Error: Missing Meeting Group')
+        expect($this->mailer->calls('sendRegistrationError')[0][1])->toBe('Error: Missing Group')
             ->and($this->mailer->calls('sendConfirmation'))->toBe([])
             ->and(WpState::$updatedPosts)->toBe([]);
     });
@@ -83,7 +83,7 @@ describe('a new registration', function () {
 
 describe('a blocked address', function () {
     it('is told no, and its post deleted when the setting says so', function () {
-        ($this->registration)(4, [Constants::MEETING_FIELD => 100, Constants::EMAIL_FIELD => ' Blocked@Example.org ']);
+        ($this->registration)(4, [Constants::GROUP_FIELD => 100, Constants::EMAIL_FIELD => ' Blocked@Example.org ']);
 
         ($this->service)(['blocklist' => ['blocked@example.org'], 'deleteBlockedPosts' => true])->register(4);
 
@@ -93,7 +93,7 @@ describe('a blocked address', function () {
     });
 
     it('keeps the post when the setting is off', function () {
-        ($this->registration)(5, [Constants::MEETING_FIELD => 100, Constants::EMAIL_FIELD => 'blocked@example.org']);
+        ($this->registration)(5, [Constants::GROUP_FIELD => 100, Constants::EMAIL_FIELD => 'blocked@example.org']);
 
         ($this->service)(['blocklist' => ['blocked@example.org']])->register(5);
 
@@ -110,12 +110,12 @@ describe('a repeat registration', function () {
         WpState::$posts[50] = $existing;
         WpState::$postStatuses[50] = 'publish';
         $this->fields[50] = [
-            Constants::MEETING_FIELD => 100,
+            Constants::GROUP_FIELD => 100,
             Constants::EMAIL_FIELD => 'group@example.org',
             Constants::STATUS_FIELD => 'Draft',
         ];
 
-        ($this->registration)(6, [Constants::MEETING_FIELD => 100, Constants::EMAIL_FIELD => 'GROUP@example.org']);
+        ($this->registration)(6, [Constants::GROUP_FIELD => 100, Constants::EMAIL_FIELD => 'GROUP@example.org']);
     });
 
     it('is trashed, and the group re-sent its existing link', function () {

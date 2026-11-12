@@ -6,10 +6,10 @@ jQuery(document).ready(function($) {
 		
 		var button = $(this);
 		var answerId = button.data('answer-id');
-		var meetingName = button.data('meeting-name');
+		var groupName = button.data('group-name');
 		var row = button.closest('tr');
 		
-		if (!confirm('Are you sure you want to cancel this duplicate registration for "' + meetingName + '"?')) {
+		if (!confirm('Are you sure you want to cancel this duplicate registration for "' + groupName + '"?')) {
 			return;
 		}
 		
@@ -46,10 +46,10 @@ jQuery(document).ready(function($) {
 					button.remove();
 					row.find('.duplicate-indicator').remove();
 					
-					// Check if only one active (non-cancelled) registration remains for this meeting
-					// Find all rows with cancel buttons for the same meeting name
+					// Check if only one active (non-cancelled) registration remains for this group
+					// Find all rows with cancel buttons for the same group name
 					var remainingDuplicateButtons = $('.cancel-duplicate-btn').filter(function() {
-						return $(this).data('meeting-name') === meetingName;
+						return $(this).data('group-name') === groupName;
 					});
 					
 					// If only one cancel button remains, remove it and its duplicate indicator
@@ -107,9 +107,9 @@ jQuery(document).ready(function($) {
 		
 		var button = $(this);
 		var answerId = button.data('answer-id');
-		var meetingName = button.data('meeting-name');
+		var groupName = button.data('group-name');
 		
-		if (!confirm('Resend confirmation email for "' + meetingName + '"?')) {
+		if (!confirm('Resend confirmation email for "' + groupName + '"?')) {
 			return;
 		}
 		

@@ -25,18 +25,19 @@ The question set — committees and how many questions each has — is edited on
 
 - WordPress 6.0 or higher
 - PHP 8.4 or higher
-- [12 Step Meeting List](https://wordpress.org/plugins/12-step-meeting-list/) — meeting metadata
+- [Unity](https://github.com/bleedingdeacons/unity) and [TSML for Unity](https://github.com/bleedingdeacons/tsml-for-unity) — the groups that register (Confur reads them through Unity's `GroupRepository`)
+- [12 Step Meeting List](https://wordpress.org/plugins/12-step-meeting-list/) — the groups and meetings themselves, which TSML for Unity reads
 - [Advanced Custom Fields](https://wordpress.org/plugins/advanced-custom-fields/) — answer field group
 
 Confur is a MIT-licensed plugin published by The Bleeding Deacons.
 
 ## Installation
 
-1. Install and activate **12 Step Meeting List** and **Advanced Custom Fields**.
+1. Install and activate **12 Step Meeting List**, **Unity**, **TSML for Unity** and **Advanced Custom Fields**.
 2. Upload the `confur` directory to `/wp-content/plugins/`.
 3. Activate Confur through the **Plugins** menu in WordPress.
-4. Import the bundled ACF configuration (`setup/`) — this registers the `Answer` custom post type and its field group.
-5. Create a public registration page containing a form that creates the `Answer` post type.
+4. Import the bundled ACF configuration (`setup/`) — this registers the `Answer` custom post type and its field group, and the Allocation field group on TSML groups.
+5. Create a public registration page containing a form (ID `registration--q4c`) that creates the `Answer` post and fills its `group` field — and `fellow_group` when two groups answer together — with TSML groups, plus `email`.
 
 ## Administration
 
@@ -57,7 +58,7 @@ Under the **Questions for Conference** sidebar menu:
 [question number="1" committee="1"]          Render a question with formatting
 [committee number="1" name="Finance"]…[/committee]   Wrap a committee section
 [start_committee number="1"] … [end_committee]      Open / close a committee section
-[header]                                     Conference meeting header
+[header]                                     "Answers from" the registered group(s)
 [allocated_committee]                        The committee this group was allocated
 [progress_table]                             Per-committee progress table
 [control position="top"]                     Save controls (Draft / Complete)

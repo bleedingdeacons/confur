@@ -24,8 +24,8 @@ beforeEach(function () {
 
 it('loads a registration with normalised meetings', function () {
     ($this->answerPost)(1, [
-        Constants::MEETING_FIELD => (object) ['ID' => 10],
-        Constants::FELLOW_MEETING_FIELD => ['ID' => '20'],
+        Constants::GROUP_FIELD => (object) ['ID' => 10],
+        Constants::FELLOW_GROUP_FIELD => ['ID' => '20'],
         Constants::EMAIL_FIELD => 'a@b.c',
         Constants::UPDATED_FIELD => 'Monday, 2024-01-01 01:00:00 PM',
         Constants::STATUS_FIELD => 'Complete',
@@ -33,8 +33,8 @@ it('loads a registration with normalised meetings', function () {
 
     $answer = $this->store->load(1);
 
-    expect($answer->meetingId)->toBe(10)
-        ->and($answer->fellowMeetingId)->toBe(20)
+    expect($answer->groupId)->toBe(10)
+        ->and($answer->fellowGroupId)->toBe(20)
         ->and($answer->email)->toBe('a@b.c')
         ->and($answer->status)->toBe('Complete')
         ->and($answer->answers)->toBe([]);

@@ -49,7 +49,7 @@ beforeEach(function () {
      *
      * @param array<string, string> $answers Field name => answer text
      */
-    $this->seedAnswer = function (int $postId, string $updated, int $meetingId, array $answers): void {
+    $this->seedAnswer = function (int $postId, string $updated, int $groupId, array $answers): void {
         WpState::$queryPosts[] = (object) [
             'ID'          => $postId,
             'post_type'   => Constants::ANSWER_CUSTOM_TYPE,
@@ -59,7 +59,7 @@ beforeEach(function () {
 
         $this->fields[$postId] = array_merge([
             Constants::UPDATED_FIELD => $updated,
-            Constants::MEETING_FIELD => $meetingId,
+            Constants::GROUP_FIELD => $groupId,
             Constants::EMAIL_FIELD   => 'group@example.org',
             Constants::STATUS_FIELD  => Constants::STATUS_DRAFT,
         ], $answers);
