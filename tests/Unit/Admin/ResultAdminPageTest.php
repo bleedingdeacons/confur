@@ -7,6 +7,7 @@ namespace Tests\Unit\Admin;
 use BleedingDeacons\WpMocks\Exceptions\WpDieException;
 use BleedingDeacons\WpMocks\WpState;
 use Confur\Admin\ResultAdminPage;
+use Confur\Domain\QuestionSet;
 use Confur\Config\Constants;
 use ReflectionMethod;
 
@@ -29,19 +30,19 @@ covers(ResultAdminPage::class);
 const RESULT_HOOK = 'questions-for-conference_page_confur-reporting';
 
 /** @param array<string, mixed> $answers */
-function resultAnswerTable(ResultAdminPage $page, array $answers): string
+function resultAnswerTable(ResultAdminPage $page, array $answers, ?QuestionSet $questions = null): string
 {
     $m = new ReflectionMethod(ResultAdminPage::class, 'generateAnswerTable');
 
-    return (string) $m->invoke($page, $answers);
+    return (string) $m->invoke($page, $questions ?? QuestionSet::current(), $answers);
 }
 
 /** @param array<string, mixed> $answers */
-function resultCoverageTable(ResultAdminPage $page, array $answers): string
+function resultCoverageTable(ResultAdminPage $page, array $answers, ?QuestionSet $questions = null): string
 {
     $m = new ReflectionMethod(ResultAdminPage::class, 'generateCoverageTable');
 
-    return (string) $m->invoke($page, $answers);
+    return (string) $m->invoke($page, $questions ?? QuestionSet::current(), $answers);
 }
 
 /**
@@ -178,7 +179,7 @@ describe('the navigation table', function () {
     // with one.
     it('lists every committee and question', function () {
         $m = new ReflectionMethod(ResultAdminPage::class, 'generateLinksTable');
-        $html = (string) $m->invoke($this->page);
+        $html = (string) $m->invoke($this->page, QuestionSet::current());
 
         expect($html)->toContain(
             '<strong>Committee 1</strong>',
@@ -197,10 +198,12 @@ describe('the navigation table', function () {
         \Brain\Monkey\Filters\expectApplied('confur_question_set')->andReturn([1 => 1, 2 => 4, 3 => 1]);
 
         $m = new ReflectionMethod(ResultAdminPage::class, 'generateLinksTable');
-        $html = (string) $m->invoke($this->page);
+        $html = (string) $m->invoke($this->page, QuestionSet::current());
 
-        expect($html)->toContain('<a href="#c2_a4">Answer 4</a>', '<strong>Committee 2</strong>', '<strong>All Committees</strong>')
-            ->not->toContain('<strong>Committee 3</strong>', '#c1_a2', 'c4_', 'c7_');
+        // The filter dropped committee 7, which held the All Committees
+        // question, so this set has none and committee 3 is just that.
+        expect($html)->toContain('<a href="#c2_a4">Answer 4</a>', '<strong>Committee 2</strong>', '<strong>Committee 3</strong>')
+            ->not->toContain('All Committees', '#c1_a2', 'c4_', 'c7_');
     });
 });
 
@@ -236,13 +239,42 @@ describe('the answer table', function () {
         );
     });
 
-    // Committee 7 is the "last question", asked of every committee, so it is
-    // labelled differently from the numbered ones.
-    it('labels committee seven All Committees', function () {
+    // Committee 7 holds the bundled "last question", asked of every
+    // committee together. It is a section of its own, and named so throughout:
+    // the header, its copy button, each answer, and what the buttons copy.
+    it('gives the All Committees questions a section named for them', function () {
         $html = resultAnswerTable($this->page, ['c7_a1' => [resultRow('The last question')]]);
 
-        expect($html)->toContain('All Committees')
-            ->not->toContain('Committee 7 <');
+        expect($html)->toContain(
+            "class='committee-header'>All Committees <button",
+            '📋 Copy All Committees</button>',
+            "<div id='committee_7' data-label='All Committees'>",
+            '<strong>All Committees - Question 1</strong>',
+            'The last question',
+        )
+            ->not->toContain('Committee 7');
+    });
+
+    it('names whichever committee holds them All Committees', function () {
+        $html = resultAnswerTable($this->page, [
+            'c1_a1' => [resultRow('Shared')],
+            'c7_a1' => [resultRow('Seventh')],
+        ], new QuestionSet([1 => 1, 7 => 1], 1));
+
+        expect($html)->toContain('<strong>All Committees - Question 1</strong>', '<strong>Committee 7 - Question 1</strong>')
+            ->not->toContain('Committee 1');
+    });
+
+    it('names every section a committee when the set has no All Committees questions', function () {
+        $html = resultAnswerTable($this->page, ['c7_a1' => [resultRow('Just a committee')]], new QuestionSet([1 => 1, 7 => 1]));
+
+        expect($html)->toContain(
+            "class='committee-header'>Committee 7 <button",
+            '📋 Copy Committee 7</button>',
+            "data-label='Committee 7'",
+            '<strong>Committee 7 - Question 1</strong>',
+        )
+            ->not->toContain('All Committees');
     });
 
     // The anchor is what the navigation links and the dashboard widget jump
@@ -334,6 +366,16 @@ describe('the coverage table', function () {
             '<td>3</td>',   // the shortest
             '<td>6</td>',   // the longest
         );
+    });
+
+    it('names the All Committees questions in the coverage table', function () {
+        $html = resultCoverageTable($this->page, [
+            'c7_a1' => [resultRow('one two')],
+            'c2_a1' => [resultRow('three')],
+        ]);
+
+        expect($html)->toContain('<td>All Committees</td>', '<td>Committee 2</td>')
+            ->not->toContain('Committee 7');
     });
 
     // Cancelled answers are excluded from the answer table but not from the

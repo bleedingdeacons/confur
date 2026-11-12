@@ -12,8 +12,12 @@ use Confur\Storage\QuestionSetStore;
  * page, the allocation wording and the "is every question answered?" check
  * all read it, where each used to carry its own "1 to 6, then 7" loop.
  *
- * The last committee is special: it holds questions not owned by any single
- * committee, and is shown as "All Committees" rather than "Committee 7".
+ * A set may also have questions for all committees together. They are kept
+ * under a committee number of their own (7 by default, so their answers are
+ * the c7_a… fields), and that number is labelled "All Committees" wherever a
+ * committee is named. A set need not have any: allCommittees() is null then.
+ * Code that names a committee asks committeeLabel(), so nothing else needs to
+ * know which number, if any, is the shared one.
  *
  * Administrators edit it on the Questions screen (QuestionSetStore stores
  * it). DEFAULT is what the bundled ACF field group in setup/Acf_Answers.json
@@ -39,15 +43,18 @@ final class QuestionSet
         7 => 1,
     ];
 
+    /** The committee number DEFAULT's All Committees question is kept under. */
+    public const DEFAULT_ALL_COMMITTEES = 7;
+
     /** @var array<int, int> */
     private array $questionCounts;
 
-    private int $allCommittees;
+    private ?int $allCommittees;
 
     /**
      * @param array<int, int> $questionCounts Committee number => question count.
-     * @param int|null $allCommittees The "All Committees" committee. Defaults
-     *                                to the highest-numbered one.
+     * @param int|null $allCommittees The committee number whose questions are
+     *                                for all committees, or null for none.
      */
     public function __construct(array $questionCounts, ?int $allCommittees = null)
     {
@@ -65,14 +72,18 @@ final class QuestionSet
 
         ksort($questionCounts);
 
-        $allCommittees ??= (int) array_key_last($questionCounts);
-
-        if (!isset($questionCounts[$allCommittees])) {
+        if ($allCommittees !== null && !isset($questionCounts[$allCommittees])) {
             throw new \InvalidArgumentException("Committee $allCommittees is not in the question set.");
         }
 
         $this->questionCounts = $questionCounts;
         $this->allCommittees = $allCommittees;
+    }
+
+    /** The bundled set: DEFAULT, with its last question for all committees. */
+    public static function defaults(): self
+    {
+        return new self(self::DEFAULT, self::DEFAULT_ALL_COMMITTEES);
     }
 
     /**
@@ -98,7 +109,9 @@ final class QuestionSet
         try {
             // Keep the saved All Committees choice if the filter left it in.
             /** @var array<int, int> $counts */
-            return new self($counts, isset($counts[$saved->allCommittees()]) ? $saved->allCommittees() : null);
+            $all = $saved->allCommittees();
+
+            return new self($counts, $all !== null && isset($counts[$all]) ? $all : null);
         } catch (\InvalidArgumentException $e) {
             error_log('QuestionSet::current - confur_question_set filter returned an invalid set: ' . $e->getMessage());
             return $saved;
@@ -111,10 +124,16 @@ final class QuestionSet
         return $this->questionCounts;
     }
 
-    /** The committee shown as "All Committees". */
-    public function allCommittees(): int
+    /** The committee number whose questions are for all committees, or null for none. */
+    public function allCommittees(): ?int
     {
         return $this->allCommittees;
+    }
+
+    /** Whether the set has any questions for all committees. */
+    public function hasAllCommittees(): bool
+    {
+        return $this->allCommittees !== null;
     }
 
     public function equals(self $other): bool
@@ -140,10 +159,10 @@ final class QuestionSet
         return $this->questionCounts[$committee] ?? 0;
     }
 
-    /** Whether this is the "All Committees" committee. */
+    /** Whether this committee number holds the questions for all committees. */
     public function isAllCommittees(int $committee): bool
     {
-        return $committee === $this->allCommittees;
+        return $this->allCommittees !== null && $committee === $this->allCommittees;
     }
 
     /** "Committee N", or "All Committees" for the shared one. */

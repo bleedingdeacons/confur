@@ -1,4 +1,11 @@
 
+// A section's name, as the page labels it: "Committee 3", or "All Committees"
+// for the questions every committee answers together. ResultAdminPage puts it
+// in data-label, so nothing here needs to know which number is which.
+function confurSectionLabel(committeeDiv, committeeNumber) {
+    return committeeDiv.getAttribute("data-label") || ("Committee " + committeeNumber);
+}
+
 function copyCommitteeToClipboard(committeeId, committeeNumber) {
     const committeeDiv = document.getElementById(committeeId);
     if (!committeeDiv) {
@@ -6,8 +13,9 @@ function copyCommitteeToClipboard(committeeId, committeeNumber) {
         return;
     }
 
+    const label = confurSectionLabel(committeeDiv, committeeNumber);
     const answerGroups = committeeDiv.getElementsByClassName("answer-group");
-    let clipboardText = "Committee " + committeeNumber + "\n";
+    let clipboardText = label + "\n";
 
     for (let i = 0; i < answerGroups.length; i++) {
         const questionNumber = answerGroups[i].getAttribute("data-question");
@@ -22,7 +30,7 @@ function copyCommitteeToClipboard(committeeId, committeeNumber) {
     }
 
     navigator.clipboard.writeText(clipboardText).then(function() {
-        alert("Copied Committee " + committeeNumber + " to clipboard!");
+        alert("Copied " + label + " to clipboard!");
     }, function(err) {
         console.error("Error copying text: ", err);
         alert("Failed to copy to clipboard. Please ensure you are using HTTPS.");
@@ -36,8 +44,9 @@ function copyAllAnswersToClipboard(committeeNumber, questionNumber) {
         return;
     }
 
+    const label = confurSectionLabel(committeeDiv, committeeNumber);
     const answerGroups = committeeDiv.getElementsByClassName("answer-group");
-    let clipboardText = "All Answers for Committee " + committeeNumber + " - Question " + questionNumber + "\n";
+    let clipboardText = "All Answers for " + label + " - Question " + questionNumber + "\n";
 
     for (let i = 0; i < answerGroups.length; i++) {
         const currentCommitteeNumber = answerGroups[i].getAttribute("data-committee");
@@ -54,7 +63,7 @@ function copyAllAnswersToClipboard(committeeNumber, questionNumber) {
     }
 
     navigator.clipboard.writeText(clipboardText).then(function() {
-        alert("Copied all answers for Committee " + committeeNumber + " - Question " + questionNumber + " to clipboard!");
+        alert("Copied all answers for " + label + " - Question " + questionNumber + " to clipboard!");
     }, function(err) {
         console.error("Error copying text: ", err);
         alert("Failed to copy to clipboard. Please ensure you are using HTTPS.");

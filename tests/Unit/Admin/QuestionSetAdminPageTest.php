@@ -47,14 +47,31 @@ describe('parseForm', function () {
             ->and($set->allCommittees())->toBe(2);
     });
 
-    it('defaults All Committees to the highest when the chosen row was removed', function () {
+    it('has no questions for all committees when None is chosen', function () {
+        $set = QuestionSetAdminPage::parseForm([
+            'committee' => ['1', '2'],
+            'questions' => ['1', '1'],
+            'all_committees' => 'none',
+        ]);
+
+        expect($set->hasAllCommittees())->toBeFalse()
+            ->and($set->committeeLabel(2))->toBe('Committee 2');
+    });
+
+    it('has no questions for all committees when the chosen row was removed', function () {
         $set = QuestionSetAdminPage::parseForm([
             'committee' => ['1', '2', '3'],
             'questions' => ['1', '1', '0'],
             'all_committees' => '2',
         ]);
 
-        expect($set->allCommittees())->toBe(2);
+        expect($set->hasAllCommittees())->toBeFalse();
+    });
+
+    it('has no questions for all committees when nothing is chosen', function () {
+        $set = QuestionSetAdminPage::parseForm(['committee' => ['1', '2'], 'questions' => ['1', '1']]);
+
+        expect($set->hasAllCommittees())->toBeFalse();
     });
 
     it('rejects bad rows', function (array $post, string $message) {
@@ -149,6 +166,24 @@ describe('screen', function () {
 
         expect($html)->toContain('c1_a1 – c1_a3', 'c2_a1', 'New committee', 'Reset to Default')
             ->and(substr_count($html, 'name="committee['))->toBe(4); // 2 committees + 2 spare
+    });
+
+    it('ticks the committee that holds the questions for all committees', function () {
+        QuestionSetStore::save(new QuestionSet([1 => 3, 2 => 1], 2));
+
+        $html = captureOutput(fn () => $this->page->renderAdminPage());
+
+        expect($html)->toMatch('/name="all_committees"\s+aria-label="Show as All Committees"\s+value="1"\s+checked/')
+            ->and($html)->not->toMatch('/value="none"\s+aria-label="No questions for all committees"\s+checked/');
+    });
+
+    it('ticks None when the set has no questions for all committees', function () {
+        QuestionSetStore::save(new QuestionSet([1 => 3, 2 => 1]));
+
+        $html = captureOutput(fn () => $this->page->renderAdminPage());
+
+        expect($html)->toMatch('/value="none"\s+aria-label="No questions for all committees"\s+checked/')
+            ->and($html)->not->toMatch('/aria-label="Show as All Committees"\s+value="\d+"\s+checked/');
     });
 
     it('offers no reset while the default is in force', function () {

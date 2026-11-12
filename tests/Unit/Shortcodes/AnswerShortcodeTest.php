@@ -236,8 +236,10 @@ it('builds the progress table from the question set', function () {
 
     $result = $this->shortcode->generateProgressTable();
 
-    expect($result)->toContain('id="s_c1"', 'id="s_c2"', 'Committee 2', 'id="s_c3"', 'All Committees')
-        ->not->toContain('Committee 3', 's_c4', 's_c7');
+    // The filter dropped committee 7, which held the All Committees question,
+    // so this set has none: committee 3 is named as a committee.
+    expect($result)->toContain('id="s_c1"', 'id="s_c2"', 'Committee 2', 'id="s_c3"', 'Committee 3')
+        ->not->toContain('All Committees', 's_c4', 's_c7');
 });
 
 it('generates a control with a position', function () {
