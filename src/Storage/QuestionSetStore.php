@@ -8,8 +8,9 @@ use Confur\Domain\QuestionSet;
  * Stores the question set edited on the Questions admin screen.
  *
  * Saved as ['committees' => [number => question count], 'all_committees' => number].
+ * 'all_committees' is null when the set has no questions for all committees.
  * Nothing saved, or something saved that no longer makes a valid set, means
- * QuestionSet::DEFAULT — a broken option must not stop groups saving answers.
+ * QuestionSet::defaults() — a broken option must not stop groups saving answers.
  */
 final class QuestionSetStore
 {
@@ -20,14 +21,14 @@ final class QuestionSetStore
         $stored = get_option(self::OPTION_NAME, false);
 
         if (!is_array($stored)) {
-            return new QuestionSet(QuestionSet::DEFAULT);
+            return QuestionSet::defaults();
         }
 
         try {
             return self::fromStored($stored);
         } catch (\InvalidArgumentException $e) {
             error_log('QuestionSetStore::load - Saved question set is invalid, using the default: ' . $e->getMessage());
-            return new QuestionSet(QuestionSet::DEFAULT);
+            return QuestionSet::defaults();
         }
     }
 
@@ -43,7 +44,7 @@ final class QuestionSetStore
         return get_option(self::OPTION_NAME) === $value || update_option(self::OPTION_NAME, $value);
     }
 
-    /** Go back to QuestionSet::DEFAULT. */
+    /** Go back to QuestionSet::defaults(). */
     public static function reset(): bool
     {
         return get_option(self::OPTION_NAME, false) === false || delete_option(self::OPTION_NAME);

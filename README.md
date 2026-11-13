@@ -47,7 +47,11 @@ Under the **Questions for Conference** sidebar menu:
 |---|---|
 | **Status** | Submission progress per group/committee — who's filed, who hasn't. |
 | **Results** | The latest answers grouped for collation. |
-| **Questions** | Administrators set the committees, how many questions each has, and which one is shown as "All Committees". "Complete" requires an answer to every question here. Answer pages are built from shortcodes and must be edited to match. |
+| **Questions** | Administrators set the committees, how many questions each has, and optionally which committee number holds the questions every committee answers together ("All Committees"). "Complete" requires an answer to every question here. Answer pages are built from shortcodes and must be edited to match. |
+
+### Questions for all committees
+
+Some cycles ask questions of every committee together. They are kept under a committee number of their own, 7 in the bundled set, so their answers use that number's fields (`c7_a1`, …) and answer pages use `[answer committee="7" question="1"]` as for any other. Everywhere a committee is named (the progress table, the Results page and its copied text, the dashboard and the allocation wording), that number is called **All Committees** instead, and on the Results page it has a section of its own. A cycle with no such questions chooses **No questions for all committees** on the Questions screen.
 
 ## Shortcodes
 

@@ -26,14 +26,33 @@ it('describes the current cycle by default', function () {
         ]);
 });
 
-it('treats the highest committee as All Committees unless told otherwise', function () {
+it('has no questions for all committees unless told which committee holds them', function () {
     $set = new QuestionSet([2 => 1, 1 => 1, 3 => 1]);
 
     expect($set->committees())->toBe([1, 2, 3])
-        ->and($set->isAllCommittees(3))->toBeTrue()
-        ->and($set->committeeLabel(3))->toBe('All Committees')
-        ->and($set->committeeLabel(2))->toBe('Committee 2')
-        ->and((new QuestionSet([1 => 1, 2 => 1], 1))->committeeLabel(1))->toBe('All Committees');
+        ->and($set->hasAllCommittees())->toBeFalse()
+        ->and($set->allCommittees())->toBeNull()
+        ->and($set->isAllCommittees(3))->toBeFalse()
+        ->and($set->committeeLabel(3))->toBe('Committee 3');
+});
+
+it('names the committee that holds them All Committees, whichever number it is', function () {
+    $set = new QuestionSet([1 => 1, 2 => 1, 3 => 1], 1);
+
+    expect($set->hasAllCommittees())->toBeTrue()
+        ->and($set->isAllCommittees(1))->toBeTrue()
+        ->and($set->isAllCommittees(3))->toBeFalse()
+        ->and($set->committeeLabel(1))->toBe('All Committees')
+        ->and($set->committeeLabel(3))->toBe('Committee 3');
+});
+
+it('keeps the bundled last question for all committees', function () {
+    $set = QuestionSet::defaults();
+
+    expect($set->questionCounts())->toBe(QuestionSet::DEFAULT)
+        ->and($set->allCommittees())->toBe(QuestionSet::DEFAULT_ALL_COMMITTEES)
+        ->and($set->committeeLabel(7))->toBe('All Committees')
+        ->and($set->committeeLabel(6))->toBe('Committee 6');
 });
 
 it('rejects a malformed set', function (array $counts, ?int $all) {
@@ -84,10 +103,17 @@ it('keeps the saved All Committees choice when a filter adjusts the counts', fun
         ->and($set->allCommittees())->toBe(2);
 });
 
+it('drops the All Committees choice when a filter removes that committee', function () {
+    \Confur\Storage\QuestionSetStore::save(new QuestionSet([1 => 1, 2 => 1, 3 => 1], 3));
+    Filters\expectApplied('confur_question_set')->once()->andReturn([1 => 1, 2 => 1]);
+
+    expect(QuestionSet::current()->hasAllCommittees())->toBeFalse();
+});
+
 it('ignores a filter that returns an invalid set', function () {
     Filters\expectApplied('confur_question_set')->once()->andReturn([1 => 0]);
 
-    expect(QuestionSet::current()->equals(new QuestionSet(QuestionSet::DEFAULT)))->toBeTrue();
+    expect(QuestionSet::current()->equals(QuestionSet::defaults()))->toBeTrue();
 });
 
 it('lets a site replace the set through a filter', function () {

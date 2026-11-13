@@ -90,7 +90,9 @@ class QuestionSetAdminPage
     /**
      * Build a QuestionSet from the form's rows. A row with no committee
      * number or a question count of 0 is dropped, which is how a committee is
-     * removed; the spare blank rows are how one is added.
+     * removed; the spare blank rows are how one is added. The set has no
+     * questions for all committees when "none" is chosen, or when the chosen
+     * row is one that was dropped.
      *
      * @param array<string, mixed> $post
      * @throws \InvalidArgumentException When the rows do not make a valid set.
@@ -159,6 +161,7 @@ class QuestionSetAdminPage
         Template::render('admin/questions', [
             'notices' => $this->notices(),
             'rows' => $rows,
+            'noAllCommittees' => !$saved->hasAllCommittees(),
             'overriddenByFilter' => !$questions->equals($saved),
             'customised' => QuestionSetStore::isCustomised(),
             'action' => self::ACTION,

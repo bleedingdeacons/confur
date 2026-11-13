@@ -4,6 +4,7 @@
  *
  * @var list<array{type: string, message: string}> $notices Outcome of the last save.
  * @var list<array{committee: string, questions: string, isAll: bool, fields: string}> $rows One per committee, then the spare rows.
+ * @var bool $noAllCommittees The saved set has no questions for all committees.
  * @var bool $overriddenByFilter A confur_question_set filter changes what is in force.
  * @var bool $customised A set has been saved (so Reset to Default is offered).
  * @var string $action The admin-post action.
@@ -81,12 +82,27 @@
                     </td>
                 </tr>
             <?php endforeach; ?>
+            <tr>
+                <td colspan="2"><em>No questions for all committees</em></td>
+                <td>
+                    <input type="radio" name="all_committees" value="none"
+                           aria-label="No questions for all committees"
+                        <?php checked($noAllCommittees); ?>>
+                </td>
+                <td></td>
+            </tr>
             </tbody>
         </table>
         <p class="description">
             Set a committee's questions to 0 to remove it. Answers already given to removed
             questions are kept and still shown on the Results page; they just stop counting
-            towards Complete. If no committee is chosen as All Committees, the highest-numbered one is.
+            towards Complete.
+        </p>
+        <p class="description">
+            The committee chosen under <strong>All Committees</strong> holds the questions every
+            committee answers together. It keeps its number for its answer fields, but is named
+            "All Committees" everywhere else, and has a section of its own on the Results page.
+            A cycle need not have any: choose <em>No questions for all committees</em>.
         </p>
 
         <p class="submit">

@@ -93,11 +93,15 @@ class ResultAdminPage
     {
         // Get answers data
         $answers = $this->answerRepository->getGroupAnswers();
+        // Every committee is named by the question set: "Committee N", or
+        // "All Committees" for the questions every committee answers together.
+        // Nothing on this page needs to know which number, if any, that is.
+        $questions = QuestionSet::current();
 
         // Generate individual sections
-        $allAnswerTable = $this->generateAnswerTable($answers);
-        $coverage = $this->generateCoverageTable($answers);
-        $linksTable = $this->generateLinksTable();
+        $allAnswerTable = $this->generateAnswerTable($questions, $answers);
+        $coverage = $this->generateCoverageTable($questions, $answers);
+        $linksTable = $this->generateLinksTable($questions);
 
         // Return report without registration section
         return sprintf(
@@ -111,10 +115,11 @@ class ResultAdminPage
     /**
      * Generate answer table
      *
+     * @param QuestionSet $questions Names the committees
      * @param array<string, mixed> $answers All answers
      * @return string Rendered HTML
      */
-    private function generateAnswerTable(array $answers): string
+    private function generateAnswerTable(QuestionSet $questions, array $answers): string
     {
         $html = '';
 
@@ -135,7 +140,12 @@ class ResultAdminPage
         ksort($groupedAnswers);
 
         foreach ($groupedAnswers as $committeeNumber => $questionsByCommittee) {
-            $html .= $this->renderCommitteeSection((string) $committeeNumber, $questionsByCommittee, $addedAnchors);
+            $html .= $this->renderCommitteeSection(
+                (string) $committeeNumber,
+                $questions->committeeLabel($committeeNumber),
+                $questionsByCommittee,
+                $addedAnchors
+            );
         }
 
         $html .= '</table>';
@@ -147,33 +157,30 @@ class ResultAdminPage
      * Render committee section
      *
      * @param string $committeeNumber Committee number
+     * @param string $label What the committee is called, e.g. "Committee 2"
      * @param array<int, mixed> $questionsByCommittee Question number => rows
      * @param array<string, mixed> $addedAnchors Added anchors tracker
      * @return string Rendered HTML
      */
-    private function renderCommitteeSection(string $committeeNumber, array $questionsByCommittee, array &$addedAnchors): string
+    private function renderCommitteeSection(string $committeeNumber, string $label, array $questionsByCommittee, array &$addedAnchors): string
     {
         $committeeId = "committee_{$committeeNumber}";
 
-        // "Committee N " keeps its trailing space before the button, as before.
-        $html = QuestionSet::current()->isAllCommittees((int) $committeeNumber)
-            ? "<tr><td colspan='2' class='committee-header'>All Committees"
-            : "<tr><td colspan='2' class='committee-header'>Committee {$committeeNumber} ";
-
-        $html .= "<button class='copy-btn' onclick=\"copyCommitteeToClipboard('{$committeeId}', {$committeeNumber})\">📋 Copy Committee</button>";
+        $html = "<tr><td colspan='2' class='committee-header'>" . esc_html($label) . ' ';
+        $html .= "<button class='copy-btn' onclick=\"copyCommitteeToClipboard('{$committeeId}', {$committeeNumber})\">📋 Copy " . esc_html($label) . '</button>';
 
         foreach ($questionsByCommittee as $questionNumber => $rows) {
             $html .= "<button class='copy-all-answers-btn' onclick=\"copyAllAnswersToClipboard('{$committeeNumber}', {$questionNumber})\">Copy All Answers {$questionNumber}</button>";
         }
 
         $html .= "</td></tr>";
-        $html .= "<tr><td colspan='2'><div id='{$committeeId}'>";
+        $html .= "<tr><td colspan='2'><div id='{$committeeId}' data-label='" . esc_attr($label) . "'>";
 
         foreach ($questionsByCommittee as $questionNumber => $rows) {
             foreach ($rows as $row) {
                 $status = $row['status'];
                 if (Constants::STATUS_DRAFT === $status || Constants::STATUS_COMPLETED === $status) {
-                    $html .= $this->renderAnswerGroup($committeeNumber, (string) $questionNumber, $row, $addedAnchors);
+                    $html .= $this->renderAnswerGroup($committeeNumber, $label, (string) $questionNumber, $row, $addedAnchors);
                 }
             }
         }
@@ -187,12 +194,13 @@ class ResultAdminPage
      * Render answer group
      *
      * @param string $committeeNumber Committee number
+     * @param string $label What the committee is called, e.g. "Committee 2"
      * @param string $questionNumber Question number
      * @param array<string, mixed> $row Answer data
      * @param array<string, mixed> $addedAnchors Added anchors tracker
      * @return string Rendered HTML
      */
-    private function renderAnswerGroup(string $committeeNumber, string $questionNumber, array $row, array &$addedAnchors): string
+    private function renderAnswerGroup(string $committeeNumber, string $label, string $questionNumber, array $row, array &$addedAnchors): string
     {
         $groupId = $row['groupId'];
         $fellowGroupId = $row['fellowGroupId'];
@@ -231,7 +239,7 @@ class ResultAdminPage
             esc_attr($status)
         );
         $html .= "<div class='question-header'>" . esc_html($groupHeader) . ' - ' . esc_html($status) . '</div>';
-        $html .= "<div><strong>Committee {$committeeNumber} - Question {$questionNumber}</strong></div>";
+        $html .= '<div><strong>' . esc_html($label) . " - Question {$questionNumber}</strong></div>";
         $html .= "<div><strong>Updated:</strong> {$time}</div>";
         $html .= "<div><strong>Email:</strong> {$email}</div>";
         $html .= '<div><strong>Answer:</strong><div class="answer">' . esc_html($answer) . '</div></div>';
@@ -242,10 +250,11 @@ class ResultAdminPage
     /**
      * Generate coverage table
      *
+     * @param QuestionSet $questions Names the committees
      * @param array<string, mixed> $data Answer data
      * @return string Rendered HTML
      */
-    private function generateCoverageTable(array $data): string
+    private function generateCoverageTable(QuestionSet $questions, array $data): string
     {
         $results = [];
 
@@ -256,8 +265,8 @@ class ResultAdminPage
                 continue;
             }
 
-            $committee = (string) $key->committee;
-            $answer = (string) $key->question;
+            $committee = $key->committee;
+            $answer = $key->question;
 
             $wordCounts = array_map(function ($response) {
                 return str_word_count($response['answer']);
@@ -297,8 +306,8 @@ class ResultAdminPage
             );
 
             $html .= sprintf(
-                "<tr><td>Committee %s</td><td>%s</td><td>%d</td><td>%s</td><td>%d</td><td>%d</td></tr>",
-                $result['committee'],
+                "<tr><td>%s</td><td>%s</td><td>%d</td><td>%s</td><td>%d</td><td>%d</td></tr>",
+                esc_html($questions->committeeLabel($result['committee'])),
                 $link,
                 $result['response_count'],
                 $result['average_word_count'],
@@ -315,18 +324,18 @@ class ResultAdminPage
     /**
      * Generate links table without navigation column
      *
+     * @param QuestionSet $questions The committees to link, and their names
      * @return string Rendered HTML
      */
-    private function generateLinksTable(): string
+    private function generateLinksTable(QuestionSet $questions): string
     {
-        $questions = QuestionSet::current();
         $cells = '';
 
         // One column per committee in the set, linking each question.
         foreach ($questions->committees() as $committee) {
             $cells .= sprintf(
                 '<td class="answerLinks">%s</td>',
-                $this->createAnswerLinks($committee, $questions->questionCount($committee))
+                $this->createAnswerLinks($questions->committeeLabel($committee), $committee, $questions->questionCount($committee))
             );
         }
 
@@ -336,13 +345,14 @@ class ResultAdminPage
     /**
      * Create answer links for a committee
      *
+     * @param string $label What the committee is called, e.g. "Committee 2"
      * @param int $committeeNumber Committee number
      * @param int $answerCount Number of answers
      * @return string Rendered HTML
      */
-    private function createAnswerLinks(int $committeeNumber, int $answerCount): string
+    private function createAnswerLinks(string $label, int $committeeNumber, int $answerCount): string
     {
-        $html = '<strong>' . esc_html(QuestionSet::current()->committeeLabel($committeeNumber)) . '</strong><ul>';
+        $html = '<strong>' . esc_html($label) . '</strong><ul>';
 
         for ($count = 1; $count <= $answerCount; $count++) {
             $link = $this->createAnswerLink($committeeNumber, $count, 'Answer ' . $count);
