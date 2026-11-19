@@ -1,12 +1,12 @@
 name: CI
 
-# GitHub runs this on merges to main, as the release run, and on Dependabot's
-# pull requests, which nobody checks locally. Every other pull request runs no
-# checks here: its gates run locally first, in the wp-plugin-ci container
+# GitHub runs the gates (`ci`) on Dependabot's pull requests only, which nobody
+# checks locally, and the release on merges to main. Every other pull request's
+# gates run locally, in the wp-plugin-ci container
 # (C:\Data\dev\wp-dev-tools\ci\ci-local.ps1), which reads this file's `ci` job
-# and runs the same steps. They still run here before every release, which
-# needs them, so a merge that was never checked locally still cannot publish a
-# broken zip; it just finds out at merge time instead.
+# and runs the same steps. The release does not re-run them: a merge is only as
+# checked as its local run, so run ci-local before merging. That keeps a merge
+# to the official zip at about a minute.
 
 on:
   push:
@@ -38,9 +38,9 @@ concurrency:
 jobs:
   ci:
     name: PHP ${{ matrix.php }}
-    # On a pull request, only Dependabot's: everyone else's gates run locally
-    # (ci-local.ps1) before the merge, and again here on main.
-    if: github.event_name != 'pull_request' || github.event.pull_request.user.login == 'dependabot[bot]'
+    # Dependabot's pull requests only. Everyone else's gates run locally
+    # (ci-local.ps1) before the merge, and main runs only the release.
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
     runs-on: ubuntu-latest
 
     # Only 8.4, the declared floor, is gated for now. The 8.5 leg is off
@@ -250,8 +250,8 @@ jobs:
   # ---------------------------------------------------------------------------
   # Semgrep
   # ---------------------------------------------------------------------------
-  # A gate on the release, in a job of its own so it runs alongside the PHP
-  # job rather than in front of it.
+  # In a job of its own so it runs alongside the PHP job rather than in front
+  # of it. Like the gates, it runs on Dependabot's pull requests only.
   #
   # It runs in Semgrep's own image, pinned by version and digest. It used to be
   # a step in the PHP job that pip-installed semgrep on every run, and that
@@ -264,8 +264,8 @@ jobs:
   # workflow no longer gates pull requests, bar Dependabot's, which get no
   # secrets and so skip the scan — so the exit code would never fail anything. The scheduled full scan (semgrep.yml) found the same and
   # gates the same way; ci-local's -Semgrep applies this gate before a merge,
-  # without uploading. Release needs this job, so a critical or high finding
-  # means no version is raised and no zip is published.
+  # without uploading. Main no longer runs it before a release; semgrep.yml
+  # scans main weekly.
   #
   # Deliberately no continue-on-error. Making the main scan advisory was tried
   # first, reasoning that a merge is the release here and a pre-existing
@@ -284,9 +284,9 @@ jobs:
   # scanning with a quietly smaller ruleset and reporting green.
   semgrep:
     name: Semgrep
-    # On a pull request, only Dependabot's: everyone else's gates run locally
-    # (ci-local.ps1) before the merge, and again here on main.
-    if: github.event_name != 'pull_request' || github.event.pull_request.user.login == 'dependabot[bot]'
+    # Dependabot's pull requests only. Everyone else's gates run locally
+    # (ci-local.ps1) before the merge, and main runs only the release.
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
     runs-on: ubuntu-latest
     container:
       image: semgrep/semgrep:1.174.0@sha256:f1f7b71861c7b28b6e0f661225a2c4f58a484f5d0f182465c6d6b3b22f972ade
@@ -359,18 +359,17 @@ jobs:
   # step between "tests pass" and "there is something installable", and the zip
   # only ever existed in C:\Data\Plugins on one machine.
   #
-  # Now the gates pass, CI raises the version, builds the archive from merged
+  # Now CI raises the version, builds the archive from merged
   # code and publishes it as a GitHub Release. /deploy pulls the asset from
   # there. Nothing is bumped or built by hand — and this plugin must therefore
   # be in bump.ps1's $ciReleased list, or a second version gets raised on top.
   release:
     name: Release
-    # Every gate must pass first: needs makes the whole release conditional on
-    # a green run, so a failing test or a blocking finding can never publish a
-    # zip.
-    needs: [ci, semgrep]
-    # main only. A pull request (Dependabot's) and a workflow_dispatch pointed
-    # at another branch run the gates and stop.
+    # No `needs:` on the gates. On main they are skipped (they run on
+    # Dependabot's pull requests only), and a release waiting on a skipped job
+    # is skipped too. The gates ran locally, with ci-local.ps1, before the merge.
+    # main only. A pull request (Dependabot's) runs the gates and stops; a
+    # workflow_dispatch on another branch runs nothing.
     # workflow_dispatch on main releases — a manual trigger that ran the gates
     # and then declined to publish would be useless for the case it exists for.
     if: >-
