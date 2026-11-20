@@ -21,7 +21,6 @@ beforeEach(function () {
     $this->mailer = new Mailer(new Settings(
         registrationReplyEmail: 'reply@example.org',
         supportEmail: 'support@example.org',
-        backupEmail: 'backup@example.org',
     ));
 
     $this->lastMail = fn (): array => end(WpState::$mail) ?: [];
@@ -41,35 +40,6 @@ it('logs a failed send by subject, without the recipient', function () {
 
     expect($this->mailer->sendCompletion('a@b.com', 'Group'))->toBeFalse()
         ->and(WpState::$logs)->toBe([['confur', 'error', 'Email was not sent', ['subject' => 'Done']]]);
-});
-
-describe('the backup copy', function () {
-    it('goes to the backup address, titled with the answer page', function () {
-        expect($this->mailer->sendBackup('https://x.test/answer/abc', ['c1_a1' => 'Hi']))->toBeTrue();
-
-        $sent = ($this->lastMail)();
-        expect($sent['to'])->toBe('backup@example.org')
-            ->and($sent['subject'])->toBe('https://x.test/answer/abc')
-            ->and($sent['headers'])->toContain('From: support@example.org')
-            ->and($sent['message'])->toContain('c1_a1', 'Hi');
-    });
-
-    it('escapes the submission rather than sending it as markup', function () {
-        $escape = static fn (mixed $t): string => htmlspecialchars((string) $t, ENT_QUOTES, 'UTF-8');
-        \Brain\Monkey\Functions\when('esc_html')->alias($escape);
-
-        $this->mailer->sendBackup('https://x.test/a', ['c1_a1' => '<img src=x onerror=alert(1)>']);
-
-        expect(($this->lastMail)()['message'])->toStartWith('<pre>')
-            ->not->toContain('<img')
-            ->toContain('&lt;img');
-    });
-
-    it('reports a failed send', function () {
-        WpState::$mailResult = false;
-
-        expect($this->mailer->sendBackup('https://x.test/a', []))->toBeFalse();
-    });
 });
 
 describe('the registration confirmation', function () {
@@ -150,10 +120,9 @@ it('builds itself from the saved settings', function () {
     WpState::$options['confur_email_settings'] = [
         'registration_reply' => 'saved-reply@example.org',
         'support' => 'saved-support@example.org',
-        'backup' => 'saved-backup@example.org',
     ];
 
-    Mailer::fromOptions()->sendBackup('https://x.test/a', []);
+    Mailer::fromOptions()->sendRegistrationError('a@b.com', 'Error', 'Message');
 
-    expect(($this->lastMail)()['to'])->toBe('saved-backup@example.org');
+    expect(($this->lastMail)()['headers'])->toContain('From: saved-support@example.org');
 });

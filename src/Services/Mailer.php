@@ -54,35 +54,6 @@ class Mailer
     }
 
     /**
-     * Copy a submission to the backup address before it is saved, so answers
-     * survive anything that goes wrong in the save.
-     *
-     * @param string $pageUrl The answer page the submission came from.
-     * @param array<mixed> $submitted The submitted form, as received.
-     */
-    public function sendBackup(string $pageUrl, array $submitted): bool
-    {
-        $headers = [
-            'Content-Type: text/html; charset=UTF-8',
-            'From: ' . $this->settings->supportEmail,
-        ];
-
-        // The submission is member-written text going into an HTML body, so
-        // it is escaped. It used to go in raw, which let an answer containing
-        // markup render (or run) in the backup mailbox's mail client.
-        $json = json_encode($submitted, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '';
-        $body = '<pre>' . esc_html($json) . '</pre>';
-
-        $isSent = wp_mail($this->settings->backupEmail, $pageUrl, $body, $headers);
-
-        if (!$isSent) {
-            self::logError('Backup email was not sent');
-        }
-
-        return $isSent;
-    }
-
-    /**
      * Send the registration confirmation with the group's answer page link.
      *
      * @param string $allocatedCommittee The committee the group was allocated, if any.

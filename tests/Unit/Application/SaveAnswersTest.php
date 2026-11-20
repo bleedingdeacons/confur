@@ -4,6 +4,7 @@ namespace Tests\Unit\Application;
 
 use BleedingDeacons\WpMocks\WpState;
 use Brain\Monkey\Functions;
+use Confur\Journal\HasJournal;
 use Confur\Application\SaveAnswers;
 use Confur\Application\SubmissionRejected;
 use Confur\Config\Constants;
@@ -12,10 +13,18 @@ use Confur\Domain\QuestionSet;
 use Confur\Storage\AnswerStore;
 use Tests\RecordingMailer;
 
-covers(SaveAnswers::class, SubmissionRejected::class);
+covers(SaveAnswers::class, SubmissionRejected::class, HasJournal::class);
 
 beforeEach(function () {
     $this->mailer = new RecordingMailer();
+
+    // Sentinel's wp_journal(), recording each entry with what c1_a1 held on
+    // the post at the moment it was journalled.
+    $this->journalled = [];
+    Functions\when('wp_journal')->alias(function (string $channel, array $entry): string {
+        $this->journalled[] = [$channel, $entry, get_field('c1_a1', $entry['post_id'])];
+        return 'entry-uuid';
+    });
     $this->service = new SaveAnswers(new AnswerStore(), $this->mailer);
 
     // An answer post the group can write to.
@@ -52,7 +61,8 @@ describe('what it refuses', function () {
         } catch (SubmissionRejected $e) {
             expect($e->status)->toBe(404)
                 ->and(get_field('c1_a1', 6))->toBeNull()
-                ->and($this->mailer->sent)->toBe([]); // not even the backup
+                ->and($this->mailer->sent)->toBe([])
+                ->and($this->journalled)->toBe([]); // not even the safety copy
         }
     });
 
@@ -70,23 +80,47 @@ describe('what it refuses', function () {
 });
 
 describe('saving', function () {
-    it('backs up the submission before writing anything', function () {
+    it('journals the submission on the confur channel before writing anything', function () {
         ($this->answerPost)(10);
+        Functions\when('get_permalink')->justReturn('https://x.test/answer/abc');
 
         $this->service->save(10, ['c1_a1' => 'Yes', 'submit_answers' => 'Draft'], 'Draft');
 
-        expect($this->mailer->calls('sendBackup'))->toHaveCount(1)
-            ->and($this->mailer->calls('sendBackup')[0][1])->toBe(['c1_a1' => 'Yes', 'submit_answers' => 'Draft']);
+        expect($this->journalled)->toBe([[
+            'confur',
+            [
+                'event' => 'answers_submitted',
+                'post_id' => 10,
+                'page' => 'https://x.test/answer/abc',
+                'submitted' => ['c1_a1' => 'Yes', 'submit_answers' => 'Draft'],
+            ],
+            null, // nothing written yet
+        ]])
+            ->and(get_field('c1_a1', 10))->toBe('Yes')
+            ->and($this->mailer->sent)->toBe([]); // no backup email any more
     });
 
-    it('saves even when the backup email fails', function () {
+    it('saves, and warns without the answers, when the journal records nothing', function () {
         ($this->answerPost)(11);
-        $this->mailer->throwOn = 'sendBackup';
+        Functions\when('wp_journal')->justReturn(null);
 
         $result = $this->service->save(11, ['c1_a1' => 'Kept'], 'Draft');
 
         expect($result->state)->toBe(AnswerState::Draft)
-            ->and(get_field('c1_a1', 11))->toBe('Kept');
+            ->and(get_field('c1_a1', 11))->toBe('Kept')
+            ->and(WpState::$logs)->toContain(['confur', 'warning', 'Submission was not journalled', ['post_id' => 11]]);
+    });
+
+    it('saves even when journalling throws', function () {
+        ($this->answerPost)(13);
+        Functions\when('wp_journal')->alias(static fn () => throw new \RuntimeException('database gone'));
+
+        $result = $this->service->save(13, ['c1_a1' => 'Kept'], 'Draft');
+
+        expect($result->state)->toBe(AnswerState::Draft)
+            ->and(get_field('c1_a1', 13))->toBe('Kept')
+            ->and(WpState::$logs[0][1])->toBe('error')
+            ->and(WpState::$logs[0][2])->toBe('Submission could not be journalled');
     });
 
     it('writes answer fields only, ignoring everything else submitted', function () {

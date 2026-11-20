@@ -7,6 +7,7 @@ use Confur\Domain\AnswerKey;
 use Confur\Domain\AnswerState;
 use Confur\Domain\QuestionSet;
 use Confur\Domain\SaveTime;
+use Confur\Journal\HasJournal;
 use Confur\Logger\HasLogger;
 use Confur\Services\Mailer;
 use Confur\Storage\AnswerStore;
@@ -16,7 +17,7 @@ use Confur\Storage\AnswerStore;
  *
  * The rules, in order:
  * - the target must be an existing `answer` post that is not cancelled;
- * - the submission is copied to the backup address before anything is written;
+ * - the submission is recorded in Sentinel's journal before anything is written;
  * - each changed answer is written;
  * - the group may ask for Draft or Complete, but Complete needs an answer to
  *   every question in the set — otherwise it is saved as a Draft and the
@@ -25,6 +26,7 @@ use Confur\Storage\AnswerStore;
  */
 class SaveAnswers
 {
+    use HasJournal;
     use HasLogger;
 
     public function __construct(
@@ -42,13 +44,7 @@ class SaveAnswers
     {
         $this->assertWritable($postId);
 
-        // A safety net: sent before anything is written, and a failure to
-        // send never stops the save.
-        try {
-            $this->mailer->sendBackup(get_permalink($postId) ?: '', $submitted);
-        } catch (\Throwable $e) {
-            self::logError('Backup email failed', ['post_id' => $postId] + self::exceptionContext($e));
-        }
+        $this->journalSubmission($postId, $submitted);
 
         $this->writeAnswers($postId, $submitted);
 
@@ -75,6 +71,34 @@ class SaveAnswers
         // Shown to the group as the status endpoint shows it (the field's
         // return format), so the page reads the same before and after a save.
         return new SaveResult($state, SaveTime::display($updated), $message ?? 'Answers Saved as ' . $state->value);
+    }
+
+    /**
+     * A safety net: the submission, as received, is recorded in Sentinel's
+     * journal before anything is written, so the answers survive anything
+     * that goes wrong in the save. Failing to record it never stops the save.
+     *
+     * @param array<mixed> $submitted
+     */
+    private function journalSubmission(int $postId, array $submitted): void
+    {
+        try {
+            $id = self::journal([
+                'event' => 'answers_submitted',
+                'post_id' => $postId,
+                'page' => get_permalink($postId) ?: '',
+                'submitted' => $submitted,
+            ]);
+        } catch (\Throwable $e) {
+            self::logError('Submission could not be journalled', ['post_id' => $postId] + self::exceptionContext($e));
+            return;
+        }
+
+        // Null without Sentinel, or when Sentinel refused the entry (it logs
+        // why on the same channel).
+        if ($id === null) {
+            self::logWarning('Submission was not journalled', ['post_id' => $postId]);
+        }
     }
 
     /** @throws SubmissionRejected */

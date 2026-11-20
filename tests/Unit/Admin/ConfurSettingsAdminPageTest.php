@@ -46,7 +46,6 @@ function validSettingsForm(): array
         'confur_settings_nonce'    => SETTINGS_NONCE,
         'registration_reply_email' => 'conference@example.org',
         'support_email'            => 'support@example.org',
-        'backup_email'             => 'backup@example.org',
     ];
 }
 
@@ -143,7 +142,6 @@ describe('saving settings', function () {
         $saved = WpState::$options[SETTINGS_OPTION];
         expect($saved['registration_reply'])->toBe('conference@example.org')
             ->and($saved['support'])->toBe('support@example.org')
-            ->and($saved['backup'])->toBe('backup@example.org')
             ->and($saved['delete_blocked_posts'])->toBeTrue()
             ->and($saved['enable_duplicate_detection'])->toBeTrue();
     });
@@ -269,7 +267,6 @@ describe('the screen', function () {
             [
             'registration_reply_email',
             'support_email',
-            'backup_email',
             'email_blocklist',
             'delete_blocked_posts',
             'enable_duplicate_detection',
@@ -286,7 +283,6 @@ describe('the screen', function () {
         WpState::$options[SETTINGS_OPTION] = [
             'registration_reply' => 'current@example.org',
             'support'            => 'support@example.org',
-            'backup'             => 'backup@example.org',
         ];
 
         $html = captureOutput(fn () => $this->page->renderAdminPage());

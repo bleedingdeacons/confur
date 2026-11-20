@@ -40,7 +40,6 @@ beforeEach(function () {
         'confur_email_settings' => [
             'registration_reply' => 'reply@x.com',
             'support' => 'support@x.com',
-            'backup' => 'backup@x.com',
             'delete_blocked_posts' => false,
             'enable_duplicate_detection' => false,
         ],

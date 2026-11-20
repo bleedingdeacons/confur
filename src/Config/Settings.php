@@ -18,7 +18,6 @@ final readonly class Settings
     public function __construct(
         public string $registrationReplyEmail,
         public string $supportEmail,
-        public string $backupEmail,
         public bool $deleteBlockedPosts = false,
         public bool $duplicateDetection = false,
         public array $blocklist = [],
@@ -31,7 +30,6 @@ final readonly class Settings
         return new self(
             registrationReplyEmail: ConfurSettings::getRegistrationReplyEmail(),
             supportEmail: ConfurSettings::getSupportEmail(),
-            backupEmail: ConfurSettings::getBackupEmail(),
             deleteBlockedPosts: ConfurSettings::shouldDeleteBlockedPosts(),
             duplicateDetection: ConfurSettings::isDuplicateDetectionEnabled(),
             blocklist: array_values(array_map('strval', ConfurSettings::getBlocklist())),

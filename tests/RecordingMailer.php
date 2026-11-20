@@ -23,7 +23,7 @@ final class RecordingMailer extends Mailer
 
     public function __construct()
     {
-        parent::__construct(new Settings('reply@example.org', 'support@example.org', 'backup@example.org'));
+        parent::__construct(new Settings('reply@example.org', 'support@example.org'));
     }
 
     /** @return list<list<mixed>> The arguments of each call to $method. */
@@ -36,11 +36,6 @@ final class RecordingMailer extends Mailer
     }
 
     public function send(string $recipient, string $from, string $subject, string $body): bool
-    {
-        return $this->record(__FUNCTION__, func_get_args());
-    }
-
-    public function sendBackup(string $pageUrl, array $submitted): bool
     {
         return $this->record(__FUNCTION__, func_get_args());
     }
