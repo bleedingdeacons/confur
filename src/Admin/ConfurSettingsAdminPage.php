@@ -119,14 +119,12 @@ class ConfurSettingsAdminPage
             // Regular update - sanitize POST data first
             $registration_reply = isset($_POST['registration_reply_email']) ? sanitize_text_field($_POST['registration_reply_email']) : '';
             $support = isset($_POST['support_email']) ? sanitize_text_field($_POST['support_email']) : '';
-            $backup = isset($_POST['backup_email']) ? sanitize_text_field($_POST['backup_email']) : '';
             $delete_blocked_posts = isset($_POST['delete_blocked_posts']) ? true : false;
             $enable_duplicate_detection = isset($_POST['enable_duplicate_detection']) ? true : false;
 
             $settings = [
                     'registration_reply' => $registration_reply,
                     'support' => $support,
-                    'backup' => $backup,
                     'delete_blocked_posts' => $delete_blocked_posts,
                     'enable_duplicate_detection' => $enable_duplicate_detection,
             ];

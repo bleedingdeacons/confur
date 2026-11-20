@@ -22,7 +22,6 @@ class ConfurSettings
     private const DEFAULTS = [
         'registration_reply' => 'conference@aa-bristol.org',
         'support' => 'support@aa-bristol.org',
-        'backup' => 'backup@aa-bristol.org',
         'delete_blocked_posts' => false,
         'enable_duplicate_detection' => false,
     ];
@@ -89,17 +88,6 @@ class ConfurSettings
     }
 
     /**
-     * Get backup email
-     *
-     * @return string Email address
-     */
-    public static function getBackupEmail(): string
-    {
-        $settings = self::getAll();
-        return $settings['backup'];
-    }
-
-    /**
      * Check if blocked posts should be deleted
      *
      * @return bool True if blocked posts should be deleted, false otherwise
@@ -133,7 +121,6 @@ class ConfurSettings
         $sanitized = [
             'registration_reply' => sanitize_email(trim($settings['registration_reply'] ?? '')),
             'support' => sanitize_email(trim($settings['support'] ?? '')),
-            'backup' => sanitize_email(trim($settings['backup'] ?? '')),
             'delete_blocked_posts' => !empty($settings['delete_blocked_posts']),
             'enable_duplicate_detection' => !empty($settings['enable_duplicate_detection']),
         ];
@@ -143,7 +130,7 @@ class ConfurSettings
         // Which field failed is logged; the address itself is not. The log
         // is not the audit trail — Scrutiny is — so addresses are named by
         // setting key only.
-        $emailFields = ['registration_reply', 'support', 'backup'];
+        $emailFields = ['registration_reply', 'support'];
         foreach ($emailFields as $key) {
             $email = $sanitized[$key];
 

@@ -81,24 +81,6 @@
                         </p>
                     </td>
                 </tr>
-                <tr>
-                    <th scope="row">
-                        <label for="backup_email">Backup Email</label>
-                    </th>
-                    <td>
-                        <input
-                                type="email"
-                                id="backup_email"
-                                name="backup_email"
-                                value="<?php echo esc_attr($settings['backup']); ?>"
-                                class="regular-text"
-                                required
-                        />
-                        <p class="description">
-                            Backup email address for system notifications.
-                        </p>
-                    </td>
-                </tr>
                 </tbody>
             </table>
 
@@ -107,7 +89,6 @@
                 <ul>
                     <li><strong>Registration Reply:</strong> <?php echo esc_html($defaults['registration_reply']); ?></li>
                     <li><strong>Support:</strong> <?php echo esc_html($defaults['support']); ?></li>
-                    <li><strong>Backup:</strong> <?php echo esc_html($defaults['backup']); ?></li>
                 </ul>
             </div>
 

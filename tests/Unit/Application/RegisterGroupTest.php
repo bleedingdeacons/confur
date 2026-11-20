@@ -22,7 +22,6 @@ beforeEach(function () {
         return new RegisterGroup($store, new DuplicateFinder($store), $this->mailer, new Settings(
             registrationReplyEmail: 'reply@example.org',
             supportEmail: 'support@example.org',
-            backupEmail: 'backup@example.org',
             deleteBlockedPosts: $settings['deleteBlockedPosts'] ?? false,
             duplicateDetection: $settings['duplicateDetection'] ?? false,
             blocklist: $settings['blocklist'] ?? [],
