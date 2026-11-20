@@ -22,7 +22,10 @@ const confurAnswerTabs = (pageName) => {
     const channel = 'BroadcastChannel' in window ? new BroadcastChannel(`confur-answers:${pageName}`) : null;
     let showing = false;
 
-    // Flash the title until this tab is looked at, then put it back.
+    // Flash the tab's own title, blinking it off and on, until this tab is
+    // looked at. "Off" is U+2800, a blank character: browsers show the
+    // address for an empty or whitespace-only title, which would not read as
+    // the same tab blinking.
     let flashing = null;
     const callAttention = () => {
         window.focus();
@@ -35,7 +38,7 @@ const confurAnswerTabs = (pageName) => {
         let on = false;
         flashing = setInterval(() => {
             on = !on;
-            document.title = on ? 'Your answers are here' : title;
+            document.title = on ? '⠀' : title;
         }, 1000);
 
         const stop = () => {
