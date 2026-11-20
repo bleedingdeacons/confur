@@ -105,7 +105,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // will not (opened some other way) says where the answers are.
         const tabs = confurAnswerTabs(pageName);
 
-        if (await tabs.isOpenElsewhere()) {
+        // Nothing may be typed while the other tabs are asked: the form is
+        // rebuilt from its markup just below, which would drop it. Fields
+        // already read-only stay so. readOnly reflects to the markup, so it
+        // is put back before the rebuild.
+        const answerFields = Array.from(main.querySelectorAll('textarea[id^="c"]')).filter(field => !field.readOnly);
+        answerFields.forEach(field => { field.readOnly = true; });
+        const openElsewhere = await tabs.isOpenElsewhere();
+        answerFields.forEach(field => { field.readOnly = false; });
+
+        if (openElsewhere) {
             window.close();
 
             const notice = document.createElement('div');
