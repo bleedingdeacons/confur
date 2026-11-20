@@ -2,12 +2,16 @@
 
 namespace Confur\Config;
 
+use Confur\Logger\HasLogger;
+
 /**
  * Confur Settings Manager
  * Handles storage and retrieval of plugin settings using WordPress options
  */
 class ConfurSettings
 {
+    use HasLogger;
+
     // Option name for storing email settings
     private const OPTION_NAME = 'confur_email_settings';
 
@@ -136,20 +140,20 @@ class ConfurSettings
 
         // Validate only email fields.
         //
-        // Which field failed is logged; the address itself is not. The PHP
-        // error log is not access-controlled and is not the audit trail —
-        // Scrutiny is — so addresses are named by setting key only.
+        // Which field failed is logged; the address itself is not. The log
+        // is not the audit trail — Scrutiny is — so addresses are named by
+        // setting key only.
         $emailFields = ['registration_reply', 'support', 'backup'];
         foreach ($emailFields as $key) {
             $email = $sanitized[$key];
 
             if (empty($email)) {
-                error_log("Confur EmailSettings: '{$key}' is empty; settings not saved.");
+                self::logNotice('Email settings not saved: a setting is empty', ['setting' => $key]);
                 return false;
             }
 
             if (!is_email($email)) {
-                error_log("Confur EmailSettings: '{$key}' is not a valid address; settings not saved.");
+                self::logNotice('Email settings not saved: a setting is not a valid address', ['setting' => $key]);
                 return false;
             }
         }
@@ -165,12 +169,12 @@ class ConfurSettings
         if (!$result) {
             // Compare current with new values
             if ($current === $sanitized) {
-                error_log('EmailSettings - Values unchanged, but that is OK');
+                self::logDebug('Email settings unchanged');
                 return true; // Values are already correct, return success
             }
         }
 
-        error_log('EmailSettings - update_option result: ' . ($result ? 'true' : 'false'));
+        self::logDebug('Email settings saved', ['updated' => $result]);
 
         return $result;
     }

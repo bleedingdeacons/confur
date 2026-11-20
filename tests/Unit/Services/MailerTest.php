@@ -32,7 +32,15 @@ it('sends HTML from the given address, blind-copied to support', function () {
 
     $sent = ($this->lastMail)();
     expect($sent['to'])->toBe('a@b.com')
-        ->and($sent['headers'])->toContain('Content-Type: text/html; charset=UTF-8', 'Bcc: support@example.org', 'From: from@b.com');
+        ->and($sent['headers'])->toContain('Content-Type: text/html; charset=UTF-8', 'Bcc: support@example.org', 'From: from@b.com')
+        ->and(WpState::$logs)->toBe([]);
+});
+
+it('logs a failed send by subject, without the recipient', function () {
+    WpState::$mailResult = false;
+
+    expect($this->mailer->sendCompletion('a@b.com', 'Group'))->toBeFalse()
+        ->and(WpState::$logs)->toBe([['confur', 'error', 'Email was not sent', ['subject' => 'Done']]]);
 });
 
 describe('the backup copy', function () {

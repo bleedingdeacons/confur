@@ -6,6 +6,7 @@ use Confur\Application\DuplicateFinder;
 use Confur\Application\RegisterGroup;
 use Confur\Config\Constants;
 use Confur\Config\Settings;
+use Confur\Logger\HasLogger;
 use Confur\Services\Mailer;
 use Confur\Storage\AnswerStore;
 
@@ -19,6 +20,8 @@ use Confur\Storage\AnswerStore;
  */
 class AnswerHandler
 {
+    use HasLogger;
+
     /**
      * RegisterGroup is built on first use, from the settings in force at
      * that point, unless it is passed in.
@@ -28,7 +31,7 @@ class AnswerHandler
     }
 
     /**
-     * df_after_insert_post, fired by the form plugin after it creates a post.
+     * daf_after_insert_post, fired by the form plugin after it creates a post.
      */
     public function handleRegistration(string $formId, int $postId): void
     {
@@ -39,8 +42,7 @@ class AnswerHandler
         try {
             $this->registerGroup()->register($postId);
         } catch (\Exception $e) {
-            error_log('AnswerHandler::handleRegistration - Unexpected error: ' . $e->getMessage());
-            error_log('AnswerHandler::handleRegistration - Stack trace: ' . $e->getTraceAsString());
+            self::logError('Registration failed', ['post_id' => $postId] + self::exceptionContext($e, true));
 
             $email = (string) get_field(Constants::REGISTRATION_RECIPIENT_EMAIL, $postId);
 
@@ -52,7 +54,7 @@ class AnswerHandler
                         'There was an unexpected error during your registration. Please try again or contact support.'
                     );
                 } catch (\Exception $mailError) {
-                    error_log('AnswerHandler::handleRegistration - Failed to send error email: ' . $mailError->getMessage());
+                    self::logError('Registration failure email could not be sent', ['post_id' => $postId] + self::exceptionContext($mailError));
                 }
             }
         }

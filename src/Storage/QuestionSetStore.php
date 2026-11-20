@@ -3,6 +3,7 @@
 namespace Confur\Storage;
 
 use Confur\Domain\QuestionSet;
+use Confur\Logger\HasLogger;
 
 /**
  * Stores the question set edited on the Questions admin screen.
@@ -14,6 +15,8 @@ use Confur\Domain\QuestionSet;
  */
 final class QuestionSetStore
 {
+    use HasLogger;
+
     public const OPTION_NAME = 'confur_question_set';
 
     public static function load(): QuestionSet
@@ -27,7 +30,7 @@ final class QuestionSetStore
         try {
             return self::fromStored($stored);
         } catch (\InvalidArgumentException $e) {
-            error_log('QuestionSetStore::load - Saved question set is invalid, using the default: ' . $e->getMessage());
+            self::logWarning('Saved question set is invalid; using the default', self::exceptionContext($e));
             return QuestionSet::defaults();
         }
     }

@@ -5,6 +5,7 @@ namespace Confur\API;
 use Confur\Application\SaveAnswers;
 use Confur\Application\SubmissionRejected;
 use Confur\Config\Constants;
+use Confur\Logger\HasLogger;
 use Confur\Repositories\AnswerRepository;
 use Confur\Services\Mailer;
 use Confur\Storage\AnswerStore;
@@ -25,6 +26,8 @@ use WP_REST_Response;
  */
 class AnswerAPI
 {
+    use HasLogger;
+
     public const SAVE_NAMESPACE = 'confur/v1';
     public const SAVE_ROUTE = '/answers/(?P<slug>[a-zA-Z0-9_-]+)';
 
@@ -90,13 +93,13 @@ class AnswerAPI
             try {
                 $status = $this->answerRepository->getAnswerStatus($postId);
             } catch (\Exception $e) {
-                error_log("AnswerAPI::getAnswerPostStatus - Failed to read status for post $postId: " . $e->getMessage());
+                self::logError('Answer status could not be read', ['post_id' => $postId] + self::exceptionContext($e));
                 return new WP_Error('repository_error', 'Failed to retrieve answer status.', ['status' => 500]);
             }
 
             return new WP_REST_Response($status, 200);
         } catch (\Exception $e) {
-            error_log('AnswerAPI::getAnswerPostStatus - Unexpected error: ' . $e->getMessage());
+            self::logError('Answer status request failed', self::exceptionContext($e, true));
             return new WP_Error('internal_error', 'An unexpected error occurred while processing your request.', ['status' => 500]);
         }
     }
@@ -132,8 +135,7 @@ class AnswerAPI
         } catch (SubmissionRejected $e) {
             return new WP_Error('submission_rejected', $e->getMessage(), ['status' => $e->status]);
         } catch (\Exception $e) {
-            error_log('AnswerAPI::saveAnswers - Unexpected error: ' . $e->getMessage());
-            error_log('AnswerAPI::saveAnswers - Stack trace: ' . $e->getTraceAsString());
+            self::logError('Saving answers failed', self::exceptionContext($e, true));
             return new WP_Error('internal_error', 'An error occurred while saving your answers. Please try again.', ['status' => 500]);
         }
     }

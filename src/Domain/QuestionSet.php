@@ -3,6 +3,7 @@
 namespace Confur\Domain;
 
 use Confur\Storage\QuestionSetStore;
+use Confur\Logger\HasLogger;
 
 /**
  * The questions a conference cycle asks: which committees there are and how
@@ -28,6 +29,8 @@ use Confur\Storage\QuestionSetStore;
  */
 final class QuestionSet
 {
+    use HasLogger;
+
     /**
      * The current cycle: committee number => number of questions.
      *
@@ -113,7 +116,7 @@ final class QuestionSet
 
             return new self($counts, $all !== null && isset($counts[$all]) ? $all : null);
         } catch (\InvalidArgumentException $e) {
-            error_log('QuestionSet::current - confur_question_set filter returned an invalid set: ' . $e->getMessage());
+            self::logWarning('confur_question_set filter returned an invalid set; using the saved one', self::exceptionContext($e));
             return $saved;
         }
     }

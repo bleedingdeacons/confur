@@ -28,6 +28,7 @@ The question set — committees and how many questions each has — is edited on
 - [Unity](https://github.com/bleedingdeacons/unity) and [TSML for Unity](https://github.com/bleedingdeacons/tsml-for-unity) — the groups that register (Confur reads them through Unity's `GroupRepository`)
 - [12 Step Meeting List](https://wordpress.org/plugins/12-step-meeting-list/) — the groups and meetings themselves, which TSML for Unity reads
 - [Advanced Custom Fields](https://wordpress.org/plugins/advanced-custom-fields/) — answer field group
+- [Sentinel](https://github.com/bleedingdeacons/sentinel) (optional) — Confur logs to its `confur` channel; see [Logging](#logging)
 
 Confur is a MIT-licensed plugin published by The Bleeding Deacons.
 
@@ -99,6 +100,12 @@ POST /wp-json/confur/v1/answers/{slug}    Save: {"state": "Draft"|"Complete", "a
 ```
 
 A save returns `{"message", "updated", "state"}`. "Complete" is only granted when every question has an answer; otherwise the answers are saved as a Draft and `message` says how many remain. A cancelled registration answers 403, an unknown slug 404.
+
+## Logging
+
+Confur logs through Sentinel's shared logger, on one channel, `confur`, so its lines can be filtered on Sentinel's log screen and Monitor's error alerts can be scoped to it. Failures that need someone to act (an answer that could not be saved, an email that failed to send, the plugin failing to boot) are `error` or `critical`, which Monitor alerts on by default. Routine events (a duplicate registration, a blocked address, Complete asked for with questions unanswered) are `info` or `notice`.
+
+Without Sentinel the same lines go to the PHP error log, prefixed `[confur]`. Neither carries members' answers or email addresses: posts are named by ID and settings by key.
 
 ## Upgrading saved times (one-off)
 

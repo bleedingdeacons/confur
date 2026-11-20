@@ -5,6 +5,7 @@ namespace Confur\Application;
 use Confur\Config\Constants;
 use Confur\Config\Settings;
 use Confur\Domain\AnswerState;
+use Confur\Logger\HasLogger;
 use Confur\Services\Mailer;
 use Confur\Storage\AnswerStore;
 
@@ -23,6 +24,8 @@ use Confur\Storage\AnswerStore;
  */
 class RegisterGroup
 {
+    use HasLogger;
+
     public function __construct(
         private readonly AnswerStore $store,
         private readonly DuplicateFinder $duplicates,
@@ -51,7 +54,7 @@ class RegisterGroup
         }
 
         if ($registration->groupId === null) {
-            error_log("RegisterGroup::register - No group set for post ID: $postId");
+            self::logWarning('Registration has no group', ['post_id' => $postId]);
             $this->mailer->sendRegistrationError(
                 $email,
                 'Error: Missing Group',
@@ -100,7 +103,7 @@ class RegisterGroup
 
     private function reject(int $postId, string $email): void
     {
-        error_log("RegisterGroup::register - Blocked email rejected for post ID: $postId");
+        self::logNotice('Registration from a blocked address rejected', ['post_id' => $postId]);
 
         if ($this->settings->deleteBlockedPosts) {
             wp_delete_post($postId, true);
@@ -111,7 +114,7 @@ class RegisterGroup
 
     private function resendExisting(int $postId, int $existingId, ?int $groupId, ?int $fellowGroupId, string $email): void
     {
-        error_log("RegisterGroup::register - Post $postId duplicates post $existingId; trashing it and resending the existing link");
+        self::logInfo('Duplicate registration trashed; existing link resent', ['post_id' => $postId, 'existing_post_id' => $existingId]);
 
         wp_trash_post($postId);
 
@@ -144,7 +147,7 @@ class RegisterGroup
         try {
             $prefix = substr(hash('sha256', random_bytes(16)), 0, 16);
         } catch (\Exception $e) {
-            error_log('RegisterGroup::unguessableSlug - Could not generate a prefix: ' . $e->getMessage());
+            self::logError('Could not generate an answer page slug prefix', self::exceptionContext($e));
             return null;
         }
 

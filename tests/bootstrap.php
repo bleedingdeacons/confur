@@ -16,9 +16,11 @@ declare(strict_types=1);
  * which is the opposite of what a unit suite wants. The stubs are now
  * unconditional.
  *
- * Groups: `acf`, because Confur's answers are ACF fields, and `rest` for the
- * route callbacks in the answer API. Not `sentinel` — Confur is standalone and
- * does not use the shared logger.
+ * Groups: `acf`, because Confur's answers are ACF fields, `rest` for the
+ * route callbacks in the answer API, and `sentinel` for wp_log(), which
+ * HasLogger logs through. Its stub records every line in WpState::$logs. The
+ * error_log() fallback for a site without Sentinel is tested by making
+ * wp_log() return null (see HasLoggerTest).
  */
 
 use BleedingDeacons\WpMocks\Bootstrap;
@@ -26,7 +28,7 @@ use BleedingDeacons\WpMocks\WpState;
 
 require_once dirname(__DIR__) . '/vendor/autoload.php';
 
-Bootstrap::load(['wordpress', 'acf', 'rest']);
+Bootstrap::load(['wordpress', 'acf', 'rest', 'sentinel']);
 
 // WP-CLI's symbols, for src/Cli (see the file).
 require_once dirname(__DIR__) . '/stubs/wp-cli.php';
