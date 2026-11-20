@@ -1,3 +1,92 @@
+/**
+ * One answer form per answer page, across tabs.
+ *
+ * The confirmation email's link opens the page in a new tab, and a group
+ * clicking it again would get a second copy of the form. Two copies share
+ * the unsaved answers in localStorage and each saves over the other. So a
+ * page that finds its form already open elsewhere closes itself, and the
+ * tab that has the form asks to be brought to the front.
+ *
+ * Nothing can stop the mail client opening the tab, and a page can only
+ * *ask* to be focused: browsers usually ignore window.focus() from a
+ * background tab. So the tab with the form also flashes its title until it
+ * has focus again, which shows in the tab strip whatever the browser does.
+ *
+ * Tabs find each other on a BroadcastChannel named for the page. A tab that
+ * shows the form answers "open?" with "open"; a tab still deciding stays
+ * quiet, so two tabs loading at the same moment can both show the form,
+ * which is no worse than before. Without BroadcastChannel the form shows as
+ * it always did.
+ */
+const confurAnswerTabs = (pageName) => {
+    const channel = 'BroadcastChannel' in window ? new BroadcastChannel(`confur-answers:${pageName}`) : null;
+    let showing = false;
+
+    // Flash the title until this tab is looked at, then put it back.
+    let flashing = null;
+    const callAttention = () => {
+        window.focus();
+
+        if (document.hasFocus() || flashing) {
+            return;
+        }
+
+        const title = document.title;
+        let on = false;
+        flashing = setInterval(() => {
+            on = !on;
+            document.title = on ? 'Your answers are here' : title;
+        }, 1000);
+
+        const stop = () => {
+            clearInterval(flashing);
+            flashing = null;
+            document.title = title;
+            window.removeEventListener('focus', stop);
+        };
+        window.addEventListener('focus', stop);
+    };
+
+    if (channel) {
+        channel.addEventListener('message', (event) => {
+            if (showing && event.data && event.data.type === 'open?') {
+                channel.postMessage({ type: 'open' });
+                callAttention();
+            }
+        });
+    }
+
+    return {
+        // Resolves true when another tab already shows this page's form.
+        isOpenElsewhere: () => new Promise((resolve) => {
+            if (!channel) {
+                resolve(false);
+                return;
+            }
+
+            const finish = (open) => {
+                clearTimeout(timer);
+                channel.removeEventListener('message', listen);
+                resolve(open);
+            };
+            const listen = (event) => {
+                if (event.data && event.data.type === 'open') {
+                    finish(true);
+                }
+            };
+            const timer = setTimeout(() => finish(false), 500);
+
+            channel.addEventListener('message', listen);
+            channel.postMessage({ type: 'open?' });
+        }),
+
+        // This tab now shows the form, so it answers the tabs opened after it.
+        showing: () => {
+            showing = true;
+        },
+    };
+};
+
 document.addEventListener('DOMContentLoaded', () => {
 
     (async () => {
@@ -10,6 +99,31 @@ document.addEventListener('DOMContentLoaded', () => {
         const localStorageName = pageName;
 
         const main = document.getElementById('main-content');
+
+        // Already open in another tab: close this one, and the other comes
+        // forward. A tab the email link opened may close itself; one that
+        // will not (opened some other way) says where the answers are.
+        const tabs = confurAnswerTabs(pageName);
+
+        // Nothing may be typed while the other tabs are asked: the form is
+        // rebuilt from its markup just below, which would drop it. Fields
+        // already read-only stay so. readOnly reflects to the markup, so it
+        // is put back before the rebuild.
+        const answerFields = Array.from(main.querySelectorAll('textarea[id^="c"]')).filter(field => !field.readOnly);
+        answerFields.forEach(field => { field.readOnly = true; });
+        const openElsewhere = await tabs.isOpenElsewhere();
+        answerFields.forEach(field => { field.readOnly = false; });
+
+        if (openElsewhere) {
+            window.close();
+
+            const notice = document.createElement('div');
+            notice.id = 'confur-tab-notice';
+            notice.style.cssText = 'max-width: 640px; margin: 40px auto; padding: 24px; border-left: 4px solid #3498db; background: #e8f4fd; border-radius: 4px; color: #2c3e50;';
+            notice.textContent = 'These answers are already open in another tab or window. Please carry on there, and close this one.';
+            main.replaceChildren(notice);
+            return;
+        }
 
         main.innerHTML =
             '<form id="answer-form">' + main.innerHTML + '</form>';
@@ -338,5 +452,8 @@ document.addEventListener('DOMContentLoaded', () => {
         updateGroupStatuses();
         updateFinishButtons();
         updateState();
+
+        // Answer the tabs opened after this one (see confurAnswerTabs).
+        tabs.showing();
     })();
 });
