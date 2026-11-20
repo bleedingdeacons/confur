@@ -20,6 +20,15 @@ it('bootstraps from init without error', function () {
     (new Plugin())->init();
 })->throwsNoExceptions();
 
+// The name Divi Active Form fires (PostWriter). It was hooked as
+// df_after_insert_post, which nothing fires, so registrations went unhandled.
+it('handles registrations on the form plugin\'s after-insert hook', function () {
+    (new Plugin())->init();
+
+    $this->assertActionAdded('daf_after_insert_post');
+    $this->assertActionNotAdded('df_after_insert_post');
+});
+
 it('registers the Confur menu', function () {
     (new Plugin())->registerConfurMenu();
 })->throwsNoExceptions();

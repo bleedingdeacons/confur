@@ -100,6 +100,14 @@ describe('a blocked address', function () {
         expect(WpState::$deletedPosts)->not->toContain(5)
             ->and($this->mailer->calls('sendRegistrationBlocked'))->toHaveCount(1);
     });
+
+    it('is logged by post, without the address', function () {
+        ($this->registration)(7, [Constants::GROUP_FIELD => 100, Constants::EMAIL_FIELD => 'blocked@example.org']);
+
+        ($this->service)(['blocklist' => ['blocked@example.org']])->register(7);
+
+        expect(WpState::$logs)->toBe([['confur', 'notice', 'Registration from a blocked address rejected', ['post_id' => 7]]]);
+    });
 });
 
 describe('a repeat registration', function () {

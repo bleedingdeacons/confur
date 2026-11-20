@@ -115,7 +115,10 @@ describe('saving', function () {
         ($this->answerPost)(16);
         Functions\when('update_field')->justReturn(false);
 
-        expect($this->service->save(16, ['c1_a1' => 'Lost'], 'Draft')->state)->toBe(AnswerState::Draft);
+        expect($this->service->save(16, ['c1_a1' => 'Lost'], 'Draft')->state)->toBe(AnswerState::Draft)
+            // Named by post and field; the answer itself is a member's words.
+            ->and(WpState::$logs)->toContain(['confur', 'error', 'Answer could not be saved', ['post_id' => 16, 'field' => 'c1_a1']])
+            ->and(json_encode(WpState::$logs))->not->toContain('Lost');
     });
 
     it('records the time and state, and publishes the post', function () {

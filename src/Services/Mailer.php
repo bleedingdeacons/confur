@@ -5,6 +5,7 @@ namespace Confur\Services;
 use Confur\Admin\EmailTemplateAdminPage;
 use Confur\Config\Settings;
 use Confur\Domain\QuestionSet;
+use Confur\Logger\HasLogger;
 
 /**
  * Sends the plugin's emails.
@@ -17,6 +18,8 @@ use Confur\Domain\QuestionSet;
  */
 class Mailer
 {
+    use HasLogger;
+
     public function __construct(private readonly Settings $settings)
     {
     }
@@ -64,7 +67,7 @@ class Mailer
         $isSent = wp_mail($this->settings->backupEmail, $pageUrl, $body, $headers);
 
         if (!$isSent) {
-            error_log('Mailer::sendBackup failed');
+            self::logError('Backup email was not sent');
         }
 
         return $isSent;
@@ -84,7 +87,7 @@ class Mailer
         $allocatedCommittee = sanitize_text_field($allocatedCommittee);
 
         if (!is_email($recipient)) {
-            error_log('Mailer::sendConfirmation - Invalid recipient address');
+            self::logWarning('Confirmation email not sent: invalid recipient address');
             return false;
         }
 
@@ -132,7 +135,7 @@ class Mailer
         $recipient = sanitize_email($recipient);
 
         if (!is_email($recipient)) {
-            error_log('Mailer::sendCompletion - Invalid recipient address');
+            self::logWarning('Completion email not sent: invalid recipient address');
             return false;
         }
 
@@ -150,7 +153,7 @@ class Mailer
         $recipient = sanitize_email($recipient);
 
         if (!is_email($recipient)) {
-            error_log('Mailer::sendRegistrationBlocked - Invalid recipient address');
+            self::logWarning('Registration-blocked email not sent: invalid recipient address');
             return false;
         }
 
@@ -180,7 +183,7 @@ class Mailer
 
         // Only allow alphanumeric characters and hyphens/underscores
         if (!preg_match('/^[a-zA-Z0-9_-]+$/', $name)) {
-            error_log('Mailer::renderTemplate - Invalid template name: ' . $name);
+            self::logError('Invalid email template name', ['template' => $name]);
             return '';
         }
 
@@ -201,13 +204,13 @@ class Mailer
             // this containment test rather than failing it, leaving the
             // traversal guard open.
             if ($realPath === false || $emailsDir === false || strpos($realPath, $emailsDir) !== 0) {
-                error_log('Mailer::renderTemplate - Template not found or path traversal attempt: ' . $name);
+                self::logError('Email template not found, or path traversal attempt', ['template' => $name]);
                 return '';
             }
 
             $template = file_get_contents($realPath);
             if ($template === false) {
-                error_log('Mailer::renderTemplate - Template could not be read: ' . $name);
+                self::logError('Email template could not be read', ['template' => $name]);
                 return '';
             }
         } else {

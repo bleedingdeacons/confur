@@ -55,7 +55,7 @@ jobs:
 
     defaults:
       run:
-        # Confur and Unity are checked out side by side, mirroring a
+        # Confur, Unity and Sentinel are checked out side by side, mirroring a
         # WordPress plugins/ directory (as in Reach): the tests and PHPStan
         # read Unity's interfaces and test doubles from ../unity. Run
         # everything from inside this repo's own directory.
@@ -75,6 +75,16 @@ jobs:
           repository: bleedingdeacons/unity
           ref: main
           path: unity
+
+      - name: Checkout Sentinel
+        # Logging goes through Sentinel's shared logger when it is present.
+        # phpstan.neon.dist scans ../sentinel/src for Sentinel_Log_Channel,
+        # which HasLogger types against.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: bleedingdeacons/sentinel
+          ref: main
+          path: sentinel
 
       - name: Setup PHP ${{ matrix.php }}
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2

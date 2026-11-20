@@ -83,6 +83,8 @@ spl_autoload_register(function ($class) {
             require $file;
         }
     } catch (\Exception $e) {
+        // error_log(), not Sentinel: the logger is reached through classes this
+        // autoloader loads, so it cannot be relied on from inside it.
         error_log('Confur Autoloader Error: ' . $e->getMessage());
     } catch (\Throwable $e) {
         error_log('Confur Autoloader Fatal Error: ' . $e->getMessage());
@@ -110,6 +112,16 @@ add_action('plugins_loaded', function () {
 // resolved when first used: TSML for Unity binds it in its own unity/loaded
 // handler, which can run after this one.
 add_action('unity/loaded', function ($container) {
+    // Through Sentinel when Plugin (and so HasLogger) loaded, and straight to
+    // the PHP error log when the failure is that it did not.
+    $logFailure = static function (string $message, \Throwable $e): void {
+        if (class_exists(\Confur\Plugin::class)) {
+            \Confur\Plugin::logCritical($message, \Confur\Plugin::exceptionContext($e, true));
+            return;
+        }
+        error_log('Confur: ' . $message . ': ' . $e->getMessage() . PHP_EOL . $e->getTraceAsString());
+    };
+
     try {
         // Check if Plugin class exists before trying to instantiate
         if (!class_exists('Confur\Plugin')) {
@@ -120,9 +132,7 @@ add_action('unity/loaded', function ($container) {
         $confur_plugin = new \Confur\Plugin();
         $confur_plugin->init($container);
     } catch (\Exception $e) {
-        // Log the error
-        error_log('Confur Plugin Initialization Error: ' . $e->getMessage());
-        error_log('Confur Plugin Stack Trace: ' . $e->getTraceAsString());
+        $logFailure('Plugin initialisation failed', $e);
 
         // Show admin notice only in admin area
         if (is_admin()) {
@@ -139,8 +149,7 @@ add_action('unity/loaded', function ($container) {
         return;
     } catch (\Throwable $e) {
         // Catch any fatal errors
-        error_log('Confur Plugin Fatal Error: ' . $e->getMessage());
-        error_log('Confur Plugin Stack Trace: ' . $e->getTraceAsString());
+        $logFailure('Plugin failed to load', $e);
 
         if (is_admin()) {
             add_action('admin_notices', function () {

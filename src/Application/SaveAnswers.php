@@ -7,6 +7,7 @@ use Confur\Domain\AnswerKey;
 use Confur\Domain\AnswerState;
 use Confur\Domain\QuestionSet;
 use Confur\Domain\SaveTime;
+use Confur\Logger\HasLogger;
 use Confur\Services\Mailer;
 use Confur\Storage\AnswerStore;
 
@@ -24,6 +25,8 @@ use Confur\Storage\AnswerStore;
  */
 class SaveAnswers
 {
+    use HasLogger;
+
     public function __construct(
         private readonly AnswerStore $store,
         private readonly Mailer $mailer,
@@ -44,7 +47,7 @@ class SaveAnswers
         try {
             $this->mailer->sendBackup(get_permalink($postId) ?: '', $submitted);
         } catch (\Throwable $e) {
-            error_log('SaveAnswers::save - Backup email failed: ' . $e->getMessage());
+            self::logError('Backup email failed', ['post_id' => $postId] + self::exceptionContext($e));
         }
 
         $this->writeAnswers($postId, $submitted);
@@ -65,7 +68,7 @@ class SaveAnswers
             try {
                 $this->mailer->sendCompletion((string) get_field(Constants::EMAIL_FIELD, $postId), get_the_title($postId));
             } catch (\Throwable $e) {
-                error_log('SaveAnswers::save - Completion email failed: ' . $e->getMessage());
+                self::logError('Completion email failed', ['post_id' => $postId] + self::exceptionContext($e));
             }
         }
 
@@ -108,9 +111,9 @@ class SaveAnswers
             }
 
             // Field keys and post IDs only: the answers are members' words
-            // and do not belong in the PHP error log.
+            // and do not belong in the log.
             if (!$this->store->saveAnswer($postId, $key, $text)) {
-                error_log(sprintf('SaveAnswers::writeAnswers - Could not save answer c%d_a%d on post %d', $key->committee, $key->question, $postId));
+                self::logError('Answer could not be saved', ['post_id' => $postId, 'field' => $key->fieldName()]);
             }
         }
     }
@@ -135,7 +138,7 @@ class SaveAnswers
             return [AnswerState::Complete, null];
         }
 
-        error_log("SaveAnswers::decideState - Post $postId asked for Complete with $unanswered unanswered; saved as Draft");
+        self::logInfo('Complete requested with questions unanswered; saved as Draft', ['post_id' => $postId, 'unanswered' => $unanswered]);
 
         return [
             AnswerState::Draft,

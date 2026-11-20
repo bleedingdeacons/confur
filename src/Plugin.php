@@ -16,12 +16,15 @@ use Confur\Admin\EmailTemplateAdminPage;
 use Confur\Admin\QuestionSetAdminPage;
 use Confur\Admin\AnswerAdmin;
 use Confur\Admin\ConfurHeadsUp;
+use Confur\Logger\HasLogger;
 
 /**
  * Main plugin class
  */
 class Plugin
 {
+    use HasLogger;
+
     private AssetService $assetService;
     private ShortcodeService $shortcodeService;
     private AnswerHandler $answerHandler;
@@ -46,7 +49,7 @@ class Plugin
             try {
                 ConfurSettings::initialize();
             } catch (\Exception $e) {
-                error_log('Plugin::init - Failed to initialize email settings: ' . $e->getMessage());
+                self::logWarning('Email settings could not be initialised', self::exceptionContext($e));
                 // Continue execution - email settings are not critical for basic functionality
             }
 
@@ -65,15 +68,13 @@ class Plugin
                 // Registers its own admin hooks in the constructor.
                 new AnswerAdmin();
             } catch (\Exception $e) {
-                error_log('Plugin::init - Failed to initialize services: ' . $e->getMessage());
-                throw new \Exception('Failed to initialize plugin services: ' . $e->getMessage());
+                throw new \Exception('Failed to initialize plugin services: ' . $e->getMessage(), 0, $e);
             }
 
             // Register hooks
             $this->registerHooks();
         } catch (\Exception $e) {
-            error_log('Plugin::init - Initialization failed: ' . $e->getMessage());
-            error_log('Plugin::init - Stack trace: ' . $e->getTraceAsString());
+            // Not logged here: confur.php catches the rethrow and logs it.
 
             // Show admin notice
             if (is_admin()) {
@@ -104,7 +105,7 @@ class Plugin
 
             // Registration form. Answers are saved through the REST API
             // (AnswerAPI), registered below.
-            add_action('df_after_insert_post', [$this->answerHandler, 'handleRegistration'], 10, 2);
+            add_action('daf_after_insert_post', [$this->answerHandler, 'handleRegistration'], 10, 2);
 
             // REST API hooks
             add_action('rest_api_init', [$this->answerAPI, 'registerRoutes']);
@@ -126,7 +127,7 @@ class Plugin
                 $this->emailTemplateAdminPage->init();
                 $this->questionSetAdminPage->init();
             } catch (\Exception $e) {
-                error_log('Plugin::registerHooks - Failed to initialize admin pages: ' . $e->getMessage());
+                self::logError('Admin pages could not be initialised', self::exceptionContext($e, true));
                 // Continue - admin pages are not critical for front-end functionality
             }
 
@@ -136,8 +137,7 @@ class Plugin
             // Divi compatibility - disable custom shortcodes when Visual Builder is active
             add_action('init', [$this, 'maybeDisableShortcodesForDivi'], 20);
         } catch (\Exception $e) {
-            error_log('Plugin::registerHooks - Failed to register hooks: ' . $e->getMessage());
-            error_log('Plugin::registerHooks - Stack trace: ' . $e->getTraceAsString());
+            // Logged in confur.php, where init()'s rethrow ends up.
             throw $e;
         }
     }
@@ -194,7 +194,7 @@ class Plugin
                 $wp_post_types['answer']->exclude_from_search = true;
             }
         } catch (\Exception $e) {
-            error_log('Plugin::modifyAnswerPostType - Failed to modify post type: ' . $e->getMessage());
+            self::logWarning('Answer post type could not be excluded from search', self::exceptionContext($e));
             // Don't throw - this is not critical
         }
     }
@@ -221,12 +221,12 @@ class Plugin
                 try {
                     remove_shortcode($shortcode);
                 } catch (\Exception $e) {
-                    error_log("Plugin::maybeDisableShortcodesForDivi - Failed to remove shortcode '$shortcode': " . $e->getMessage());
+                    self::logWarning('Shortcode could not be removed for the Divi builder', ['shortcode' => $shortcode] + self::exceptionContext($e));
                     // Continue with other shortcodes
                 }
             }
         } catch (\Exception $e) {
-            error_log('Plugin::maybeDisableShortcodesForDivi - Failed to disable shortcodes: ' . $e->getMessage());
+            self::logWarning('Shortcodes could not be disabled for the Divi builder', self::exceptionContext($e));
             // Don't throw - this is not critical for functionality
         }
     }
