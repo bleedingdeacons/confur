@@ -41,7 +41,16 @@ class Mailer
             'From: ' . $from,
         ];
 
-        return wp_mail($recipient, $subject, $body, $headers);
+        $isSent = wp_mail($recipient, $subject, $body, $headers);
+
+        // wp_mail() reports a failed send by returning false, not by throwing,
+        // so the callers' catch blocks never see it. Named by subject: the
+        // recipient is personal data.
+        if (!$isSent) {
+            self::logError('Email was not sent', ['subject' => $subject]);
+        }
+
+        return $isSent;
     }
 
     /**

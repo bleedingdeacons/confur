@@ -103,7 +103,7 @@ A save returns `{"message", "updated", "state"}`. "Complete" is only granted whe
 
 ## Logging
 
-Confur logs through Sentinel's shared logger, on one channel, `confur`, so its lines can be filtered on Sentinel's log screen and Monitor's error alerts can be scoped to it. Failures that need someone to act (an answer that could not be saved, a backup or completion email that failed, the plugin failing to boot) are `error` or `critical`, which Monitor alerts on by default. Routine events (a duplicate registration, a blocked address, Complete asked for with questions unanswered) are `info` or `notice`.
+Confur logs through Sentinel's shared logger, on one channel, `confur`, so its lines can be filtered on Sentinel's log screen and Monitor's error alerts can be scoped to it. Failures that need someone to act (an answer that could not be saved, an email that failed to send, the plugin failing to boot) are `error` or `critical`, which Monitor alerts on by default. Routine events (a duplicate registration, a blocked address, Complete asked for with questions unanswered) are `info` or `notice`.
 
 Without Sentinel the same lines go to the PHP error log, prefixed `[confur]`. Neither carries members' answers or email addresses: posts are named by ID and settings by key.
 
